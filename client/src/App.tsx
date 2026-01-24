@@ -15,6 +15,28 @@ import WbsDimensions from "@/pages/wbs-dimensions";
 import Team from "@/pages/team";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
+import {
+  TasksPage,
+  AlertsPage,
+  SchedulePage,
+  SpecificationsPage,
+  PhotosPage,
+  CustomersPage,
+  VendorsPage,
+  EmployeesPage,
+  SubcontractorsPage,
+  ContactsDirectoryPage,
+  EstimatingPage,
+  PurchaseOrdersPage,
+  InvoicingPage,
+  ExpensesPage,
+  FinanceReportsPage,
+  FileManagerPage,
+  PlanRoomPage,
+  TemplatesPage,
+  DocumentReportsPage,
+  ArchivesPage,
+} from "@/pages/placeholder";
 
 const mockUser = {
   role: "admin" as const,
@@ -30,9 +52,34 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/tasks" component={TasksPage} />
+      <Route path="/alerts" component={AlertsPage} />
+      
       <Route path="/projects" component={Projects} />
       <Route path="/wbs" component={WBS} />
       <Route path="/wbs/dimensions" component={WbsDimensions} />
+      <Route path="/schedule" component={SchedulePage} />
+      <Route path="/specifications" component={SpecificationsPage} />
+      <Route path="/photos" component={PhotosPage} />
+      
+      <Route path="/people/customers" component={CustomersPage} />
+      <Route path="/people/vendors" component={VendorsPage} />
+      <Route path="/people/employees" component={EmployeesPage} />
+      <Route path="/people/subcontractors" component={SubcontractorsPage} />
+      <Route path="/people/directory" component={ContactsDirectoryPage} />
+      
+      <Route path="/finance/estimating" component={EstimatingPage} />
+      <Route path="/finance/purchase-orders" component={PurchaseOrdersPage} />
+      <Route path="/finance/invoicing" component={InvoicingPage} />
+      <Route path="/finance/expenses" component={ExpensesPage} />
+      <Route path="/finance/reports" component={FinanceReportsPage} />
+      
+      <Route path="/documents/files" component={FileManagerPage} />
+      <Route path="/documents/plans" component={PlanRoomPage} />
+      <Route path="/documents/templates" component={TemplatesPage} />
+      <Route path="/documents/reports" component={DocumentReportsPage} />
+      <Route path="/documents/archives" component={ArchivesPage} />
+      
       <Route path="/team" component={Team} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
