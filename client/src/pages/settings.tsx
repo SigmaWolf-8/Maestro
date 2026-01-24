@@ -17,6 +17,10 @@ const colorPresets = [
   { name: "Royal Purple", primary: "270 60% 45%", accent: "45 95% 55%", sidebar: "270 35% 15%" },
   { name: "Sunset Orange", primary: "24 85% 45%", accent: "180 70% 40%", sidebar: "24 40% 15%" },
   { name: "Slate Modern", primary: "215 20% 45%", accent: "200 80% 50%", sidebar: "215 25% 12%" },
+  { name: "Monochrome", primary: "0 0% 35%", accent: "0 0% 55%", sidebar: "0 0% 12%" },
+  { name: "Baby Blue", primary: "200 75% 55%", accent: "340 70% 60%", sidebar: "200 50% 18%" },
+  { name: "Vibrant Lime", primary: "85 75% 45%", accent: "45 90% 50%", sidebar: "85 45% 15%" },
+  { name: "Espresso Sky", primary: "30 55% 30%", accent: "200 70% 55%", sidebar: "30 40% 12%" },
 ];
 
 const fontOptions = [
