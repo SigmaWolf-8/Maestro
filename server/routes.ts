@@ -140,6 +140,17 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/navigation", async (req, res) => {
+    try {
+      const tenantId = await getDefaultTenantId();
+      const items = await storage.getNavigationItems(tenantId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching navigation items:", error);
+      res.status(500).json({ error: "Failed to fetch navigation items" });
+    }
+  });
+
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
       const tenantId = await getDefaultTenantId();

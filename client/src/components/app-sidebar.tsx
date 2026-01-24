@@ -2,17 +2,37 @@ import { useLocation, Link } from "wouter";
 import {
   LayoutDashboard,
   FolderKanban,
-  Network,
   Users,
   Settings,
-  FileText,
   ChevronDown,
   ChevronRight,
   Building2,
-  HardHat,
-  Briefcase,
-  BarChart3,
+  Landmark,
+  FolderArchive,
+  Home,
+  CheckSquare,
+  Bell,
+  Folder,
+  GitBranch,
   Calendar,
+  FileText,
+  Camera,
+  Building,
+  Truck,
+  User,
+  HardHat,
+  Contact,
+  Calculator,
+  ClipboardList,
+  Receipt,
+  CreditCard,
+  BarChart,
+  Files,
+  Map as MapIcon,
+  FileCode,
+  FileBarChart,
+  Archive,
+  type LucideIcon,
 } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
 import {
@@ -39,75 +59,47 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useState } from "react";
-import type { UserRole } from "@shared/schema";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type { UserRole, NavigationItem } from "@shared/schema";
 
-interface NavItem {
-  title: string;
-  path?: string;
-  icon: React.ElementType;
-  badge?: string;
-  badgeVariant?: "default" | "secondary" | "destructive" | "outline";
-  minRole: UserRole;
-  children?: NavItem[];
-  maxDisplay?: 3 | 5;
+const iconMap: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  FolderKanban,
+  Users,
+  Settings,
+  Building2,
+  Landmark,
+  FolderArchive,
+  Home,
+  CheckSquare,
+  Bell,
+  Folder,
+  GitBranch,
+  Calendar,
+  FileText,
+  Map: MapIcon,
+  Camera,
+  Building,
+  Truck,
+  User,
+  HardHat,
+  Contact,
+  Calculator,
+  ClipboardList,
+  Receipt,
+  CreditCard,
+  BarChart,
+  Files,
+  FileCode,
+  FileBarChart,
+  Archive,
+};
+
+interface NavigationTree extends NavigationItem {
+  children: NavigationTree[];
+  icon?: LucideIcon;
 }
-
-const navigationItems: NavItem[] = [
-  {
-    title: "Dashboard",
-    path: "/",
-    icon: LayoutDashboard,
-    minRole: "viewer",
-  },
-  {
-    title: "Projects",
-    icon: FolderKanban,
-    minRole: "viewer",
-    maxDisplay: 5,
-    children: [
-      { title: "All Projects", path: "/projects", icon: Briefcase, minRole: "viewer" },
-      { title: "Active", path: "/projects?status=active", icon: HardHat, badge: "3", minRole: "viewer" },
-      { title: "Completed", path: "/projects?status=completed", icon: Building2, minRole: "viewer" },
-      { title: "On Hold", path: "/projects?status=hold", icon: Calendar, minRole: "project_manager" },
-      { title: "Analytics", path: "/projects/analytics", icon: BarChart3, minRole: "admin" },
-    ],
-  },
-  {
-    title: "WBS Engine",
-    icon: Network,
-    minRole: "viewer",
-    maxDisplay: 3,
-    children: [
-      { title: "Structure View", path: "/wbs", icon: Network, minRole: "viewer" },
-      { title: "Templates", path: "/wbs/templates", icon: FileText, minRole: "project_manager" },
-      { title: "Dimensions", path: "/wbs/dimensions", icon: Settings, minRole: "admin" },
-    ],
-  },
-  {
-    title: "Team",
-    icon: Users,
-    minRole: "project_manager",
-    maxDisplay: 3,
-    children: [
-      { title: "Members", path: "/team", icon: Users, minRole: "project_manager" },
-      { title: "Roles", path: "/team/roles", icon: Settings, minRole: "admin" },
-      { title: "Activity", path: "/team/activity", icon: BarChart3, minRole: "project_manager" },
-    ],
-  },
-  {
-    title: "Documents",
-    path: "/documents",
-    icon: FileText,
-    minRole: "viewer",
-  },
-  {
-    title: "Settings",
-    path: "/settings",
-    icon: Settings,
-    minRole: "admin",
-  },
-];
 
 const roleHierarchy: Record<UserRole, number> = {
   viewer: 0,
@@ -115,6 +107,73 @@ const roleHierarchy: Record<UserRole, number> = {
   project_manager: 2,
   admin: 3,
 };
+
+function buildNavigationTree(items: NavigationItem[]): NavigationTree[] {
+  const itemMap = new Map<string, NavigationTree>();
+  const roots: NavigationTree[] = [];
+
+  items.forEach((item) => {
+    itemMap.set(item.id, {
+      ...item,
+      children: [],
+      icon: item.iconName ? iconMap[item.iconName] : undefined,
+    });
+  });
+
+  items.forEach((item) => {
+    const node = itemMap.get(item.id)!;
+    if (item.parentId) {
+      const parent = itemMap.get(item.parentId);
+      if (parent) {
+        parent.children.push(node);
+      }
+    } else {
+      roots.push(node);
+    }
+  });
+
+  roots.forEach((root) => {
+    root.children.sort((a, b) => a.itemOrder - b.itemOrder);
+  });
+  roots.sort((a, b) => a.itemOrder - b.itemOrder);
+
+  return roots;
+}
+
+function enforceChoiceConstraint(nodes: NavigationTree[]): NavigationTree[] {
+  return nodes.map((node) => {
+    if (!node.children || node.children.length === 0) return node;
+
+    const maxDisplay = node.maxChildrenDisplay || 5;
+    const sortedChildren = [...node.children].sort(
+      (a, b) => a.itemOrder - b.itemOrder
+    );
+
+    const visibleChildren = sortedChildren.slice(0, maxDisplay);
+
+    return {
+      ...node,
+      children: visibleChildren.map((child) =>
+        enforceChoiceConstraint([child])[0]
+      ),
+    };
+  });
+}
+
+function filterByRole(
+  nodes: NavigationTree[],
+  userRoleLevel: number
+): NavigationTree[] {
+  return nodes
+    .filter((node) => {
+      const nodeRoleLevel = roleHierarchy[node.minRoleRequired as UserRole] || 0;
+      return userRoleLevel >= nodeRoleLevel;
+    })
+    .map((node) => ({
+      ...node,
+      children: filterByRole(node.children, userRoleLevel),
+    }));
+}
 
 interface AppSidebarProps {
   currentUser?: {
@@ -129,26 +188,28 @@ interface AppSidebarProps {
   tenantName?: string;
 }
 
-export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: AppSidebarProps) {
+export function AppSidebar({
+  currentUser,
+  tenantName = "Acme Construction",
+}: AppSidebarProps) {
   const [location] = useLocation();
   const { state } = useSidebar();
   const { activeTenant, tenants, setActiveTenant } = useSettings();
-  const userRole = currentUser?.role || "viewer";
+  const userRole = currentUser?.role || "admin";
   const userRoleLevel = roleHierarchy[userRole];
 
-  const filterByRole = (items: NavItem[]): NavItem[] => {
-    return items.filter((item) => {
-      const itemRoleLevel = roleHierarchy[item.minRole];
-      return userRoleLevel >= itemRoleLevel;
-    }).map((item) => ({
-      ...item,
-      children: item.children ? filterByRole(item.children) : undefined,
-    }));
-  };
+  const { data: navigationItems = [] } = useQuery<NavigationItem[]>({
+    queryKey: ["/api/navigation"],
+  });
 
-  const filteredNav = filterByRole(navigationItems);
+  const navigationTree = useMemo(() => {
+    if (navigationItems.length === 0) return [];
+    const tree = buildNavigationTree(navigationItems);
+    const roleFiltered = filterByRole(tree, userRoleLevel);
+    return enforceChoiceConstraint(roleFiltered);
+  }, [navigationItems, userRoleLevel]);
 
-  const isActive = (path?: string) => {
+  const isActive = (path?: string | null) => {
     if (!path) return false;
     if (path === "/" && location === "/") return true;
     if (path !== "/" && location.startsWith(path.split("?")[0])) return true;
@@ -161,7 +222,11 @@ export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: Ap
         <div className="flex items-center gap-3">
           {activeTenant?.config?.branding?.logoUrl ? (
             <div className="flex h-9 w-9 items-center justify-center rounded-md overflow-hidden bg-sidebar-primary">
-              <img src={activeTenant.config.branding.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+              <img
+                src={activeTenant.config.branding.logoUrl}
+                alt="Logo"
+                className="w-full h-full object-cover"
+              />
             </div>
           ) : (
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
@@ -181,20 +246,26 @@ export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: Ap
                   data-testid="select-company"
                 >
                   {tenants.map((t) => (
-                    <option key={t.id} value={t.id} className="bg-sidebar text-sidebar-foreground">
+                    <option
+                      key={t.id}
+                      value={t.id}
+                      className="bg-sidebar text-sidebar-foreground"
+                    >
                       {t.companyName}
                     </option>
                   ))}
                 </select>
               )}
               {tenants.length <= 1 && (
-                <span className="text-xs text-sidebar-foreground/70">{tenantName}</span>
+                <span className="text-xs text-sidebar-foreground/70">
+                  {tenantName}
+                </span>
               )}
             </div>
           )}
         </div>
       </SidebarHeader>
-      
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs uppercase tracking-wider">
@@ -202,14 +273,36 @@ export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: Ap
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredNav.map((item) => (
+              {navigationTree.map((item) => (
                 <NavMenuItem
-                  key={item.title}
+                  key={item.id}
                   item={item}
                   isActive={isActive}
                   collapsed={state === "collapsed"}
                 />
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs uppercase tracking-wider">
+            System
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/settings")}
+                  data-testid="nav-settings"
+                >
+                  <Link href="/settings">
+                    <Settings className="h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -226,7 +319,8 @@ export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: Ap
           {state !== "collapsed" && (
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-sm font-medium text-sidebar-foreground truncate">
-                {currentUser?.profile.firstName || "User"} {currentUser?.profile.lastName || ""}
+                {currentUser?.profile.firstName || "User"}{" "}
+                {currentUser?.profile.lastName || ""}
               </span>
               <span className="text-xs text-sidebar-foreground/60 truncate capitalize">
                 {userRole.replace("_", " ")}
@@ -241,19 +335,17 @@ export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: Ap
 }
 
 interface NavMenuItemProps {
-  item: NavItem;
-  isActive: (path?: string) => boolean;
+  item: NavigationTree;
+  isActive: (path?: string | null) => boolean;
   collapsed: boolean;
 }
 
 function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const Icon = item.icon;
+  const Icon = item.icon || Folder;
   const hasChildren = item.children && item.children.length > 0;
-  const active = isActive(item.path) || item.children?.some((c) => isActive(c.path));
-  const maxDisplay = item.maxDisplay || 5;
-  const visibleChildren = item.children?.slice(0, maxDisplay) || [];
-  const hiddenCount = (item.children?.length || 0) - maxDisplay;
+  const active =
+    isActive(item.path) || item.children?.some((c) => isActive(c.path));
 
   if (hasChildren) {
     return (
@@ -261,31 +353,27 @@ function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger asChild>
             <SidebarMenuButton
-              className={active ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""}
+              className={
+                active ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
+              }
               data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
             >
               <Icon className="h-4 w-4" />
               <span className="flex-1">{item.title}</span>
-              {item.badge && (
-                <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-xs">
-                  {item.badge}
-                </Badge>
-              )}
-              {!collapsed && (
-                isOpen ? (
+              {!collapsed &&
+                (isOpen ? (
                   <ChevronDown className="h-4 w-4 text-sidebar-foreground/50" />
                 ) : (
                   <ChevronRight className="h-4 w-4 text-sidebar-foreground/50" />
-                )
-              )}
+                ))}
             </SidebarMenuButton>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <SidebarMenuSub>
-              {visibleChildren.map((child) => {
-                const ChildIcon = child.icon;
+              {item.children.map((child) => {
+                const ChildIcon = child.icon || Folder;
                 return (
-                  <SidebarMenuSubItem key={child.title}>
+                  <SidebarMenuSubItem key={child.id}>
                     <SidebarMenuSubButton
                       asChild
                       isActive={isActive(child.path)}
@@ -296,24 +384,11 @@ function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
                       >
                         <ChildIcon className="h-4 w-4" />
                         <span>{child.title}</span>
-                        {child.badge && (
-                          <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-xs">
-                            {child.badge}
-                          </Badge>
-                        )}
                       </Link>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
                 );
               })}
-              {hiddenCount > 0 && (
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton className="text-sidebar-foreground/50">
-                    <ChevronDown className="h-4 w-4" />
-                    <span>{hiddenCount} more...</span>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              )}
             </SidebarMenuSub>
           </CollapsibleContent>
         </Collapsible>
@@ -321,23 +396,22 @@ function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
     );
   }
 
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton
-        asChild
-        isActive={active}
-        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
-      >
-        <Link href={item.path || "#"}>
-          <Icon className="h-4 w-4" />
-          <span>{item.title}</span>
-          {item.badge && (
-            <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-xs">
-              {item.badge}
-            </Badge>
-          )}
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
+  if (item.path) {
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={active || false}
+          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+        >
+          <Link href={item.path}>
+            <Icon className="h-4 w-4" />
+            <span>{item.title}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  }
+
+  return null;
 }
