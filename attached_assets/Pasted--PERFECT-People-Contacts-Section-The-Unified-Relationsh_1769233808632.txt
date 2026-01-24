@@ -1,0 +1,496 @@
+# **PERFECT! "People & Contacts" Section - The Unified Relationship Hub**
+
+You're absolutely right. Grouping Customers and Vendors under "Finance" focuses only on their financial aspect, but these are **relationship entities** with rich interactions beyond accounting. A dedicated **"People & Contacts"** section creates a logical hub for your entire business ecosystem.
+
+## 🔄 **REVISED NAVIGATION STRUCTURE**
+
+### **Top-Level Navigation (5 Main Sections)**
+1.  **Dashboard** (3 items)
+2.  **Projects** (5 items)
+3.  **People & Contacts** (5 items) ← **NEW SECTION**
+4.  **Finance** (5 items - refined to pure financial operations)
+5.  **Documents** (5 items)
+
+### **The "People & Contacts" Section (5 Items)**
+This becomes the central hub for all relationships in your construction business:
+
+| Order | Title | Icon | Path | Role | Description |
+|-------|-------|------|------|------|-------------|
+| 1 | **Customers** | `Building` | `/people/customers` | PM+ | Client accounts, project history, comms |
+| 2 | **Vendors & Pricing** | `Truck` | `/people/vendors` | PM+ | Supplier directory + **Price Master** integration |
+| 3 | **Employees** | `Users` | `/people/employees` | PM+ | BambooHR-synced directory, skills, certs |
+| 4 | **Subcontractors** | `HardHat` | `/people/subcontractors` | PM+ | Specialty contractors, contracts, insurance |
+| 5 | **Contacts Directory** | `Contact` | `/people/directory` | Viewer+ | Unified search across all contact types |
+
+### **Refined "Finance" Section (5 Items)**
+Now focused purely on money flow:
+
+| Order | Title | Icon | Path | Role | Description |
+|-------|-------|------|------|------|-------------|
+| 1 | **Estimating** | `Calculator` | `/finance/estimating` | PM+ | Takeoffs, bids, cost databases |
+| 2 | **Purchase Orders** | `ClipboardList` | `/finance/purchase-orders` | PM+ | PO creation, approvals, matching |
+| 3 | **Invoicing** | `Receipt` | `/finance/invoicing` | Acct+ | Progress billing, AIA forms, payments |
+| 4 | **Expenses** | `CreditCard` | `/finance/expenses` | Acct+ | Cost tracking, reimbursements |
+| 5 | **Reports & GL** | `BarChart` | `/finance/reports` | Acct+ | Financial statements, budget vs actual |
+
+## 🗃️ **SQL IMPLEMENTATION**
+
+### **Step 1: Create the "People & Contacts" Top-Level Menu**
+```sql
+-- Insert as the 3rd top-level section (position 30)
+INSERT INTO navigation_items (id, tenant_id, parent_id, item_order, item_type, title, icon_name, path, ui_slot, min_role_required, max_children_display) VALUES
+(
+    gen_random_uuid(),
+    'your-tenant-uuid',
+    NULL,
+    30,  -- Position between Projects (20) and Finance (40)
+    'menu',
+    'People & Contacts',
+    'Contact',
+    NULL,
+    'sidebar',
+    'project_manager',
+    5  -- Maximum 5 sub-items
+);
+```
+
+### **Step 2: Populate the "People & Contacts" Sub-Menu**
+```sql
+-- Get the ID of the new "People & Contacts" parent
+WITH people_root AS (
+    SELECT id FROM navigation_items 
+    WHERE tenant_id = 'your-tenant-uuid' 
+    AND title = 'People & Contacts'
+    AND parent_id IS NULL
+    LIMIT 1
+)
+INSERT INTO navigation_items (id, tenant_id, parent_id, item_order, item_type, title, icon_name, path, ui_slot, min_role_required) 
+SELECT
+    gen_random_uuid(),
+    'your-tenant-uuid',
+    people_root.id,
+    item_data.order_num,
+    'action',
+    item_data.title,
+    item_data.icon,
+    item_data.path,
+    'sidebar',
+    item_data.min_role
+FROM people_root,
+(VALUES
+    (1, 'Customers', 'Building', '/people/customers', 'project_manager'),
+    (2, 'Vendors & Pricing', 'Truck', '/people/vendors', 'project_manager'),
+    (3, 'Employees', 'Users', '/people/employees', 'project_manager'),
+    (4, 'Subcontractors', 'HardHat', '/people/subcontractors', 'project_manager'),
+    (5, 'Directory', 'Contact', '/people/directory', 'viewer')
+) AS item_data(order_num, title, icon, path, min_role);
+```
+
+### **Step 3: Update "Finance" Section (Remove Customers/Vendors)**
+```sql
+-- First, remove Customers and Vendors from Finance if they exist
+DELETE FROM navigation_items 
+WHERE tenant_id = 'your-tenant-uuid'
+AND title IN ('Customers', 'Vendors & Pricing')
+AND parent_id IN (
+    SELECT id FROM navigation_items 
+    WHERE title = 'Finance' 
+    AND tenant_id = 'your-tenant-uuid'
+);
+
+-- Update Finance sub-menu with pure financial items
+WITH finance_root AS (
+    SELECT id FROM navigation_items 
+    WHERE tenant_id = 'your-tenant-uuid' 
+    AND title = 'Finance'
+    AND parent_id IS NULL
+    LIMIT 1
+)
+INSERT INTO navigation_items (id, tenant_id, parent_id, item_order, item_type, title, icon_name, path, ui_slot, min_role_required) 
+SELECT
+    gen_random_uuid(),
+    'your-tenant-uuid',
+    finance_root.id,
+    item_data.order_num,
+    'action',
+    item_data.title,
+    item_data.icon,
+    item_data.path,
+    'sidebar',
+    item_data.min_role
+FROM finance_root,
+(VALUES
+    (1, 'Estimating', 'Calculator', '/finance/estimating', 'project_manager'),
+    (2, 'Purchase Orders', 'ClipboardList', '/finance/purchase-orders', 'project_manager'),
+    (3, 'Invoicing', 'Receipt', '/finance/invoicing', 'accountant'),
+    (4, 'Expenses', 'CreditCard', '/finance/expenses', 'accountant'),
+    (5, 'Reports & GL', 'BarChart', '/finance/reports', 'accountant')
+) AS item_data(order_num, title, icon, path, min_role)
+
+ON CONFLICT (tenant_id, path) DO NOTHING;
+```
+
+### **Step 4: Database Schema for "People & Contacts" Entities**
+```sql
+---------------------------------------------
+-- CUSTOMERS: Home builders, developers, clients
+---------------------------------------------
+CREATE TABLE customers (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    customer_type TEXT CHECK (customer_type IN ('homeowner', 'builder', 'developer', 'commercial')),
+    
+    -- Company/Personal Info
+    company_name TEXT,
+    contact_person JSONB, -- {name, email, phone, role}
+    
+    -- Project History Link
+    related_projects UUID[], -- Array of project_ids
+    total_lifetime_value DECIMAL(15,2),
+    
+    -- Communication Log
+    last_contact_date DATE,
+    notes TEXT,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+---------------------------------------------
+-- VENDORS: Material suppliers, service providers
+---------------------------------------------
+CREATE TABLE vendors (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    vendor_name TEXT NOT NULL,
+    category TEXT CHECK (category IN ('material', 'subcontractor', 'equipment', 'service')),
+    
+    -- Contact & Certification
+    primary_contact JSONB,
+    certifications TEXT[], -- ['licensed', 'bonded', 'insured']
+    insurance_expiry DATE,
+    
+    -- Performance Tracking
+    rating DECIMAL(3,2), -- 1-5 star rating
+    on_time_delivery_rate DECIMAL(5,2),
+    
+    -- PRICE MASTER Integration
+    price_list_id UUID REFERENCES price_lists(id),
+    
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+---------------------------------------------
+-- PRICE LISTS: Vendor-specific pricing
+---------------------------------------------
+CREATE TABLE price_lists (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    vendor_id UUID NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+    
+    list_name TEXT NOT NULL,
+    effective_date DATE NOT NULL,
+    expiry_date DATE,
+    
+    -- JSONB for flexible item structure
+    items JSONB NOT NULL DEFAULT '[]', -- [{item_code, description, unit, price, notes}]
+    
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+---------------------------------------------
+-- SUBCONTRACTORS: Specialty trades
+---------------------------------------------
+CREATE TABLE subcontractors (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    company_name TEXT NOT NULL,
+    trade TEXT NOT NULL, -- 'electrical', 'plumbing', 'concrete'
+    
+    -- Contract Details
+    contract_number TEXT,
+    contract_value DECIMAL(15,2),
+    start_date DATE,
+    end_date DATE,
+    
+    -- Insurance & Compliance
+    certificate_of_insurance_url TEXT,
+    workers_comp_expiry DATE,
+    license_number TEXT,
+    
+    -- Performance
+    quality_rating INTEGER CHECK (quality_rating BETWEEN 1 AND 5),
+    safety_incidents INTEGER DEFAULT 0,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+## 🎨 **VISUALIZING THE COMPLETE STRUCTURE**
+
+```mermaid
+flowchart TD
+    A[Main Navigation - 5 Sections] --> B[Dashboard]
+    A --> C[Projects]
+    A --> D[People & Contacts]
+    A --> E[Finance]
+    A --> F[Documents]
+    
+    B --> B1[Overview]
+    B --> B2[My Tasks]
+    B --> B3[Alerts]
+    
+    C --> C1[All Projects]
+    C --> C2[WBS Builder]
+    C --> C3[Schedule]
+    C --> C4[Specifications]
+    C --> C5[Photos]
+    
+    D --> D1[Customers]
+    D --> D2[Vendors & Pricing]
+    D --> D3[Employees]
+    D --> D4[Subcontractors]
+    D --> D5[Directory]
+    
+    E --> E1[Estimating]
+    E --> E2[Purchase Orders]
+    E --> E3[Invoicing]
+    E --> E4[Expenses]
+    E --> E5[Reports & GL]
+    
+    F --> F1[File Manager]
+    F --> F2[Plan Room]
+    F --> F3[Templates]
+    F --> F4[Reports]
+    F --> F5[Archives]
+    
+    style D fill:#e3f2fd
+    style D1 fill:#e3f2fd
+    style D2 fill:#e3f2fd
+    style D3 fill:#e3f2fd
+    style D4 fill:#e3f2fd
+    style D5 fill:#e3f2fd
+```
+
+## 👥 **"People & Contacts" UI Components**
+
+### **Unified Contact Card Component**
+```jsx
+// /components/people/ContactCard.jsx
+'use client';
+
+export function ContactCard({ contact, type }) {
+  const getIcon = () => {
+    switch(type) {
+      case 'customer': return 'Building';
+      case 'vendor': return 'Truck';
+      case 'employee': return 'User';
+      case 'subcontractor': return 'HardHat';
+      default: return 'Contact';
+    }
+  };
+
+  const getActions = () => {
+    // Always show 3 actions maximum
+    const baseActions = [
+      { label: 'View Details', action: 'view' },
+      { label: 'Message', action: 'message' },
+      { label: 'History', action: 'history' }
+    ];
+    
+    // Type-specific additional actions
+    if (type === 'vendor') {
+      baseActions[2] = { label: 'Price List', action: 'prices' };
+    }
+    
+    return baseActions.slice(0, 3); // Enforce 3-actions rule
+  };
+
+  return (
+    <div className="contact-card">
+      <div className="contact-header">
+        <Icon name={getIcon()} />
+        <h4>{contact.name}</h4>
+        <span className="contact-type">{type}</span>
+      </div>
+      
+      <div className="contact-info">
+        <p><Icon name="Phone" /> {contact.phone}</p>
+        <p><Icon name="Mail" /> {contact.email}</p>
+        {contact.company && <p><Icon name="Briefcase" /> {contact.company}</p>}
+      </div>
+      
+      {/* 3 Action Buttons */}
+      <div className="contact-actions">
+        {getActions().map((action, idx) => (
+          <button 
+            key={idx}
+            className="action-btn"
+            onClick={() => handleAction(action.action, contact.id)}
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### **People & Contacts Dashboard**
+```jsx
+// /app/people/page.jsx
+'use client';
+
+import { useState } from 'react';
+import { ContactCard } from '@/components/people/ContactCard';
+import { ChoiceTrio } from '@/components/navigation/ChoiceTrio';
+
+export default function PeopleDashboard() {
+  const [activeTab, setActiveTab] = useState('directory');
+  
+  // 5 Main Tabs for People section
+  const peopleTabs = [
+    { id: 'customers', title: 'Customers', icon: 'Building', count: 42 },
+    { id: 'vendors', title: 'Vendors', icon: 'Truck', count: 28 },
+    { id: 'employees', title: 'Employees', icon: 'Users', count: 15 },
+    { id: 'subcontractors', title: 'Subcontractors', icon: 'HardHat', count: 23 },
+    { id: 'directory', title: 'Directory', icon: 'Contact', count: 108 }
+  ];
+
+  // Top 3 Quick Actions
+  const quickActions = [
+    { id: 'add-contact', title: 'Add Contact', icon: 'UserPlus' },
+    { id: 'import-csv', title: 'Import CSV', icon: 'Upload' },
+    { id: 'send-bulk', title: 'Send Message', icon: 'Send' }
+  ];
+
+  return (
+    <div className="people-dashboard">
+      {/* Header with 3 Quick Actions */}
+      <div className="dashboard-header">
+        <h1>People & Contacts</h1>
+        <ChoiceTrio 
+          items={quickActions}
+          onSelect={(action) => handleQuickAction(action.id)}
+        />
+      </div>
+      
+      {/* 5-Tab Navigation */}
+      <div className="people-tabs">
+        {peopleTabs.map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <Icon name={tab.icon} />
+            <span>{tab.title}</span>
+            <span className="count-badge">{tab.count}</span>
+          </button>
+        ))}
+      </div>
+      
+      {/* Content Area */}
+      <div className="people-content">
+        {activeTab === 'directory' ? (
+          <UnifiedDirectory />
+        ) : (
+          <EntityList type={activeTab} />
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+## 🔗 **INTEGRATION WITH EXISTING SYSTEMS**
+
+### **BambooHR → Employees Module**
+```javascript
+// Updated sync to populate the People section
+async function syncBambooHREmployees() {
+  const employees = await bambooHRService.fetchEmployees();
+  
+  // Store in both: employees table (detailed) and unified contacts
+  await supabase.from('employees').upsert(employees);
+  
+  // Also add to unified contacts directory
+  await supabase.from('unified_contacts').upsert(
+    employees.map(emp => ({
+      tenant_id: this.tenantId,
+      source_type: 'employee',
+      source_id: emp.id,
+      display_name: `${emp.first_name} ${emp.last_name}`,
+      email: emp.work_email,
+      phone: emp.mobile_phone,
+      company: 'Our Company',
+      metadata: { department: emp.department, job_title: emp.job_title }
+    }))
+  );
+}
+```
+
+### **Price Master Integration with Vendors**
+```javascript
+// When viewing a vendor, show their price lists
+async function getVendorWithPricing(vendorId) {
+  const [vendor, priceLists] = await Promise.all([
+    supabase.from('vendors').select('*').eq('id', vendorId).single(),
+    supabase.from('price_lists')
+      .select('*')
+      .eq('vendor_id', vendorId)
+      .eq('is_active', true)
+      .order('effective_date', { ascending: false })
+  ]);
+  
+  return {
+    ...vendor,
+    price_lists: priceLists.data
+  };
+}
+```
+
+## 📋 **ROLE-BASED ACCESS FOR PEOPLE SECTION**
+
+```sql
+-- Different access levels for People section
+INSERT INTO role_permissions (tenant_id, navigation_item_id, user_role, can_view, can_access) VALUES
+-- Project Managers: Full access to all People modules
+('tenant-uuid', (SELECT id FROM navigation_items WHERE title='Customers'), 'project_manager', true, true),
+('tenant-uuid', (SELECT id FROM navigation_items WHERE title='Vendors & Pricing'), 'project_manager', true, true),
+('tenant-uuid', (SELECT id FROM navigation_items WHERE title='Employees'), 'project_manager', true, true),
+
+-- Accountants: View-only for Customers/Vendors (for billing context)
+('tenant-uuid', (SELECT id FROM navigation_items WHERE title='Customers'), 'accountant', true, false),
+('tenant-uuid', (SELECT id FROM navigation_items WHERE title='Vendors & Pricing'), 'accountant', true, false),
+
+-- Field Staff: Only see Directory
+('tenant-uuid', (SELECT id FROM navigation_items WHERE title='Customers'), 'viewer', false, false),
+('tenant-uuid', (SELECT id FROM navigation_items WHERE title='Directory'), 'viewer', true, true);
+```
+
+## 🎯 **KEY USER WORKFLOWS**
+
+### **1. Project Manager adding a new vendor:**
+1. Go to **People & Contacts** → **Vendors & Pricing**
+2. Click "Add Vendor" (one of 3 primary buttons)
+3. Enter vendor details, upload certifications
+4. Attach Price List (Excel import or manual entry)
+5. Vendor now appears in PO dropdowns
+
+### **2. Estimator checking material costs:**
+1. Go to **People & Contacts** → **Vendors & Pricing**
+2. Search for "lumber supplier"
+3. Click vendor, view current price list
+4. Use prices in **Finance** → **Estimating** module
+
+### **3. Field supervisor contacting subcontractor:**
+1. Go to **People & Contacts** → **Directory**
+2. Search by trade: "electrician"
+3. View contact info, insurance status
+4. Call directly from the interface
+
+This structure creates a **logical, user-centered workflow** where relationship management is separate from—but integrated with—project execution and financial operations. The 3/5 rule keeps each interface clean while maintaining full ERP power through thoughtful hierarchy.

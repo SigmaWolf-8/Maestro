@@ -348,5 +348,70 @@ export async function registerRoutes(
     }
   });
 
+  const propagateSchema = z.object({
+    oldKey: z.string().min(1),
+    newKey: z.string().min(1),
+    applyTo: z.enum(["all", "specific", "forward"]),
+    projectIds: z.array(z.string()).optional(),
+  });
+
+  app.post("/api/dimensions/propagate", async (req, res) => {
+    try {
+      const parseResult = propagateSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid request", 
+          details: parseResult.error.flatten().fieldErrors 
+        });
+      }
+
+      const { oldKey, newKey, applyTo, projectIds } = parseResult.data;
+      const tenantId = await getDefaultTenantId();
+
+      if (applyTo === "forward") {
+        return res.json({ success: true, affectedNodes: 0, message: "Changes will apply to new projects only" });
+      }
+
+      let affectedNodes = 0;
+
+      if (applyTo === "all") {
+        const nodes = await storage.getWbsNodes(tenantId);
+        for (const node of nodes) {
+          const dimensions = node.dimensions as Record<string, any> || {};
+          if (oldKey in dimensions) {
+            const newDimensions = { ...dimensions };
+            if (oldKey !== newKey) {
+              newDimensions[newKey] = newDimensions[oldKey];
+              delete newDimensions[oldKey];
+            }
+            await storage.updateWbsNode(node.id, { dimensions: newDimensions });
+            affectedNodes++;
+          }
+        }
+      } else if (applyTo === "specific" && projectIds?.length) {
+        for (const projectId of projectIds) {
+          const nodes = await storage.getWbsNodesByProject(projectId);
+          for (const node of nodes) {
+            const dimensions = node.dimensions as Record<string, any> || {};
+            if (oldKey in dimensions) {
+              const newDimensions = { ...dimensions };
+              if (oldKey !== newKey) {
+                newDimensions[newKey] = newDimensions[oldKey];
+                delete newDimensions[oldKey];
+              }
+              await storage.updateWbsNode(node.id, { dimensions: newDimensions });
+              affectedNodes++;
+            }
+          }
+        }
+      }
+
+      res.json({ success: true, affectedNodes });
+    } catch (error) {
+      console.error("Error propagating dimension changes:", error);
+      res.status(500).json({ error: "Failed to propagate dimension changes" });
+    }
+  });
+
   return httpServer;
 }

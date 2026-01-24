@@ -1,0 +1,866 @@
+# **UNIFIED ERP NAVIGATION ARCHITECTURE**
+**Final, Cohesive Structure for Your Construction ERP**
+
+Based on your feedback, I've unified all previous versions into this single, coherent architecture that strictly follows the **3/5 Choice Rule** while creating logical separation between relationship management (People) and financial operations (Finance).
+
+## 🏗️ **COMPLETE NAVIGATION HIERARCHY**
+
+### **Top-Level Structure (5 Sections Maximum)**
+```mermaid
+flowchart TD
+    A[ERP Navigation - 5 Sections] --> B[Dashboard]
+    A --> C[Projects]
+    A --> D[People & Contacts]
+    A --> E[Finance]
+    A --> F[Documents]
+    
+    B --> B1[Overview]
+    B --> B2[My Tasks]
+    B --> B3[Alerts]
+    
+    C --> C1[All Projects]
+    C --> C2[WBS Builder]
+    C --> C3[Schedule]
+    C --> C4[Specifications]
+    C --> C5[Photos]
+    
+    D --> D1[Customers]
+    D --> D2[Vendors & Pricing]
+    D --> D3[Employees]
+    D --> D4[Subcontractors]
+    D --> D5[Contacts]
+    
+    E --> E1[Estimating]
+    E --> E2[Purchase Orders]
+    E --> E3[Invoicing]
+    E --> E4[Expenses]
+    E --> E5[Reports]
+    
+    F --> F1[File Manager]
+    F --> F2[Plan Room]
+    F --> F3[Templates]
+    F --> F4[Reports]
+    F --> F5[Archives]
+    
+    style D fill:#e3f2fd
+    style D1 fill:#bbdefb
+    style D2 fill:#bbdefb
+    style D3 fill:#bbdefb
+    style D4 fill:#bbdefb
+    style D5 fill:#bbdefb
+```
+
+## 📊 **SQL IMPLEMENTATION - COMPLETE SCHEMA**
+
+### **1. Core Navigation Tables**
+```sql
+---------------------------------------------
+-- NAVIGATION_ITEMS: Master Navigation Structure
+---------------------------------------------
+CREATE TABLE navigation_items (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    parent_id UUID REFERENCES navigation_items(id) ON DELETE CASCADE,
+    
+    -- Content & Structure
+    item_order INTEGER NOT NULL DEFAULT 0,
+    item_type TEXT NOT NULL CHECK (item_type IN ('menu', 'action', 'divider')),
+    title TEXT NOT NULL,
+    icon_name TEXT,
+    path TEXT,
+    component TEXT,
+    
+    -- 3/5 Rule Enforcement
+    ui_slot TEXT DEFAULT 'sidebar' CHECK (ui_slot IN ('sidebar', 'topbar', 'dashboard')),
+    max_children_display INTEGER DEFAULT 5 CHECK (max_children_display IN (3, 5)),
+    
+    -- Role-Based Access Control
+    min_role_required TEXT DEFAULT 'viewer' 
+        CHECK (min_role_required IN ('viewer', 'accountant', 'project_manager', 'admin')),
+    
+    -- Metadata
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    CONSTRAINT unique_tenant_path UNIQUE (tenant_id, path)
+);
+
+---------------------------------------------
+-- ROLE_PERMISSIONS: Granular Access Control
+---------------------------------------------
+CREATE TABLE role_permissions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    navigation_item_id UUID NOT NULL REFERENCES navigation_items(id) ON DELETE CASCADE,
+    user_role TEXT NOT NULL CHECK (user_role IN ('viewer', 'accountant', 'project_manager', 'admin')),
+    
+    -- Permission Levels
+    can_view BOOLEAN DEFAULT TRUE,
+    can_access BOOLEAN DEFAULT TRUE,
+    can_action BOOLEAN DEFAULT FALSE,
+    
+    -- Inheritance Control
+    inherit_from_parent BOOLEAN DEFAULT TRUE,
+    
+    -- Contextual Permissions
+    conditions JSONB DEFAULT '{}',
+    
+    UNIQUE(tenant_id, navigation_item_id, user_role)
+);
+```
+
+### **2. Seed Data - Complete Navigation Structure**
+```sql
+-- TOP-LEVEL NAVIGATION (5 SECTIONS)
+INSERT INTO navigation_items (tenant_id, parent_id, item_order, item_type, title, icon_name, path, max_children_display, min_role_required) VALUES
+-- 1. DASHBOARD (3 items maximum)
+('your-tenant-uuid', NULL, 10, 'menu', 'Dashboard', 'LayoutDashboard', NULL, 3, 'viewer'),
+
+-- 2. PROJECTS (5 items maximum)
+('your-tenant-uuid', NULL, 20, 'menu', 'Projects', 'FolderKanban', NULL, 5, 'project_manager'),
+
+-- 3. PEOPLE & CONTACTS (5 items maximum) - Unified Relationship Hub
+('your-tenant-uuid', NULL, 30, 'menu', 'People & Contacts', 'Users', NULL, 5, 'project_manager'),
+
+-- 4. FINANCE (5 items maximum) - Pure Financial Operations
+('your-tenant-uuid', NULL, 40, 'menu', 'Finance', 'Landmark', NULL, 5, 'accountant'),
+
+-- 5. DOCUMENTS (5 items maximum)
+('your-tenant-uuid', NULL, 50, 'menu', 'Documents', 'FolderArchive', NULL, 5, 'viewer');
+
+-- PEOPLE & CONTACTS SUB-MENU (5 items)
+WITH people_root AS (
+    SELECT id FROM navigation_items 
+    WHERE title = 'People & Contacts' AND tenant_id = 'your-tenant-uuid'
+    LIMIT 1
+)
+INSERT INTO navigation_items (tenant_id, parent_id, item_order, item_type, title, icon_name, path, min_role_required)
+SELECT 
+    'your-tenant-uuid',
+    people_root.id,
+    sub.order_num,
+    'action',
+    sub.title,
+    sub.icon,
+    sub.path,
+    sub.min_role
+FROM people_root,
+(VALUES
+    (1, 'Customers', 'Building', '/people/customers', 'project_manager'),
+    (2, 'Vendors & Pricing', 'Truck', '/people/vendors', 'project_manager'),
+    (3, 'Employees', 'User', '/people/employees', 'project_manager'),
+    (4, 'Subcontractors', 'HardHat', '/people/subcontractors', 'project_manager'),
+    (5, 'Contacts Directory', 'Contact', '/people/directory', 'viewer')
+) AS sub(order_num, title, icon, path, min_role);
+
+-- FINANCE SUB-MENU (5 items - No People entities)
+WITH finance_root AS (
+    SELECT id FROM navigation_items 
+    WHERE title = 'Finance' AND tenant_id = 'your-tenant-uuid'
+    LIMIT 1
+)
+INSERT INTO navigation_items (tenant_id, parent_id, item_order, item_type, title, icon_name, path, min_role_required)
+SELECT 
+    'your-tenant-uuid',
+    finance_root.id,
+    sub.order_num,
+    'action',
+    sub.title,
+    sub.icon,
+    sub.path,
+    sub.min_role
+FROM finance_root,
+(VALUES
+    (1, 'Estimating', 'Calculator', '/finance/estimating', 'project_manager'),
+    (2, 'Purchase Orders', 'ClipboardList', '/finance/purchase-orders', 'project_manager'),
+    (3, 'Invoicing', 'Receipt', '/finance/invoicing', 'accountant'),
+    (4, 'Expenses', 'CreditCard', '/finance/expenses', 'accountant'),
+    (5, 'Reports & GL', 'BarChart', '/finance/reports', 'accountant')
+) AS sub(order_num, title, icon, path, min_role);
+```
+
+### **3. Enhanced People & Contacts Database Schema**
+```sql
+---------------------------------------------
+-- UNIFIED CONTACTS BASE TABLE
+---------------------------------------------
+CREATE TABLE contacts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    -- Core Contact Information
+    contact_type TEXT NOT NULL CHECK (contact_type IN ('customer', 'vendor', 'employee', 'subcontractor')),
+    display_name TEXT NOT NULL,
+    
+    -- Unified Contact Details
+    contact_info JSONB NOT NULL DEFAULT '{
+        "email": null,
+        "phone": null,
+        "mobile": null,
+        "address": {}
+    }'::jsonb,
+    
+    -- Relationship Metadata
+    company_id UUID REFERENCES companies(id),
+    primary_project_id UUID REFERENCES projects(id),
+    
+    -- Status & Timing
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'lead')),
+    last_contact_date DATE,
+    next_follow_up DATE,
+    
+    -- Audit Trail
+    created_by UUID REFERENCES tenant_users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+---------------------------------------------
+-- TYPE-SPECIFIC EXTENSION TABLES
+---------------------------------------------
+-- CUSTOMERS
+CREATE TABLE customer_details (
+    contact_id UUID PRIMARY KEY REFERENCES contacts(id) ON DELETE CASCADE,
+    customer_type TEXT CHECK (customer_type IN ('homeowner', 'builder', 'developer', 'commercial')),
+    credit_limit DECIMAL(15,2),
+    payment_terms TEXT,
+    total_lifetime_value DECIMAL(15,2),
+    projects_history UUID[] DEFAULT '{}'
+);
+
+-- VENDORS (with Price Master Integration)
+CREATE TABLE vendor_details (
+    contact_id UUID PRIMARY KEY REFERENCES contacts(id) ON DELETE CASCADE,
+    vendor_category TEXT CHECK (vendor_category IN ('material', 'equipment', 'service', 'labor')),
+    certifications TEXT[] DEFAULT '{}',
+    insurance_expiry DATE,
+    performance_rating DECIMAL(3,2),
+    
+    -- Price Master Link
+    has_price_list BOOLEAN DEFAULT FALSE,
+    default_price_list_id UUID REFERENCES price_lists(id)
+);
+
+-- EMPLOYEES (BambooHR Integration)
+CREATE TABLE employee_details (
+    contact_id UUID PRIMARY KEY REFERENCES contacts(id) ON DELETE CASCADE,
+    bamboohr_id INTEGER UNIQUE,
+    employee_number TEXT,
+    department TEXT,
+    job_title TEXT,
+    hire_date DATE,
+    reports_to UUID REFERENCES contacts(id),
+    
+    -- HR Data (synced from BambooHR)
+    hr_data JSONB DEFAULT '{
+        "employment_status": "active",
+        "compensation": {},
+        "benefits": {},
+        "time_off_balances": {}
+    }'::jsonb
+);
+
+-- SUBCONTRACTORS
+CREATE TABLE subcontractor_details (
+    contact_id UUID PRIMARY KEY REFERENCES contacts(id) ON DELETE CASCADE,
+    trade TEXT NOT NULL,
+    license_number TEXT,
+    bond_expiry DATE,
+    workers_comp_expiry DATE,
+    certificate_of_insurance_url TEXT,
+    
+    -- Performance Metrics
+    quality_score INTEGER CHECK (quality_score BETWEEN 1 AND 5),
+    safety_rating INTEGER CHECK (safety_rating BETWEEN 1 AND 5),
+    on_time_percentage DECIMAL(5,2)
+);
+
+---------------------------------------------
+-- PRICE LISTS (Vendor Pricing Master)
+---------------------------------------------
+CREATE TABLE price_lists (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    vendor_id UUID NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+    
+    list_name TEXT NOT NULL,
+    effective_date DATE NOT NULL,
+    expiry_date DATE,
+    
+    -- Pricing Structure
+    pricing_model TEXT CHECK (pricing_model IN ('unit', 'hourly', 'sqft', 'lump_sum')),
+    currency TEXT DEFAULT 'USD',
+    
+    -- Items (JSONB for flexibility)
+    items JSONB NOT NULL DEFAULT '[]',
+    terms_and_conditions TEXT,
+    
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+## 🎯 **NAVIGATION SERVICE WITH 3/5 ENFORCEMENT**
+
+### **Enhanced Navigation Service**
+```javascript
+// /lib/navigation-service.js
+export class NavigationService {
+    constructor(tenantId, userId, userRole) {
+        this.tenantId = tenantId;
+        this.userId = userId;
+        this.userRole = userRole;
+        this.supabase = createClient();
+        this.roleHierarchy = { 'viewer': 0, 'accountant': 1, 'project_manager': 2, 'admin': 3 };
+    }
+
+    // MAIN METHOD: Get navigation with 3/5 enforcement
+    async getNavigationForUser() {
+        // 1. Get raw navigation tree
+        const allItems = await this.fetchNavigationTree();
+        
+        // 2. Apply role-based filtering
+        const filteredItems = this.filterByRoleAndPermissions(allItems);
+        
+        // 3. Enforce 3/5 choice constraint
+        const constrainedTree = this.enforceChoiceConstraint(filteredItems);
+        
+        // 4. Apply user personalization (pinning, favorites)
+        const personalizedTree = await this.applyPersonalization(constrainedTree);
+        
+        return personalizedTree;
+    }
+
+    // 3/5 CONSTRAINT ENFORCEMENT ENGINE
+    enforceChoiceConstraint(items) {
+        const processNode = (node) => {
+            if (!node.children || node.children.length === 0) return node;
+            
+            const maxDisplay = node.max_children_display || 5;
+            const children = [...node.children];
+            
+            // Sort: Pinned first, then by access frequency, then by order
+            children.sort((a, b) => {
+                if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+                if (a.access_count !== b.access_count) return b.access_count - a.access_count;
+                return a.item_order - b.item_order;
+            });
+            
+            // Apply limit
+            let visibleChildren = children.slice(0, maxDisplay);
+            const hiddenChildren = children.slice(maxDisplay);
+            
+            // Add "More..." action if items are hidden
+            if (hiddenChildren.length > 0) {
+                visibleChildren.push({
+                    id: `more-${node.id}`,
+                    title: `More (${hiddenChildren.length})`,
+                    item_type: 'action',
+                    icon_name: 'ChevronDown',
+                    is_more_action: true,
+                    hidden_children: hiddenChildren,
+                    max_display: maxDisplay
+                });
+            }
+            
+            // Recurse on visible children
+            node.children = visibleChildren.map(child => {
+                if (!child.is_more_action) {
+                    return processNode(child);
+                }
+                return child;
+            });
+            
+            return node;
+        };
+        
+        return items.map(processNode);
+    }
+
+    // ROLE-SPECIFIC FILTERING FOR PEOPLE SECTION
+    filterPeopleSection(peopleNode, userRole) {
+        const roleAccessMap = {
+            'viewer': {
+                visible: ['Contacts Directory'],
+                canAccess: ['Contacts Directory']
+            },
+            'project_manager': {
+                visible: ['Customers', 'Vendors & Pricing', 'Employees', 'Subcontractors', 'Contacts Directory'],
+                canAccess: ['Customers', 'Vendors & Pricing', 'Subcontractors', 'Contacts Directory']
+            },
+            'accountant': {
+                visible: ['Customers', 'Vendors & Pricing', 'Contacts Directory'],
+                canAccess: ['Customers', 'Vendors & Pricing', 'Contacts Directory']
+            },
+            'admin': {
+                visible: 'ALL',
+                canAccess: 'ALL'
+            }
+        };
+        
+        const access = roleAccessMap[userRole] || roleAccessMap.viewer;
+        
+        if (access.visible === 'ALL') return peopleNode;
+        
+        peopleNode.children = peopleNode.children.filter(child => {
+            const baseTitle = child.title.split('(')[0].trim();
+            return access.visible.includes(baseTitle);
+        });
+        
+        return peopleNode;
+    }
+}
+```
+
+## 🎨 **REACT COMPONENTS FOR 3/5 NAVIGATION**
+
+### **Main Navigation Sidebar**
+```jsx
+// /components/navigation/ERP_Sidebar.jsx
+'use client';
+
+import { NavigationService } from '@/lib/navigation-service';
+import { PeopleSection } from './PeopleSection';
+import { ChoiceTrio } from './ChoiceTrio';
+import { ChoiceQuintet } from './ChoiceQuintet';
+
+export function ERP_Sidebar({ tenantId, userId, userRole }) {
+    const [navigation, setNavigation] = useState(null);
+    const [activeSection, setActiveSection] = useState('dashboard');
+
+    useEffect(() => {
+        loadNavigation();
+    }, [tenantId, userRole]);
+
+    async function loadNavigation() {
+        const service = new NavigationService(tenantId, userId, userRole);
+        const nav = await service.getNavigationForUser();
+        setNavigation(nav);
+    }
+
+    const renderSection = (section) => {
+        const childCount = section.children?.length || 0;
+        
+        // Special handling for People section
+        if (section.title === 'People & Contacts') {
+            return (
+                <PeopleSection 
+                    key={section.id}
+                    section={section}
+                    userRole={userRole}
+                    isActive={activeSection === 'people'}
+                    onSelect={setActiveSection}
+                />
+            );
+        }
+        
+        // Apply 3/5 rule based on child count
+        if (childCount === 3) {
+            return (
+                <div key={section.id} className="nav-section">
+                    <SectionHeader 
+                        title={section.title} 
+                        icon={section.icon_name}
+                        isActive={activeSection === section.title.toLowerCase()}
+                        onClick={() => setActiveSection(section.title.toLowerCase())}
+                    />
+                    {section.item_type === 'menu' && (
+                        <ChoiceTrio
+                            items={section.children}
+                            onSelect={(item) => handleNavigation(item)}
+                        />
+                    )}
+                </div>
+            );
+        } else if (childCount > 0 && childCount <= 5) {
+            return (
+                <div key={section.id} className="nav-section">
+                    <SectionHeader 
+                        title={section.title} 
+                        icon={section.icon_name}
+                        isActive={activeSection === section.title.toLowerCase()}
+                        onClick={() => setActiveSection(section.title.toLowerCase())}
+                    />
+                    <ChoiceQuintet
+                        items={section.children}
+                        onSelect={(item) => handleNavigation(item)}
+                        variant="list"
+                    />
+                </div>
+            );
+        }
+        
+        return null;
+    };
+
+    return (
+        <aside className="erp-sidebar">
+            {/* Logo & Tenant Selector */}
+            <div className="sidebar-header">
+                <TenantBranding tenantId={tenantId} />
+            </div>
+            
+            {/* Main Navigation */}
+            <nav className="sidebar-nav">
+                {navigation?.map(renderSection)}
+            </nav>
+            
+            {/* Fixed Bottom Actions (3 items) */}
+            <div className="sidebar-footer">
+                <ChoiceTrio
+                    items={[
+                        { id: 'help', title: 'Help', icon: 'HelpCircle', path: '/help' },
+                        { id: 'settings', title: 'Settings', icon: 'Settings', path: '/settings' },
+                        { id: 'profile', title: 'Profile', icon: 'User', path: '/profile' }
+                    ]}
+                    onSelect={handleNavigation}
+                    compact={true}
+                />
+            </div>
+        </aside>
+    );
+}
+```
+
+### **People & Contacts Section Component**
+```jsx
+// /components/navigation/PeopleSection.jsx
+'use client';
+
+export function PeopleSection({ section, userRole, isActive, onSelect }) {
+    const [showMore, setShowMore] = useState(false);
+    const [hiddenItems, setHiddenItems] = useState([]);
+    
+    const peopleItems = section.children || [];
+    const visibleItems = peopleItems.filter(item => !item.is_more_action);
+    const moreAction = peopleItems.find(item => item.is_more_action);
+    
+    const getItemStyle = (title) => {
+        const styles = {
+            'Customers': 'people-customer',
+            'Vendors & Pricing': 'people-vendor',
+            'Employees': 'people-employee',
+            'Subcontractors': 'people-subcontractor',
+            'Contacts Directory': 'people-directory'
+        };
+        return styles[title] || 'people-general';
+    };
+    
+    const handleMoreClick = () => {
+        if (moreAction?.hidden_children) {
+            setHiddenItems(moreAction.hidden_children);
+            setShowMore(!showMore);
+        }
+    };
+
+    return (
+        <div className={`people-section ${isActive ? 'active' : ''}`}>
+            <SectionHeader 
+                title="People & Contacts" 
+                icon="Users"
+                badge={visibleItems.length}
+                isActive={isActive}
+                onClick={() => onSelect('people')}
+            />
+            
+            {/* 5-Item Grid Layout */}
+            <div className="people-grid">
+                {visibleItems.map(item => (
+                    <PeopleCard
+                        key={item.id}
+                        item={item}
+                        style={getItemStyle(item.title)}
+                        onSelect={() => handleNavigation(item)}
+                    />
+                ))}
+                
+                {/* More Action Card */}
+                {moreAction && (
+                    <button 
+                        className="people-card people-more"
+                        onClick={handleMoreClick}
+                        title={`Show ${moreAction.hidden_children?.length || 0} more items`}
+                    >
+                        <div className="people-icon">
+                            <Icon name="ChevronDown" />
+                        </div>
+                        <div className="people-content">
+                            <h4>{moreAction.title}</h4>
+                            <p>Additional options</p>
+                        </div>
+                    </button>
+                )}
+            </div>
+            
+            {/* Hidden Items Dropdown */}
+            {showMore && hiddenItems.length > 0 && (
+                <div className="hidden-items-dropdown">
+                    {hiddenItems.map(item => (
+                        <PeopleCard
+                            key={item.id}
+                            item={item}
+                            style={getItemStyle(item.title)}
+                            onSelect={() => handleNavigation(item)}
+                            compact={true}
+                        />
+                    ))}
+                </div>
+            )}
+            
+            {/* Role-Based Access Note */}
+            {userRole === 'viewer' && (
+                <div className="access-note">
+                    <Icon name="Lock" size={14} />
+                    <span>Upgrade role for full People access</span>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// Individual People Card Component
+function PeopleCard({ item, style, onSelect, compact = false }) {
+    return (
+        <button 
+            className={`people-card ${style} ${compact ? 'compact' : ''}`}
+            onClick={onSelect}
+        >
+            <div className="people-icon">
+                <Icon name={item.icon_name} />
+                {item.title === 'Employees' && (
+                    <span className="sync-badge" title="BambooHR Synced">
+                        <Icon name="RefreshCw" size={10} />
+                    </span>
+                )}
+            </div>
+            <div className="people-content">
+                <h4>{item.title}</h4>
+                {!compact && (
+                    <p className="description">
+                        {getPeopleDescription(item.title)}
+                    </p>
+                )}
+            </div>
+            {item.access_count > 0 && (
+                <span className="access-count">{item.access_count}</span>
+            )}
+        </button>
+    );
+}
+```
+
+## 🎭 **USER ROLE EXPERIENCES**
+
+### **Different Navigation Views by Role**
+
+```javascript
+// Example configurations for different user roles
+const roleNavigationViews = {
+    // FIELD WORKER (Viewer)
+    viewer: {
+        visibleSections: ['Dashboard', 'Documents'],
+        peopleAccess: ['Contacts Directory'],
+        financeAccess: [],
+        maxChoicesPerSection: 3
+    },
+    
+    // PROJECT MANAGER
+    project_manager: {
+        visibleSections: ['Dashboard', 'Projects', 'People & Contacts', 'Documents'],
+        peopleAccess: ['Customers', 'Vendors & Pricing', 'Subcontractors', 'Contacts Directory'],
+        financeAccess: ['Estimating', 'Purchase Orders'],
+        maxChoicesPerSection: 5
+    },
+    
+    // ACCOUNTANT
+    accountant: {
+        visibleSections: ['Dashboard', 'People & Contacts', 'Finance', 'Documents'],
+        peopleAccess: ['Customers', 'Vendors & Pricing', 'Contacts Directory'],
+        financeAccess: ['Invoicing', 'Expenses', 'Reports & GL'],
+        maxChoicesPerSection: 5
+    },
+    
+    // ADMINISTRATOR
+    admin: {
+        visibleSections: 'ALL',
+        peopleAccess: 'ALL',
+        financeAccess: 'ALL',
+        maxChoicesPerSection: 5,
+        additionalSections: ['System Settings']
+    }
+};
+```
+
+## 🎨 **CSS FOR 3/5 NAVIGATION LAYOUT**
+
+```css
+/* 3/5 Navigation System Styles */
+.erp-sidebar {
+    @apply w-64 bg-white border-r border-gray-200 
+           flex flex-col h-screen transition-all duration-300;
+}
+
+/* People Section Specific Styles */
+.people-section {
+    @apply mb-6 transition-all duration-200;
+}
+
+.people-section.active {
+    @apply bg-blue-50 rounded-lg p-2;
+}
+
+.people-grid {
+    @apply grid grid-cols-2 gap-2 mt-2;
+}
+
+@media (min-width: 768px) {
+    .people-grid {
+        @apply grid-cols-3;
+    }
+}
+
+@media (min-width: 1024px) {
+    .people-grid {
+        @apply grid-cols-5;
+    }
+}
+
+/* People Card Variants */
+.people-card {
+    @apply p-3 rounded-lg border transition-all duration-200 
+           flex flex-col items-center text-center
+           hover:shadow-md hover:translate-y-[-2px];
+}
+
+.people-card.compact {
+    @apply p-2 flex-row text-left gap-2;
+}
+
+.people-customer {
+    @apply border-l-4 border-l-blue-500 bg-blue-50 
+           hover:bg-blue-100;
+}
+
+.people-vendor {
+    @apply border-l-4 border-l-green-500 bg-green-50 
+           hover:bg-green-100;
+}
+
+.people-employee {
+    @apply border-l-4 border-l-purple-500 bg-purple-50 
+           hover:bg-purple-100;
+}
+
+.people-subcontractor {
+    @apply border-l-4 border-l-amber-500 bg-amber-50 
+           hover:bg-amber-100;
+}
+
+.people-directory {
+    @apply border-l-4 border-l-gray-400 bg-gray-50 
+           hover:bg-gray-100;
+}
+
+.people-more {
+    @apply border-dashed border-2 border-gray-300 
+           bg-transparent hover:bg-gray-50;
+}
+
+/* Choice Layouts */
+.choice-trio {
+    @apply grid grid-cols-3 gap-2 p-2;
+}
+
+.choice-quintet.list {
+    @apply space-y-1;
+}
+
+.choice-quintet.grid {
+    @apply grid grid-cols-5 gap-2 p-2;
+}
+
+/* Badges & Indicators */
+.sync-badge {
+    @apply absolute -top-1 -right-1 bg-green-500 text-white 
+           rounded-full p-1 animate-pulse;
+}
+
+.access-count {
+    @apply absolute -top-1 -right-1 bg-blue-500 text-white 
+           text-xs rounded-full w-5 h-5 flex items-center justify-center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .erp-sidebar {
+        @apply w-16;
+    }
+    
+    .people-grid {
+        @apply grid-cols-1;
+    }
+    
+    .people-card:not(.compact) span:not(.sync-badge):not(.access-count),
+    .section-header span {
+        @apply hidden;
+    }
+    
+    .choice-trio,
+    .choice-quintet.grid {
+        @apply grid-cols-1;
+    }
+}
+```
+
+## 🔧 **IMPLEMENTATION CHECKLIST**
+
+### **Phase 1: Core Navigation Setup**
+- [ ] Create `navigation_items` and `role_permissions` tables
+- [ ] Seed with the unified navigation structure above
+- [ ] Implement `NavigationService` class with 3/5 enforcement
+- [ ] Create base `ERP_Sidebar` component
+
+### **Phase 2: People & Contacts Module**
+- [ ] Create unified `contacts` table with type-specific extensions
+- [ ] Implement `PeopleSection` React component
+- [ ] Add BambooHR sync for employee details
+- [ ] Create vendor price list management interface
+
+### **Phase 3: Role-Based Access**
+- [ ] Configure role permissions in database
+- [ ] Implement role filtering in NavigationService
+- [ ] Test different user role experiences
+- [ ] Add admin override capabilities
+
+### **Phase 4: Polish & Optimization**
+- [ ] Add user personalization (pinning, favorites)
+- [ ] Implement navigation analytics tracking
+- [ ] Add responsive design for mobile
+- [ ] Create navigation search functionality
+
+## 🚀 **QUICK START COMMANDS**
+
+```bash
+# 1. Run the navigation SQL
+psql -d your_database -f navigation_schema.sql
+
+# 2. Install dependencies
+npm install @supabase/supabase-js lucide-react
+
+# 3. Start development
+npm run dev
+
+# 4. Test different roles
+# - Login as viewer: Should see 2 sections, 3 items max
+# - Login as project_manager: Should see 4 sections, People with 5 items
+# - Login as accountant: Should see People (3 items) + Finance (5 items)
+```
+
+This unified architecture gives you:
+1. **Clean separation** between People (relationships) and Finance (transactions)
+2. **Strict 3/5 enforcement** at every navigation level
+3. **Role-based filtering** that respects your business hierarchy
+4. **Unified contact model** with type-specific extensions
+5. **Modern, responsive UI** with clear visual hierarchy
+
+The system is now ready for implementation and will provide the clean, powerful interface you want while maintaining full ERP functionality through thoughtful progressive disclosure.
