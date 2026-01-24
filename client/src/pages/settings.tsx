@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { useSettings } from "@/components/settings-provider";
+import { useState, useRef, useEffect } from "react";
+import { useSettings, type TenantBranding } from "@/components/settings-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Type, Image, RotateCcw, Check, Building2 } from "lucide-react";
+import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw } from "lucide-react";
 
 const colorPresets = [
   { name: "Teal Construction", primary: "168 76% 36%", accent: "28 85% 52%", sidebar: "175 35% 15%" },
@@ -25,20 +25,35 @@ const fontOptions = [
 ];
 
 export default function Settings() {
-  const { settings, updateSettings, resetSettings } = useSettings();
+  const { activeTenant, updateTenantBranding, isLoading } = useSettings();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [siteName, setSiteName] = useState(settings.siteName);
+  
+  const branding = activeTenant?.config?.branding;
+  const [primaryColor, setPrimaryColor] = useState(branding?.primaryColor || "168 76% 36%");
+  const [accentColor, setAccentColor] = useState(branding?.secondaryColor || "28 85% 52%");
+  const [sidebarColor, setSidebarColor] = useState(branding?.sidebarColor || "175 35% 15%");
+
+  useEffect(() => {
+    if (branding) {
+      setPrimaryColor(branding.primaryColor || "168 76% 36%");
+      setAccentColor(branding.secondaryColor || "28 85% 52%");
+      setSidebarColor(branding.sidebarColor || "175 35% 15%");
+    }
+  }, [branding]);
 
   const handleColorPreset = (preset: typeof colorPresets[0]) => {
-    updateSettings({
+    updateTenantBranding({
       primaryColor: preset.primary,
-      accentColor: preset.accent,
+      secondaryColor: preset.accent,
       sidebarColor: preset.sidebar,
     });
+    setPrimaryColor(preset.primary);
+    setAccentColor(preset.accent);
+    setSidebarColor(preset.sidebar);
     toast({
       title: "Theme Applied",
-      description: `Applied "${preset.name}" color scheme.`,
+      description: `Applied "${preset.name}" color scheme to ${activeTenant?.companyName}.`,
     });
   };
 
@@ -56,7 +71,7 @@ export default function Settings() {
 
       const reader = new FileReader();
       reader.onloadend = () => {
-        updateSettings({ logoUrl: reader.result as string });
+        updateTenantBranding({ logoUrl: reader.result as string });
         toast({
           title: "Logo Updated",
           description: "Your custom logo has been applied.",
@@ -67,7 +82,7 @@ export default function Settings() {
   };
 
   const handleRemoveLogo = () => {
-    updateSettings({ logoUrl: null });
+    updateTenantBranding({ logoUrl: null });
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -77,17 +92,29 @@ export default function Settings() {
     });
   };
 
-  const handleSiteNameSave = () => {
-    updateSettings({ siteName });
+  const handleApplyCustomColors = () => {
+    updateTenantBranding({
+      primaryColor,
+      secondaryColor: accentColor,
+      sidebarColor,
+    });
     toast({
-      title: "Site Name Updated",
-      description: `Site name changed to "${siteName}".`,
+      title: "Colors Applied",
+      description: "Custom colors have been saved.",
     });
   };
 
-  const handleReset = () => {
-    resetSettings();
-    setSiteName("The Maestro");
+  const handleResetToDefaults = () => {
+    updateTenantBranding({
+      primaryColor: "168 76% 36%",
+      secondaryColor: "28 85% 52%",
+      sidebarColor: "175 35% 15%",
+      fontStyle: "elegant",
+      logoUrl: null,
+    });
+    setPrimaryColor("168 76% 36%");
+    setAccentColor("28 85% 52%");
+    setSidebarColor("175 35% 15%");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -97,16 +124,32 @@ export default function Settings() {
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!activeTenant) {
+    return (
+      <div className="p-6">
+        <p className="text-muted-foreground">No company selected.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6" data-testid="page-settings">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground mt-1">
-            Customize your ERP appearance and branding
+            Customize appearance for <span className="font-medium">{activeTenant.companyName}</span>
           </p>
         </div>
-        <Button variant="outline" onClick={handleReset} data-testid="button-reset-settings">
+        <Button variant="outline" onClick={handleResetToDefaults} data-testid="button-reset-settings">
           <RotateCcw className="h-4 w-4 mr-2" />
           Reset to Defaults
         </Button>
@@ -117,36 +160,20 @@ export default function Settings() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Site Identity</CardTitle>
+              <CardTitle className="text-lg">Company Branding</CardTitle>
             </div>
             <CardDescription>
-              Customize your site name and logo
+              Customize logo for {activeTenant.companyName}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="siteName">Site Name</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="siteName"
-                  value={siteName}
-                  onChange={(e) => setSiteName(e.target.value)}
-                  placeholder="Enter site name"
-                  data-testid="input-site-name"
-                />
-                <Button onClick={handleSiteNameSave} size="icon" aria-label="Save site name" data-testid="button-save-site-name">
-                  <Check className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Custom Logo</Label>
+              <Label>Company Logo</Label>
               <div className="flex items-center gap-4">
-                {settings.logoUrl ? (
+                {branding?.logoUrl ? (
                   <div className="w-16 h-16 rounded-md border border-border overflow-hidden bg-muted flex items-center justify-center">
                     <img
-                      src={settings.logoUrl}
+                      src={branding.logoUrl}
                       alt="Custom logo"
                       className="max-w-full max-h-full object-contain"
                     />
@@ -174,7 +201,7 @@ export default function Settings() {
                   >
                     Upload Logo
                   </Button>
-                  {settings.logoUrl && (
+                  {branding?.logoUrl && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -207,9 +234,9 @@ export default function Settings() {
             <div className="space-y-2">
               <Label htmlFor="fontStyle">Font Style</Label>
               <Select
-                value={settings.fontStyle}
+                value={branding?.fontStyle || "elegant"}
                 onValueChange={(value: "modern" | "classic" | "elegant") => {
-                  updateSettings({ fontStyle: value });
+                  updateTenantBranding({ fontStyle: value });
                   toast({
                     title: "Font Updated",
                     description: `Switched to ${fontOptions.find(f => f.value === value)?.label}.`,
@@ -234,7 +261,7 @@ export default function Settings() {
 
             <div className="p-4 rounded-md bg-muted/50 space-y-2">
               <p className="text-sm font-medium">Preview</p>
-              <p className="text-2xl font-bold">The Maestro ERP</p>
+              <p className="text-2xl font-bold">{activeTenant.companyName}</p>
               <p className="text-sm text-muted-foreground">
                 Managing construction projects with elegance and precision.
               </p>
@@ -249,16 +276,16 @@ export default function Settings() {
               <CardTitle className="text-lg">Color Themes</CardTitle>
             </div>
             <CardDescription>
-              Choose a color scheme that matches your brand
+              Choose a color scheme for {activeTenant.companyName}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {colorPresets.map((preset) => {
                 const isActive =
-                  settings.primaryColor === preset.primary &&
-                  settings.accentColor === preset.accent &&
-                  settings.sidebarColor === preset.sidebar;
+                  branding?.primaryColor === preset.primary &&
+                  branding?.secondaryColor === preset.accent &&
+                  branding?.sidebarColor === preset.sidebar;
 
                 return (
                   <button
@@ -305,8 +332,8 @@ export default function Settings() {
                   <Label htmlFor="primaryColor">Primary Color (HSL)</Label>
                   <Input
                     id="primaryColor"
-                    value={settings.primaryColor}
-                    onChange={(e) => updateSettings({ primaryColor: e.target.value })}
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
                     placeholder="168 76% 36%"
                     data-testid="input-primary-color"
                   />
@@ -315,8 +342,8 @@ export default function Settings() {
                   <Label htmlFor="accentColor">Accent Color (HSL)</Label>
                   <Input
                     id="accentColor"
-                    value={settings.accentColor}
-                    onChange={(e) => updateSettings({ accentColor: e.target.value })}
+                    value={accentColor}
+                    onChange={(e) => setAccentColor(e.target.value)}
                     placeholder="28 85% 52%"
                     data-testid="input-accent-color"
                   />
@@ -325,16 +352,22 @@ export default function Settings() {
                   <Label htmlFor="sidebarColor">Sidebar Color (HSL)</Label>
                   <Input
                     id="sidebarColor"
-                    value={settings.sidebarColor}
-                    onChange={(e) => updateSettings({ sidebarColor: e.target.value })}
+                    value={sidebarColor}
+                    onChange={(e) => setSidebarColor(e.target.value)}
                     placeholder="175 35% 15%"
                     data-testid="input-sidebar-color"
                   />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Enter colors in HSL format: Hue Saturation% Lightness% (e.g., "168 76% 36%"). Use presets above for best results.
-              </p>
+              <div className="flex items-center justify-between mt-4">
+                <p className="text-xs text-muted-foreground">
+                  Enter colors in HSL format: Hue Saturation% Lightness% (e.g., "168 76% 36%"). Use presets above for best results.
+                </p>
+                <Button size="sm" onClick={handleApplyCustomColors} data-testid="button-apply-colors">
+                  <Check className="h-4 w-4 mr-2" />
+                  Apply
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -67,6 +67,42 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  app.get("/api/tenants", async (req, res) => {
+    try {
+      const tenants = await storage.getAllTenants();
+      res.json(tenants);
+    } catch (error) {
+      console.error("Error fetching tenants:", error);
+      res.status(500).json({ error: "Failed to fetch tenants" });
+    }
+  });
+
+  app.get("/api/tenants/:id", async (req, res) => {
+    try {
+      const tenant = await storage.getTenant(req.params.id);
+      if (!tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+      res.json(tenant);
+    } catch (error) {
+      console.error("Error fetching tenant:", error);
+      res.status(500).json({ error: "Failed to fetch tenant" });
+    }
+  });
+
+  app.patch("/api/tenants/:id", async (req, res) => {
+    try {
+      const tenant = await storage.updateTenant(req.params.id, req.body);
+      if (!tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+      res.json(tenant);
+    } catch (error) {
+      console.error("Error updating tenant:", error);
+      res.status(500).json({ error: "Failed to update tenant" });
+    }
+  });
+
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
       const tenantId = await getDefaultTenantId();

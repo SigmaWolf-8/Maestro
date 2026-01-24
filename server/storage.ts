@@ -16,7 +16,9 @@ import type {
 export interface IStorage {
   getTenant(id: string): Promise<Tenant | undefined>;
   getTenantBySubdomain(subdomain: string): Promise<Tenant | undefined>;
+  getAllTenants(): Promise<Tenant[]>;
   createTenant(tenant: InsertTenant): Promise<Tenant>;
+  updateTenant(id: string, updates: Partial<Tenant>): Promise<Tenant | undefined>;
   
   getTenantUser(id: string): Promise<TenantUser | undefined>;
   getTenantUserByEmail(tenantId: string, email: string): Promise<TenantUser | undefined>;
@@ -68,8 +70,10 @@ export class MemStorage implements IStorage {
       contactEmail: "admin@acme.com",
       config: {
         branding: {
-          primaryColor: "#0f766e",
-          secondaryColor: "#f97316",
+          primaryColor: "168 76% 36%",
+          secondaryColor: "28 85% 52%",
+          sidebarColor: "175 35% 15%",
+          fontStyle: "elegant",
           logoUrl: null,
           faviconUrl: null,
         },
@@ -91,6 +95,73 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
     };
     this.tenants.set(tenantId, defaultTenant);
+
+    const tenant2Id = randomUUID();
+    const navyTenant: Tenant = {
+      id: tenant2Id,
+      subdomain: "summit",
+      companyName: "Summit Builders LLC",
+      contactEmail: "info@summit.com",
+      config: {
+        branding: {
+          primaryColor: "220 70% 40%",
+          secondaryColor: "35 90% 50%",
+          sidebarColor: "220 40% 12%",
+          fontStyle: "classic",
+          logoUrl: null,
+          faviconUrl: null,
+        },
+        modules: {
+          hrSync: true,
+          advancedWbs: true,
+          documentTemplating: true,
+        },
+        wbsDimensions: [
+          { key: "phase", label: "Project Phase", required: true },
+          { key: "trade", label: "Trade", required: true },
+        ],
+      },
+      storageMode: "cloud",
+      onboardingComplete: true,
+      instanceStatus: "active",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.tenants.set(tenant2Id, navyTenant);
+
+    const tenant3Id = randomUUID();
+    const forestTenant: Tenant = {
+      id: tenant3Id,
+      subdomain: "greenfield",
+      companyName: "Greenfield Development",
+      contactEmail: "contact@greenfield.com",
+      config: {
+        branding: {
+          primaryColor: "142 60% 35%",
+          secondaryColor: "38 92% 50%",
+          sidebarColor: "142 35% 12%",
+          fontStyle: "modern",
+          logoUrl: null,
+          faviconUrl: null,
+        },
+        modules: {
+          hrSync: false,
+          advancedWbs: true,
+          documentTemplating: false,
+        },
+        wbsDimensions: [
+          { key: "phase", label: "Project Phase", required: true },
+          { key: "trade", label: "Trade", required: true },
+          { key: "location", label: "Unit/Location", required: false },
+        ],
+      },
+      storageMode: "cloud",
+      onboardingComplete: true,
+      instanceStatus: "active",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.tenants.set(tenant3Id, forestTenant);
 
     const adminUser: TenantUser = {
       id: randomUUID(),
@@ -269,6 +340,20 @@ export class MemStorage implements IStorage {
     };
     this.tenants.set(id, newTenant);
     return newTenant;
+  }
+
+  async getAllTenants(): Promise<Tenant[]> {
+    return Array.from(this.tenants.values()).sort((a, b) => 
+      a.companyName.localeCompare(b.companyName)
+    );
+  }
+
+  async updateTenant(id: string, updates: Partial<Tenant>): Promise<Tenant | undefined> {
+    const tenant = this.tenants.get(id);
+    if (!tenant) return undefined;
+    const updatedTenant = { ...tenant, ...updates, updatedAt: new Date() };
+    this.tenants.set(id, updatedTenant);
+    return updatedTenant;
   }
 
   async getTenantUser(id: string): Promise<TenantUser | undefined> {

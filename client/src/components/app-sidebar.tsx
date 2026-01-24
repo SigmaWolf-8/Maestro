@@ -132,7 +132,7 @@ interface AppSidebarProps {
 export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: AppSidebarProps) {
   const [location] = useLocation();
   const { state } = useSidebar();
-  const { settings } = useSettings();
+  const { activeTenant, tenants, setActiveTenant } = useSettings();
   const userRole = currentUser?.role || "viewer";
   const userRoleLevel = roleHierarchy[userRole];
 
@@ -159,9 +159,9 @@ export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: Ap
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          {settings.logoUrl ? (
+          {activeTenant?.config?.branding?.logoUrl ? (
             <div className="flex h-9 w-9 items-center justify-center rounded-md overflow-hidden bg-sidebar-primary">
-              <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+              <img src={activeTenant.config.branding.logoUrl} alt="Logo" className="w-full h-full object-cover" />
             </div>
           ) : (
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
@@ -169,9 +169,27 @@ export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: Ap
             </div>
           )}
           {state !== "collapsed" && (
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-foreground">{settings.siteName}</span>
-              <span className="text-xs text-sidebar-foreground/70">{tenantName}</span>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-sm font-semibold text-sidebar-foreground truncate">
+                {activeTenant?.companyName || "The Maestro"}
+              </span>
+              {tenants.length > 1 && (
+                <select
+                  value={activeTenant?.id || ""}
+                  onChange={(e) => setActiveTenant(e.target.value)}
+                  className="text-xs text-sidebar-foreground/70 bg-transparent border-0 p-0 cursor-pointer hover:text-sidebar-foreground focus:outline-none"
+                  data-testid="select-company"
+                >
+                  {tenants.map((t) => (
+                    <option key={t.id} value={t.id} className="bg-sidebar text-sidebar-foreground">
+                      {t.companyName}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {tenants.length <= 1 && (
+                <span className="text-xs text-sidebar-foreground/70">{tenantName}</span>
+              )}
             </div>
           )}
         </div>

@@ -57,11 +57,20 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 - Role-based menu filtering
 - Collapsible sections with hierarchical structure
 
-### 6. Settings & Customization
-- Site Identity: Custom site name and logo upload
+### 6. Multi-Company Support
+- Company switcher dropdown in sidebar header
+- Automatic theme switching when changing companies
+- Each company has its own branding settings (colors, fonts, logo)
+- Three seed companies with unique themes:
+  - Acme Construction Co. (Teal theme, elegant font)
+  - Summit Builders LLC (Navy theme, classic font)
+  - Greenfield Development (Forest green theme, modern font)
+
+### 7. Settings & Customization
+- Per-company branding: Logo upload, typography, color themes
 - Typography: Three font styles (Playfair Display, Libre Baskerville, Inter)
 - Color Themes: Six presets + custom HSL color inputs
-- Settings persist to localStorage
+- Theme settings persist to tenant config in backend (not localStorage)
 
 ## API Endpoints
 
@@ -78,6 +87,9 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 | DELETE | /api/wbs/:id | Delete WBS node |
 | GET | /api/team | List team members |
 | POST | /api/team | Create team member |
+| GET | /api/tenants | List all tenants |
+| GET | /api/tenants/:id | Get tenant by ID |
+| PATCH | /api/tenants/:id | Update tenant config/branding |
 
 ## Design System
 
@@ -103,7 +115,7 @@ The application starts on port 5000.
 
 ### Seed Data
 The application includes seeded demo data:
-- 1 Tenant (Acme Construction Co.)
+- 3 Tenants (Acme Construction, Summit Builders, Greenfield Development)
 - 3 Users (admin, project_manager, viewer roles)
 - 5 Projects with various statuses
 - 40 WBS nodes across projects
@@ -118,6 +130,13 @@ The application includes seeded demo data:
 | admin | 3 | Full access |
 
 ## Recent Changes
+
+### January 2026 - Multi-Company Support
+- Added multi-company (tenant) support with company switcher
+- Implemented automatic theme switching when changing companies
+- Created 3 seed tenants with unique color themes and fonts
+- Theme settings now persist to tenant config (backend) instead of localStorage
+- Added tenant API endpoints (GET/PATCH /api/tenants)
 
 ### January 2026 - Initial MVP
 - Implemented core ERP structure

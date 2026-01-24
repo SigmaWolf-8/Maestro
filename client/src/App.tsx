@@ -39,10 +39,10 @@ function Router() {
 }
 
 function HeaderBranding() {
-  const { settings } = useSettings();
+  const { activeTenant } = useSettings();
   return (
     <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
-      {settings.siteName} ERP
+      {activeTenant?.companyName || "The Maestro"} ERP
     </span>
   );
 }
