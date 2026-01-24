@@ -17,6 +17,8 @@ import {
   Clock,
   Pause,
   X,
+  Layers,
+  GitBranch,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -219,22 +221,34 @@ export default function WBS() {
 
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="page-wbs">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-wbs-title">
-            Work Breakdown Structure
-          </h1>
-          <p className="text-muted-foreground">
-            Organize your project tasks in a hierarchical structure.
-          </p>
+      <div className="relative overflow-hidden rounded-lg border border-border bg-gradient-to-r from-primary/5 to-transparent p-6">
+        <div className="absolute top-1/2 right-4 -translate-y-1/2 opacity-5">
+          <div className="flex gap-2">
+            <GitBranch className="h-20 w-20" />
+            <Layers className="h-16 w-16 mt-4" />
+          </div>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-wbs">
-              <Plus className="mr-2 h-4 w-4" />
-              Add WBS Node
-            </Button>
-          </DialogTrigger>
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <Network className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-wbs-title">
+                Work Breakdown Structure
+              </h1>
+              <p className="text-muted-foreground">
+                Organize your project tasks in a hierarchical structure.
+              </p>
+            </div>
+          </div>
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-wbs">
+                <Plus className="mr-2 h-4 w-4" />
+                Add WBS Node
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Add WBS Node</DialogTitle>
@@ -435,7 +449,8 @@ export default function WBS() {
               </form>
             </Form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <Card>

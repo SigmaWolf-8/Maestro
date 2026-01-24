@@ -8,6 +8,10 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  Hammer,
+  HardHat,
+  Building2,
+  Ruler,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,13 +55,27 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="page-dashboard">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-dashboard-title">
-          Dashboard
-        </h1>
-        <p className="text-muted-foreground" data-testid="text-dashboard-subtitle">
-          Welcome back. Here's an overview of your construction projects.
-        </p>
+      <div className="relative overflow-hidden rounded-lg border border-border bg-gradient-to-br from-primary/5 via-transparent to-accent/5 p-6">
+        <div className="absolute top-0 right-0 opacity-10">
+          <div className="flex gap-4 -rotate-12 translate-x-8 -translate-y-4">
+            <Hammer className="h-24 w-24" />
+            <HardHat className="h-20 w-20 mt-8" />
+            <Building2 className="h-28 w-28 -mt-4" />
+          </div>
+        </div>
+        <div className="relative z-10 flex flex-col gap-1">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <Ruler className="h-5 w-5 text-primary" />
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-dashboard-title">
+              Dashboard
+            </h1>
+          </div>
+          <p className="text-muted-foreground" data-testid="text-dashboard-subtitle">
+            Welcome back. Here's an overview of your construction projects.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -278,10 +296,15 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon: Icon, trend, loading, testId }: StatCardProps) {
   return (
-    <Card data-testid={testId}>
+    <Card data-testid={testId} className="relative overflow-hidden">
+      <div className="absolute -right-4 -top-4 opacity-5">
+        <Icon className="h-24 w-24" />
+      </div>
       <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+          <Icon className="h-4 w-4 text-primary" />
+        </div>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -291,7 +314,7 @@ function StatCard({ title, value, icon: Icon, trend, loading, testId }: StatCard
           </div>
         ) : (
           <>
-            <div className="text-2xl font-bold" data-testid={`${testId}-value`}>
+            <div className="text-3xl font-bold" data-testid={`${testId}-value`}>
               {value ?? 0}
             </div>
             {trend && (
@@ -336,12 +359,19 @@ interface EmptyStateProps {
 
 function EmptyState({ icon: Icon, title, description }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-8 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
-        <Icon className="h-6 w-6 text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center py-8 text-center relative">
+      <div className="absolute inset-0 opacity-5">
+        <div className="flex items-center justify-center h-full">
+          <Icon className="h-32 w-32" />
+        </div>
       </div>
-      <p className="text-sm font-medium">{title}</p>
-      <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      <div className="relative z-10">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-accent/10 mb-3 mx-auto">
+          <Icon className="h-7 w-7 text-primary" />
+        </div>
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      </div>
     </div>
   );
 }
