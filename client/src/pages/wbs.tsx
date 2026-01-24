@@ -58,6 +58,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { WbsNode, Project } from "@shared/schema";
+import { useSettings } from "@/components/settings-provider";
 
 const wbsFormSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
@@ -67,6 +68,7 @@ const wbsFormSchema = z.object({
   parentId: z.string().optional(),
   estimatedHours: z.string().optional(),
   estimatedCost: z.string().optional(),
+  dimensions: z.record(z.string()).optional(),
 });
 
 type WbsFormData = z.infer<typeof wbsFormSchema>;
@@ -78,7 +80,11 @@ interface WbsNodeWithChildren extends WbsNode {
 export default function WBS() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [dimensionValues, setDimensionValues] = useState<Record<string, string>>({});
   const { toast } = useToast();
+  const { activeTenant } = useSettings();
+  
+  const wbsDimensions = activeTenant?.config?.wbsDimensions || [];
 
   const { data: wbsNodes, isLoading: wbsLoading } = useQuery<WbsNode[]>({
     queryKey: ["/api/wbs"],
@@ -95,6 +101,7 @@ export default function WBS() {
         estimatedHours: data.estimatedHours ? parseFloat(data.estimatedHours) : undefined,
         estimatedCost: data.estimatedCost ? parseFloat(data.estimatedCost) : undefined,
         parentId: data.parentId || undefined,
+        dimensions: dimensionValues,
       });
     },
     onSuccess: () => {
@@ -102,6 +109,7 @@ export default function WBS() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       setIsCreateOpen(false);
       form.reset();
+      setDimensionValues({});
       toast({
         title: "WBS node created",
         description: "The work breakdown structure node has been added.",
@@ -381,6 +389,32 @@ export default function WBS() {
                     )}
                   />
                 </div>
+                {wbsDimensions.length > 0 && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <p className="text-sm font-medium text-muted-foreground">Dimensions</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      {wbsDimensions.map((dim: { key: string; label: string; required: boolean }) => (
+                        <div key={dim.key} className="space-y-2">
+                          <label className="text-sm font-medium">
+                            {dim.label}
+                            {dim.required && <span className="text-destructive ml-1">*</span>}
+                          </label>
+                          <Input
+                            placeholder={`Enter ${dim.label.toLowerCase()}`}
+                            value={dimensionValues[dim.key] || ""}
+                            onChange={(e) =>
+                              setDimensionValues((prev) => ({
+                                ...prev,
+                                [dim.key]: e.target.value,
+                              }))
+                            }
+                            data-testid={`input-dimension-${dim.key}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <DialogFooter>
                   <Button
                     type="button"

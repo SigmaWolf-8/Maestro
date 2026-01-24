@@ -11,6 +11,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import WBS from "@/pages/wbs";
+import WbsDimensions from "@/pages/wbs-dimensions";
 import Team from "@/pages/team";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/projects" component={Projects} />
       <Route path="/wbs" component={WBS} />
+      <Route path="/wbs/dimensions" component={WbsDimensions} />
       <Route path="/team" component={Team} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
