@@ -89,7 +89,8 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 | POST | /api/team | Create team member |
 | GET | /api/tenants | List all tenants |
 | GET | /api/tenants/:id | Get tenant by ID |
-| PATCH | /api/tenants/:id | Update tenant config/branding |
+| POST | /api/tenants | Create new tenant |
+| PATCH | /api/tenants/:id | Update tenant (name, email, branding) |
 
 ## Design System
 
@@ -136,7 +137,9 @@ The application includes seeded demo data:
 - Implemented automatic theme switching when changing companies
 - Created 3 seed tenants with unique color themes and fonts
 - Theme settings now persist to tenant config (backend) instead of localStorage
-- Added tenant API endpoints (GET/PATCH /api/tenants)
+- Added tenant API endpoints (GET/POST/PATCH /api/tenants)
+- Added ability to create new companies from Settings page
+- Added ability to edit company name and contact email
 
 ### January 2026 - Initial MVP
 - Implemented core ERP structure

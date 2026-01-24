@@ -34,6 +34,8 @@ interface SettingsContextType {
   isLoading: boolean;
   setActiveTenant: (tenantId: string) => void;
   updateTenantBranding: (branding: Partial<TenantBranding>) => void;
+  updateTenantDetails: (details: { companyName?: string; contactEmail?: string }) => void;
+  createTenant: (companyName: string, contactEmail?: string) => Promise<Tenant>;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -74,8 +76,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [activeTenant]);
 
   const updateMutation = useMutation({
-    mutationFn: async ({ tenantId, config }: { tenantId: string; config: Tenant["config"] }) => {
-      return apiRequest("PATCH", `/api/tenants/${tenantId}`, { config });
+    mutationFn: async ({ tenantId, updates }: { tenantId: string; updates: Partial<Tenant> }) => {
+      return apiRequest("PATCH", `/api/tenants/${tenantId}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async ({ companyName, contactEmail }: { companyName: string; contactEmail?: string }) => {
+      const response = await apiRequest("POST", "/api/tenants", { companyName, contactEmail });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
@@ -97,8 +109,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const newBranding = { ...activeTenant.config.branding, ...branding };
     const newConfig = { ...activeTenant.config, branding: newBranding };
     
-    updateMutation.mutate({ tenantId: activeTenant.id, config: newConfig });
+    updateMutation.mutate({ tenantId: activeTenant.id, updates: { config: newConfig } });
     applyBranding(newBranding);
+  };
+
+  const updateTenantDetails = (details: { companyName?: string; contactEmail?: string }) => {
+    if (!activeTenant) return;
+    updateMutation.mutate({ tenantId: activeTenant.id, updates: details });
+  };
+
+  const createTenant = async (companyName: string, contactEmail?: string): Promise<Tenant> => {
+    const result = await createMutation.mutateAsync({ companyName, contactEmail });
+    return result;
   };
 
   return (
@@ -109,6 +131,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         isLoading,
         setActiveTenant,
         updateTenantBranding,
+        updateTenantDetails,
+        createTenant,
       }}
     >
       {children}

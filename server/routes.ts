@@ -103,6 +103,43 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/tenants", async (req, res) => {
+    try {
+      const { companyName, contactEmail } = req.body;
+      if (!companyName) {
+        return res.status(400).json({ error: "Company name is required" });
+      }
+      const subdomain = companyName.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20);
+      const tenant = await storage.createTenant({
+        subdomain,
+        companyName,
+        contactEmail: contactEmail || `admin@${subdomain}.com`,
+        config: {
+          branding: {
+            primaryColor: "168 76% 36%",
+            secondaryColor: "28 85% 52%",
+            sidebarColor: "175 35% 15%",
+            fontStyle: "elegant",
+            logoUrl: null,
+            faviconUrl: null,
+          },
+          modules: { hrSync: false, advancedWbs: true, documentTemplating: false },
+          wbsDimensions: [
+            { key: "phase", label: "Project Phase", required: true },
+            { key: "trade", label: "Trade", required: true },
+          ],
+        },
+        storageMode: "cloud",
+        onboardingComplete: true,
+        instanceStatus: "active",
+      });
+      res.status(201).json(tenant);
+    } catch (error) {
+      console.error("Error creating tenant:", error);
+      res.status(500).json({ error: "Failed to create tenant" });
+    }
+  });
+
   app.get("/api/dashboard/stats", async (req, res) => {
     try {
       const tenantId = await getDefaultTenantId();

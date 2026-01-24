@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw } from "lucide-react";
+import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const colorPresets = [
   { name: "Teal Construction", primary: "168 76% 36%", accent: "28 85% 52%", sidebar: "175 35% 15%" },
@@ -25,7 +26,7 @@ const fontOptions = [
 ];
 
 export default function Settings() {
-  const { activeTenant, updateTenantBranding, isLoading } = useSettings();
+  const { activeTenant, updateTenantBranding, updateTenantDetails, createTenant, setActiveTenant, isLoading } = useSettings();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -33,6 +34,11 @@ export default function Settings() {
   const [primaryColor, setPrimaryColor] = useState(branding?.primaryColor || "168 76% 36%");
   const [accentColor, setAccentColor] = useState(branding?.secondaryColor || "28 85% 52%");
   const [sidebarColor, setSidebarColor] = useState(branding?.sidebarColor || "175 35% 15%");
+  const [companyName, setCompanyName] = useState(activeTenant?.companyName || "");
+  const [contactEmail, setContactEmail] = useState(activeTenant?.contactEmail || "");
+  const [newCompanyName, setNewCompanyName] = useState("");
+  const [newCompanyEmail, setNewCompanyEmail] = useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   useEffect(() => {
     if (branding) {
@@ -41,6 +47,13 @@ export default function Settings() {
       setSidebarColor(branding.sidebarColor || "175 35% 15%");
     }
   }, [branding]);
+
+  useEffect(() => {
+    if (activeTenant) {
+      setCompanyName(activeTenant.companyName);
+      setContactEmail(activeTenant.contactEmail);
+    }
+  }, [activeTenant]);
 
   const handleColorPreset = (preset: typeof colorPresets[0]) => {
     updateTenantBranding({
@@ -124,6 +137,50 @@ export default function Settings() {
     });
   };
 
+  const handleSaveCompanyDetails = () => {
+    if (!companyName.trim()) {
+      toast({
+        title: "Error",
+        description: "Company name cannot be empty.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateTenantDetails({ companyName: companyName.trim(), contactEmail: contactEmail.trim() });
+    toast({
+      title: "Company Updated",
+      description: "Company details have been saved.",
+    });
+  };
+
+  const handleAddCompany = async () => {
+    if (!newCompanyName.trim()) {
+      toast({
+        title: "Error",
+        description: "Company name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const newTenant = await createTenant(newCompanyName.trim(), newCompanyEmail.trim() || undefined);
+      setActiveTenant(newTenant.id);
+      setIsAddDialogOpen(false);
+      setNewCompanyName("");
+      setNewCompanyEmail("");
+      toast({
+        title: "Company Created",
+        description: `${newCompanyName} has been added successfully.`,
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to create company.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6 flex items-center justify-center">
@@ -149,10 +206,59 @@ export default function Settings() {
             Customize appearance for <span className="font-medium">{activeTenant.companyName}</span>
           </p>
         </div>
-        <Button variant="outline" onClick={handleResetToDefaults} data-testid="button-reset-settings">
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Reset to Defaults
-        </Button>
+        <div className="flex gap-2">
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" data-testid="button-add-company">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Company
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Company</DialogTitle>
+                <DialogDescription>
+                  Create a new company with its own branding and settings.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newCompanyName">Company Name</Label>
+                  <Input
+                    id="newCompanyName"
+                    value={newCompanyName}
+                    onChange={(e) => setNewCompanyName(e.target.value)}
+                    placeholder="e.g., Blue Sky Construction"
+                    data-testid="input-new-company-name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newCompanyEmail">Contact Email (optional)</Label>
+                  <Input
+                    id="newCompanyEmail"
+                    type="email"
+                    value={newCompanyEmail}
+                    onChange={(e) => setNewCompanyEmail(e.target.value)}
+                    placeholder="admin@company.com"
+                    data-testid="input-new-company-email"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddCompany} data-testid="button-create-company">
+                  Create Company
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button variant="outline" onClick={handleResetToDefaults} data-testid="button-reset-settings">
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reset to Defaults
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -160,15 +266,54 @@ export default function Settings() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Company Branding</CardTitle>
+              <CardTitle className="text-lg">Company Details</CardTitle>
             </div>
             <CardDescription>
-              Customize logo for {activeTenant.companyName}
+              Edit company name and contact information
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Company Logo</Label>
+              <Label htmlFor="companyName">Company Name</Label>
+              <Input
+                id="companyName"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Company name"
+                data-testid="input-company-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contactEmail">Contact Email</Label>
+              <Input
+                id="contactEmail"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="admin@company.com"
+                data-testid="input-contact-email"
+              />
+            </div>
+            <Button onClick={handleSaveCompanyDetails} data-testid="button-save-company">
+              <Save className="h-4 w-4 mr-2" />
+              Save Details
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Image className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Company Logo</CardTitle>
+            </div>
+            <CardDescription>
+              Upload a custom logo for {activeTenant.companyName}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Logo</Label>
               <div className="flex items-center gap-4">
                 {branding?.logoUrl ? (
                   <div className="w-16 h-16 rounded-md border border-border overflow-hidden bg-muted flex items-center justify-center">
