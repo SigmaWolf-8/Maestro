@@ -575,5 +575,144 @@ export async function seedDatabase() {
     }
   }
 
-  console.log("Database seeded successfully with sample data");
+  // Seed Navigation Items for the new 5-section architecture
+  const navDashboardId = randomUUID();
+  const navProjectsId = randomUUID();
+  const navPeopleId = randomUUID();
+  const navFinanceId = randomUUID();
+  const navDocumentsId = randomUUID();
+
+  // Top-level navigation items (5 sections)
+  await db.insert(navigationItems).values([
+    {
+      id: navDashboardId,
+      tenantId,
+      parentId: null,
+      itemOrder: 10,
+      itemType: "menu",
+      title: "Dashboard",
+      iconName: "LayoutDashboard",
+      path: "/",
+      component: "Dashboard",
+      uiSlot: "sidebar",
+      maxChildrenDisplay: 3,
+      isCollapsible: true,
+      minRoleRequired: "viewer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: navProjectsId,
+      tenantId,
+      parentId: null,
+      itemOrder: 20,
+      itemType: "menu",
+      title: "Projects",
+      iconName: "FolderKanban",
+      path: null,
+      component: null,
+      uiSlot: "sidebar",
+      maxChildrenDisplay: 5,
+      isCollapsible: true,
+      minRoleRequired: "viewer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: navPeopleId,
+      tenantId,
+      parentId: null,
+      itemOrder: 30,
+      itemType: "menu",
+      title: "People & Contacts",
+      iconName: "Users",
+      path: null,
+      component: null,
+      uiSlot: "sidebar",
+      maxChildrenDisplay: 5,
+      isCollapsible: true,
+      minRoleRequired: "viewer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: navFinanceId,
+      tenantId,
+      parentId: null,
+      itemOrder: 40,
+      itemType: "menu",
+      title: "Finance",
+      iconName: "Landmark",
+      path: null,
+      component: null,
+      uiSlot: "sidebar",
+      maxChildrenDisplay: 5,
+      isCollapsible: true,
+      minRoleRequired: "accountant",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: navDocumentsId,
+      tenantId,
+      parentId: null,
+      itemOrder: 50,
+      itemType: "menu",
+      title: "Documents",
+      iconName: "FolderArchive",
+      path: null,
+      component: null,
+      uiSlot: "sidebar",
+      maxChildrenDisplay: 5,
+      isCollapsible: true,
+      minRoleRequired: "viewer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+  ]);
+
+  // Dashboard sub-items (3 items max)
+  await db.insert(navigationItems).values([
+    { id: randomUUID(), tenantId, parentId: navDashboardId, itemOrder: 1, itemType: "action", title: "Overview", iconName: "Home", path: "/", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navDashboardId, itemOrder: 2, itemType: "action", title: "My Tasks", iconName: "CheckSquare", path: "/tasks", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navDashboardId, itemOrder: 3, itemType: "action", title: "Alerts", iconName: "Bell", path: "/alerts", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+  ]);
+
+  // Projects sub-items (5 items max)
+  await db.insert(navigationItems).values([
+    { id: randomUUID(), tenantId, parentId: navProjectsId, itemOrder: 1, itemType: "action", title: "All Projects", iconName: "Folder", path: "/projects", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navProjectsId, itemOrder: 2, itemType: "action", title: "WBS Builder", iconName: "GitBranch", path: "/wbs", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navProjectsId, itemOrder: 3, itemType: "action", title: "Schedule", iconName: "Calendar", path: "/schedule", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navProjectsId, itemOrder: 4, itemType: "action", title: "Specifications", iconName: "FileText", path: "/specifications", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navProjectsId, itemOrder: 5, itemType: "action", title: "Photos", iconName: "Camera", path: "/photos", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+  ]);
+
+  // People & Contacts sub-items (5 items max)
+  await db.insert(navigationItems).values([
+    { id: randomUUID(), tenantId, parentId: navPeopleId, itemOrder: 1, itemType: "action", title: "Customers", iconName: "Building", path: "/people/customers", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navPeopleId, itemOrder: 2, itemType: "action", title: "Vendors & Pricing", iconName: "Truck", path: "/people/vendors", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navPeopleId, itemOrder: 3, itemType: "action", title: "Employees", iconName: "User", path: "/people/employees", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navPeopleId, itemOrder: 4, itemType: "action", title: "Subcontractors", iconName: "HardHat", path: "/people/subcontractors", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navPeopleId, itemOrder: 5, itemType: "action", title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+  ]);
+
+  // Finance sub-items (5 items max)
+  await db.insert(navigationItems).values([
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 1, itemType: "action", title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 2, itemType: "action", title: "Purchase Orders", iconName: "ClipboardList", path: "/finance/purchase-orders", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 3, itemType: "action", title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRoleRequired: "accountant", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 4, itemType: "action", title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRoleRequired: "accountant", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 5, itemType: "action", title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRoleRequired: "accountant", createdAt: new Date(), updatedAt: new Date() },
+  ]);
+
+  // Documents sub-items (5 items max)
+  await db.insert(navigationItems).values([
+    { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 1, itemType: "action", title: "File Manager", iconName: "Files", path: "/documents/files", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 2, itemType: "action", title: "Plan Room", iconName: "Map", path: "/documents/plans", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 3, itemType: "action", title: "Templates", iconName: "FileCode", path: "/documents/templates", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 4, itemType: "action", title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 5, itemType: "action", title: "Archives", iconName: "Archive", path: "/documents/archives", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+  ]);
+
+  console.log("Database seeded successfully with sample data and navigation structure");
 }
