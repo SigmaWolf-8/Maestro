@@ -134,6 +134,15 @@ The application includes seeded demo data:
 
 ## Recent Changes
 
+### January 2026 - 5-Section Navigation Architecture
+- Implemented comprehensive 5-section navigation structure (Dashboard, Projects, People & Contacts, Finance, Documents)
+- Navigation is database-driven with navigation_items table supporting tenant-specific customization
+- 3/5 choice rule enforcement: Dashboard section limited to 3 sub-items, other sections limited to 5 sub-items
+- Role-based navigation filtering using minRoleRequired field (viewer, accountant, project_manager, admin)
+- Multi-tenant navigation: /api/navigation?tenantId=xxx fetches tenant-specific navigation
+- Added 20+ placeholder pages for navigation sections
+- Automatic navigation seeding for all tenants during database initialization
+
 ### January 2026 - PostgreSQL Database Persistence
 - Migrated from in-memory storage to PostgreSQL with Drizzle ORM
 - All configurations (WBS dimensions, company settings, themes) now persist across server restarts
