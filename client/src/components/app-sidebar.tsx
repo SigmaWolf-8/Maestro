@@ -199,7 +199,16 @@ export function AppSidebar({
   const userRoleLevel = roleHierarchy[userRole];
 
   const { data: navigationItems = [] } = useQuery<NavigationItem[]>({
-    queryKey: ["/api/navigation"],
+    queryKey: ["/api/navigation", activeTenant?.id],
+    queryFn: async () => {
+      const url = activeTenant?.id 
+        ? `/api/navigation?tenantId=${activeTenant.id}` 
+        : "/api/navigation";
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch navigation");
+      return res.json();
+    },
+    enabled: true,
   });
 
   const navigationTree = useMemo(() => {

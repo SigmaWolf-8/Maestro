@@ -575,7 +575,16 @@ export async function seedDatabase() {
     }
   }
 
-  // Seed Navigation Items for the new 5-section architecture
+  // Seed Navigation Items for all tenants
+  const allTenantIds = [tenantId, tenant2Id, tenant3Id];
+  for (const tid of allTenantIds) {
+    await seedNavigationForTenant(tid);
+  }
+
+  console.log("Database seeded successfully with sample data and navigation structure");
+}
+
+async function seedNavigationForTenant(tenantId: string) {
   const navDashboardId = randomUUID();
   const navProjectsId = randomUUID();
   const navPeopleId = randomUUID();
@@ -713,6 +722,4 @@ export async function seedDatabase() {
     { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 4, itemType: "action", title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
     { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 5, itemType: "action", title: "Archives", iconName: "Archive", path: "/documents/archives", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
   ]);
-
-  console.log("Database seeded successfully with sample data and navigation structure");
 }

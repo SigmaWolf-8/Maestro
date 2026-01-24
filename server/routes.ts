@@ -142,7 +142,7 @@ export async function registerRoutes(
 
   app.get("/api/navigation", async (req, res) => {
     try {
-      const tenantId = await getDefaultTenantId();
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
       const items = await storage.getNavigationItems(tenantId);
       res.json(items);
     } catch (error) {
@@ -332,17 +332,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error creating user:", error);
       res.status(500).json({ error: "Failed to create user" });
-    }
-  });
-
-  app.get("/api/navigation", async (req, res) => {
-    try {
-      const tenantId = await getDefaultTenantId();
-      const items = await storage.getNavigationItems(tenantId);
-      res.json(items);
-    } catch (error) {
-      console.error("Error fetching navigation:", error);
-      res.status(500).json({ error: "Failed to fetch navigation" });
     }
   });
 
