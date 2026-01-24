@@ -5,12 +5,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SettingsProvider, useSettings } from "@/components/settings-provider";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import WBS from "@/pages/wbs";
 import Team from "@/pages/team";
+import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
 
 const mockUser = {
@@ -30,8 +32,18 @@ function Router() {
       <Route path="/projects" component={Projects} />
       <Route path="/wbs" component={WBS} />
       <Route path="/team" component={Team} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
+  );
+}
+
+function HeaderBranding() {
+  const { settings } = useSettings();
+  return (
+    <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
+      {settings.siteName} ERP
+    </span>
   );
 }
 
@@ -49,9 +61,7 @@ function AppLayout() {
           <header className="flex items-center justify-between gap-2 h-14 px-4 border-b border-border bg-background shrink-0">
             <div className="flex items-center gap-2">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
-                The Maestro ERP
-              </span>
+              <HeaderBranding />
             </div>
             <ThemeToggle />
           </header>
@@ -68,10 +78,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="maestro-theme">
-        <TooltipProvider>
-          <AppLayout />
-          <Toaster />
-        </TooltipProvider>
+        <SettingsProvider>
+          <TooltipProvider>
+            <AppLayout />
+            <Toaster />
+          </TooltipProvider>
+        </SettingsProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

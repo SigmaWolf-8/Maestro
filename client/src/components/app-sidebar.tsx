@@ -14,6 +14,7 @@ import {
   BarChart3,
   Calendar,
 } from "lucide-react";
+import { useSettings } from "@/components/settings-provider";
 import {
   Sidebar,
   SidebarContent,
@@ -131,6 +132,7 @@ interface AppSidebarProps {
 export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: AppSidebarProps) {
   const [location] = useLocation();
   const { state } = useSidebar();
+  const { settings } = useSettings();
   const userRole = currentUser?.role || "viewer";
   const userRoleLevel = roleHierarchy[userRole];
 
@@ -157,12 +159,18 @@ export function AppSidebar({ currentUser, tenantName = "Acme Construction" }: Ap
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-            <Building2 className="h-5 w-5" />
-          </div>
+          {settings.logoUrl ? (
+            <div className="flex h-9 w-9 items-center justify-center rounded-md overflow-hidden bg-sidebar-primary">
+              <img src={settings.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+              <Building2 className="h-5 w-5" />
+            </div>
+          )}
           {state !== "collapsed" && (
             <div className="flex flex-col">
-              <span className="text-sm font-semibold text-sidebar-foreground">The Maestro</span>
+              <span className="text-sm font-semibold text-sidebar-foreground">{settings.siteName}</span>
               <span className="text-xs text-sidebar-foreground/70">{tenantName}</span>
             </div>
           )}
