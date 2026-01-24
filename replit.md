@@ -57,6 +57,12 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 - Role-based menu filtering
 - Collapsible sections with hierarchical structure
 
+### 6. Settings & Customization
+- Site Identity: Custom site name and logo upload
+- Typography: Three font styles (Playfair Display, Libre Baskerville, Inter)
+- Color Themes: Six presets + custom HSL color inputs
+- Settings persist to localStorage
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
@@ -120,3 +126,5 @@ The application includes seeded demo data:
 - Implemented 3/5 choice navigation pattern
 - Added Zod validation to API endpoints
 - Created in-memory storage with seed data
+- Added Settings page with customizable colors, logos, and fonts
+- Applied Playfair Display as default font (elegant serif similar to Felix)
