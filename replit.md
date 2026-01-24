@@ -8,6 +8,7 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 ### Technology Stack
 - **Frontend:** React 18 + Vite + TypeScript
 - **Backend:** Express.js + TypeScript
+- **Database:** PostgreSQL with Drizzle ORM
 - **Styling:** Tailwind CSS + shadcn/ui components
 - **Routing:** wouter (client-side)
 - **State Management:** TanStack Query v5
@@ -24,7 +25,8 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 │   │   └── lib/            # Utilities and API client
 ├── server/                 # Backend Express application
 │   ├── routes.ts           # API endpoints
-│   └── storage.ts          # In-memory data storage
+│   ├── storage.ts          # Database storage layer (PostgreSQL)
+│   └── db.ts               # Drizzle database connection
 ├── shared/                 # Shared types and schemas
 │   └── schema.ts           # Drizzle schemas and TypeScript types
 ```
@@ -131,6 +133,13 @@ The application includes seeded demo data:
 | admin | 3 | Full access |
 
 ## Recent Changes
+
+### January 2026 - PostgreSQL Database Persistence
+- Migrated from in-memory storage to PostgreSQL with Drizzle ORM
+- All configurations (WBS dimensions, company settings, themes) now persist across server restarts
+- Created DatabaseStorage class implementing IStorage interface
+- Added automatic database seeding on first run
+- Database schema includes: tenants, tenant_users, projects, wbs_nodes, navigation_items, role_permissions
 
 ### January 2026 - Multi-Company Support
 - Added multi-company (tenant) support with company switcher

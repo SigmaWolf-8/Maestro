@@ -24,8 +24,10 @@ export const tenants = pgTable("tenants", {
   contactEmail: text("contact_email").notNull(),
   config: jsonb("config").notNull().default({
     branding: {
-      primaryColor: "#0f766e",
-      secondaryColor: "#f97316",
+      primaryColor: "0 0% 25%",
+      secondaryColor: "0 0% 45%",
+      sidebarColor: "0 0% 8%",
+      fontStyle: "elegant",
       logoUrl: null,
       faviconUrl: null
     },
@@ -154,6 +156,8 @@ export interface TenantConfig {
   branding: {
     primaryColor: string;
     secondaryColor: string;
+    sidebarColor?: string;
+    fontStyle?: string;
     logoUrl: string | null;
     faviconUrl: string | null;
   };
