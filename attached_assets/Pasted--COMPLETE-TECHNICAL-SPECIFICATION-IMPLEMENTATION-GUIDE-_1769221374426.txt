@@ -1,0 +1,2740 @@
+# **COMPLETE TECHNICAL SPECIFICATION & IMPLEMENTATION GUIDE: Modular, Multi-Tenant ERP for Construction**
+
+## **PROJECT OVERVIEW & ARCHITECTURAL PHILOSOPHY**
+
+### **Core Mission**
+Build a white-label, SaaS-enabled Enterprise Resource Planning (ERP) system specifically architected for residential construction and land development firms. The system will replace legacy VBA/Access applications with a modern, web-based platform featuring deep configurability, multi-tenancy, and integrated business intelligence.
+
+### **Technical Architecture Summary**
+- **Frontend:** Next.js 14 (App Router) hosted on Replit, utilizing React Server Components and Server Actions.
+- **Backend & Database:** Supabase (PostgreSQL) for all data persistence, authentication, and real-time features.
+- **File Storage:** Dual-mode architecture (Supabase Storage for cloud, Local Gateway for on-premise).
+- **Integrations:** BambooHR (HRIS), Stripe (billing), and blockchain (NFT minting).
+- **Core Innovation:** A 13-dimensional Work Breakdown Structure (WBS) engine with templating and automatic file replication.
+
+### **Guiding Principles**
+1.  **Tenant Isolation:** Every data row is scoped by `tenant_id`. Row Level Security (RLS) is mandatory for all tables.
+2.  **Configuration over Code:** Branding, WBS dimensions, and module availability are driven by database configuration.
+3.  **Event-Driven Synchronization:** Changes in one module (e.g., BambooHR sync) propagate correctly to others (e.g., WBS assignments).
+4.  **Operational Simplicity:** Client onboarding is a semi-automated, template-driven process.
+
+---
+
+## **PART 1: FOUNDATIONAL INFRASTRUCTURE & PROJECT SETUP**
+
+### **1.1 Replit Workspace Initialization**
+**Objective:** Create the collaborative development environment and boilerplate project.
+
+**Instructions for Replit AI/Developer:**
+1.  **Create Team Workspace:** "In Replit, create a new **Team** workspace named `ERP-Construction-Core`. Invite relevant collaborators with 'Editor' permissions."
+2.  **Initialize Repl:** "Within the workspace, create a new Repl. Select the **'Next.js (JavaScript)'** template. Name it `erp-master-template`."
+3.  **Install Core Dependencies:** Run the following command in the Replit Shell:
+    ```bash
+    npm install @supabase/supabase-js @supabase/ssr @stripe/stripe-js stripe jsonwebtoken ethers web3 multer axios lucide-react
+    npm install -D tailwindcss postcss autoprefixer @tailwindcss/forms
+    npx tailwindcss init -p
+    ```
+4.  **Configure Environment Secrets:** Navigate to **Tools > Secrets**. Add the following secrets (values to be obtained and filled later):
+    ```
+    SUPABASE_URL
+    SUPABASE_ANON_KEY
+    SUPABASE_SERVICE_ROLE_KEY
+    STRIPE_SECRET_KEY
+    STRIPE_WEBHOOK_SECRET
+    BAMBOOHR_DEFAULT_API_KEY
+    ETHEREUM_RPC_URL
+    WALLET_PRIVATE_KEY
+    ENCRYPTION_SECRET
+    ```
+
+### **1.2 Project Structure Generation**
+**Objective:** Establish a scalable and organized folder structure.
+
+**Instructions:** Create the following exact directory tree within the Repl:
+```
+/src
+  /app
+    /api
+      /auth
+      /stripe
+      /webhooks
+      /bamboohr
+      /templates
+      /storage
+      /wbs
+    /admin
+      /branding
+      /templates
+      /sync
+    /[tenant]
+      /dashboard
+      /projects
+      /wbs
+      /documents
+    /globals.css
+    layout.jsx
+    page.jsx
+  /components
+    /ui (shadcn/ui based components)
+    /branding
+    /projects
+    /wbs
+    /documents
+  /lib
+    supabase-server.js
+    supabase-client.js
+    stripe-server.js
+    bamboohr-service.js
+    wbs-engine.js
+    template-service.js
+    storage-router.js
+    encryption.js
+  /scripts
+    seed-templates.js
+    migrate-wbs.js
+  /middleware.js
+```
+
+### **1.3 Supabase Project & Initial Schema**
+**Objective:** Provision the database backend and core administrative schemas.
+
+**Instructions for Supabase Console (Browser):**
+1.  **Create Project:** Create a new Supabase project named `erp-construction-core`. Note the `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+2.  **Execute Core SQL:** Run the following SQL in the **SQL Editor**:
+
+```sql
+---------------------------------------------
+-- 1. TENANTS: The Root of Multi-Tenancy
+---------------------------------------------
+CREATE TABLE tenants (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    subdomain TEXT UNIQUE NOT NULL,
+    company_name TEXT NOT NULL,
+    contact_email TEXT NOT NULL,
+    -- CONFIGURATION BLOB
+    config JSONB NOT NULL DEFAULT '{
+        "branding": {
+            "primaryColor": "#0f766e",
+            "secondaryColor": "#f97316",
+            "logoUrl": null,
+            "faviconUrl": null
+        },
+        "modules": {
+            "hrSync": false,
+            "advancedWbs": true,
+            "documentTemplating": false
+        },
+        "wbsDimensions": [
+            {"key": "phase", "label": "Project Phase", "required": true},
+            {"key": "trade", "label": "Trade", "required": true},
+            {"key": "location", "label": "Unit/Location", "required": false}
+        ]
+    }'::jsonb,
+    -- INTEGRATION CONFIGURATION
+    bamboohr_api_key TEXT,
+    bamboohr_company_domain TEXT,
+    bamboohr_last_sync TIMESTAMPTZ,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    storage_mode TEXT NOT NULL DEFAULT 'cloud' CHECK (storage_mode IN ('cloud', 'local_gateway')),
+    gateway_endpoint TEXT,
+    gateway_api_key TEXT,
+    -- STATUS & METADATA
+    onboarding_complete BOOLEAN DEFAULT FALSE,
+    instance_status TEXT DEFAULT 'active' CHECK (instance_status IN ('active', 'suspended', 'trial')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- ROW LEVEL SECURITY: NO POLICY. This table is managed by service role.
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+-- (We will not add policies; access is via service role or carefully crafted functions).
+
+---------------------------------------------
+-- 2. TENANT USERS & AUTH LINKING
+---------------------------------------------
+CREATE TABLE tenant_users (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    auth_user_id UUID NOT NULL, -- References Supabase Auth.users.id
+    email TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'project_manager', 'viewer', 'accountant')),
+    -- PROFILE DATA (can be synced from BambooHR)
+    profile JSONB DEFAULT '{
+        "firstName": null,
+        "lastName": null,
+        "jobTitle": null,
+        "department": null,
+        "avatarUrl": null
+    }'::jsonb,
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, auth_user_id)
+);
+-- RLS: Users can only see users in their own tenant.
+ALTER TABLE tenant_users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can only view members of their own tenant"
+    ON tenant_users FOR ALL USING (tenant_id = current_setting('app.current_tenant_id', TRUE)::UUID);
+
+---------------------------------------------
+-- 3. SETUP THE 'app.current_tenant_id' HELPER
+---------------------------------------------
+-- This function sets a session variable for RLS to use.
+CREATE OR REPLACE FUNCTION set_current_tenant(tenant_uuid UUID)
+RETURNS VOID AS $$
+BEGIN
+    PERFORM set_config('app.current_tenant_id', tenant_uuid::text, FALSE);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create a secure view for the tenant user to call.
+CREATE OR REPLACE VIEW current_tenant_session AS
+SELECT set_current_tenant(tenant_id) FROM tenant_users
+WHERE auth_user_id = auth.uid();
+
+---------------------------------------------
+-- 4. AUDIT LOG
+---------------------------------------------
+CREATE TABLE audit_log (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES tenant_users(id),
+    action TEXT NOT NULL, -- e.g., 'project.create', 'file.upload'
+    entity_type TEXT, -- e.g., 'projects', 'wbs_nodes'
+    entity_id UUID,
+    old_values JSONB,
+    new_values JSONB,
+    ip_address INET,
+    user_agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+-- RLS: Users can only see logs from their tenant.
+ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can only view audit logs from their tenant"
+    ON audit_log FOR ALL USING (tenant_id = current_setting('app.current_tenant_id', TRUE)::UUID);
+```
+
+---
+
+## **PART 2: THE 13-DIMENSIONAL WBS ENGINE**
+
+### **2.1 Core WBS Schema Design**
+**Objective:** Create a flexible, hierarchical structure where each node can be categorized across 13 configurable dimensions.
+
+**Instructions:** Execute this SQL in Supabase to create the WBS core tables.
+
+```sql
+---------------------------------------------
+-- 1. WBS_NODES: The Heart of the System
+---------------------------------------------
+CREATE TABLE wbs_nodes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    project_id UUID NOT NULL, -- Foreign key added after projects table creation
+    parent_id UUID REFERENCES wbs_nodes(id) ON DELETE CASCADE,
+
+    -- HIERARCHICAL IDENTIFIER
+    code_path LTREE NOT NULL, -- Uses LTREE extension for superior tree queries
+    code_display TEXT GENERATED ALWAYS AS (REPLACE(code_path::text, '_', '.')) STORED,
+
+    -- CONTENT
+    title TEXT NOT NULL,
+    description TEXT,
+    status TEXT DEFAULT 'not_started' CHECK (status IN ('not_started', 'in_progress', 'on_hold', 'completed', 'cancelled')),
+
+    -- THE 13-DIMENSIONAL MATRIX
+    -- Dimensions are stored as key-value pairs. The *definition* of allowed keys is in tenants.config->'wbsDimensions'.
+    dimensions JSONB NOT NULL DEFAULT '{}',
+
+    -- ESTIMATES & ACTUALS
+    estimated_hours DECIMAL(10,2),
+    estimated_cost DECIMAL(15,2),
+    actual_hours DECIMAL(10,2),
+    actual_cost DECIMAL(15,2),
+
+    -- RELATIONSHIPS
+    assigned_to UUID REFERENCES tenant_users(id),
+    predecessor_id UUID REFERENCES wbs_nodes(id),
+
+    -- METADATA
+    order_index INTEGER,
+    is_template_node BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- CONSTRAINTS & INDEXES
+    CONSTRAINT wbs_nodes_code_path_unique UNIQUE (tenant_id, project_id, code_path)
+);
+
+-- Enable the powerful LTREE extension
+CREATE EXTENSION IF NOT EXISTS LTREE;
+
+-- CRITICAL INDEXES for Performance
+CREATE INDEX idx_wbs_nodes_tenant_project ON wbs_nodes(tenant_id, project_id);
+CREATE INDEX idx_wbs_nodes_parent ON wbs_nodes(parent_id);
+CREATE INDEX idx_wbs_nodes_code_path_gist ON wbs_nodes USING GIST (code_path);
+CREATE INDEX idx_wbs_nodes_assigned_to ON wbs_nodes(assigned_to);
+CREATE INDEX idx_wbs_nodes_dimensions ON wbs_nodes USING GIN (dimensions);
+
+---------------------------------------------
+-- 2. WBS_NODE_ATTRIBUTES: For Extensible Custom Fields
+---------------------------------------------
+CREATE TABLE wbs_node_attributes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    node_id UUID NOT NULL REFERENCES wbs_nodes(id) ON DELETE CASCADE,
+    attribute_key TEXT NOT NULL, -- e.g., 'concrete_psi', 'inspection_date'
+    attribute_value JSONB NOT NULL, -- Can be string, number, boolean, array
+    attribute_type TEXT NOT NULL CHECK (attribute_type IN ('text', 'number', 'date', 'boolean', 'file')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(node_id, attribute_key)
+);
+
+---------------------------------------------
+-- 3. AUTOMATIC CODE_PATH MANAGEMENT TRIGGER
+---------------------------------------------
+-- This complex function ensures code_path is always correct and updates all children when a parent changes.
+CREATE OR REPLACE FUNCTION update_wbs_code_path()
+RETURNS TRIGGER AS $$
+DECLARE
+    old_path LTREE;
+    new_path LTREE;
+BEGIN
+    -- Generate new path for INSERT or parent change
+    IF TG_OP = 'INSERT' OR (TG_OP = 'UPDATE' AND NEW.parent_id IS DISTINCT FROM OLD.parent_id) THEN
+        IF NEW.parent_id IS NULL THEN
+            -- Root node: use its own ID
+            NEW.code_path = NEW.id::text::ltree;
+        ELSE
+            -- Child node: parent path + its own ID
+            SELECT code_path || NEW.id::text INTO new_path FROM wbs_nodes WHERE id = NEW.parent_id AND tenant_id = NEW.tenant_id;
+            IF new_path IS NULL THEN
+                RAISE EXCEPTION 'Invalid parent_id or tenant mismatch';
+            END IF;
+            NEW.code_path = new_path;
+        END IF;
+    END IF;
+
+    -- If path changed, recursively update all descendants
+    IF TG_OP = 'UPDATE' AND NEW.code_path IS DISTINCT FROM OLD.code_path THEN
+        UPDATE wbs_nodes
+        SET code_path = NEW.code_path || subpath(code_path, nlevel(OLD.code_path) - 1)
+        WHERE tenant_id = NEW.tenant_id
+          AND code_path <@ OLD.code_path
+          AND id != NEW.id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER wbs_code_path_trigger
+    BEFORE INSERT OR UPDATE ON wbs_nodes
+    FOR EACH ROW EXECUTE FUNCTION update_wbs_code_path();
+```
+
+### **2.2 WBS Engine Business Logic (Backend Service)**
+**Objective:** Create the `/lib/wbs-engine.js` service with advanced tree operations.
+
+**Instructions for Replit AI/Developer:**
+"Create the file `/lib/wbs-engine.js` with the following comprehensive class."
+
+```javascript
+// /lib/wbs-engine.js
+import { createClient } from './supabase-server';
+
+export class WBSEngine {
+    constructor(tenantId) {
+        this.tenantId = tenantId;
+        this.supabase = createClient();
+    }
+
+    // 1. FETCH FULL TREE WITH DIMENSIONS
+    async getProjectTree(projectId, filters = {}) {
+        // Build query using LTREE operators for efficiency
+        let query = this.supabase
+            .from('wbs_nodes')
+            .select(`
+                *,
+                assigned_to:tenant_users!wbs_nodes_assigned_to_fkey (
+                    id, email, profile
+                ),
+                attributes:wbs_node_attributes(*)
+            `)
+            .eq('tenant_id', this.tenantId)
+            .eq('project_id', projectId)
+            .order('code_path', { ascending: true });
+
+        // Apply dimension filters (e.g., dimensions->>'trade' = 'Electrical')
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value) query = query.eq(`dimensions->>${key}`, value);
+        });
+
+        const { data, error } = await query;
+        if (error) throw new Error(`Failed to fetch WBS tree: ${error.message}`);
+
+        // Convert flat array to nested tree structure
+        return this._buildTree(data);
+    }
+
+    // 2. MOVE NODE (CHANGE PARENT) WITH FULL RECALCULATION
+    async moveNode(nodeId, newParentId) {
+        // Use a stored procedure for atomic operation
+        const { data, error } = await this.supabase.rpc('move_wbs_node', {
+            p_node_id: nodeId,
+            p_new_parent_id: newParentId,
+            p_tenant_id: this.tenantId
+        });
+
+        if (error) throw new Error(`Failed to move node: ${error.message}`);
+        return data;
+    }
+
+    // 3. APPLY DIMENSION FILTERS & AGGREGATION
+    async getDimensionReport(projectId, dimensionKeys) {
+        // For each key, get unique values and aggregate metrics
+        const report = {};
+        for (const key of dimensionKeys) {
+            const { data } = await this.supabase
+                .from('wbs_nodes')
+                .select(`dimensions->>${key}, estimated_cost, actual_cost, status`)
+                .eq('tenant_id', this.tenantId)
+                .eq('project_id', projectId)
+                .not(`dimensions->>${key}`, 'is', null);
+
+            // Aggregate by dimension value
+            report[key] = this._aggregateDimensionData(data, key);
+        }
+        return report;
+    }
+
+    // 4. PRIVATE HELPER: BUILD NESTED TREE FROM FLAT ARRAY
+    _buildTree(nodes) {
+        const map = {};
+        const roots = [];
+
+        // First pass: create map of id -> node with children array
+        nodes.forEach(node => {
+            map[node.id] = { ...node, children: [] };
+        });
+
+        // Second pass: assign children to parents
+        nodes.forEach(node => {
+            if (node.parent_id && map[node.parent_id]) {
+                map[node.parent_id].children.push(map[node.id]);
+            } else {
+                roots.push(map[node.id]);
+            }
+        });
+
+        // Calculate depth and path for each node
+        const calculateDepth = (node, depth = 0) => {
+            node.depth = depth;
+            node.children.forEach(child => calculateDepth(child, depth + 1));
+        };
+        roots.forEach(root => calculateDepth(root));
+
+        return roots;
+    }
+
+    // 5. PRIVATE HELPER: AGGREGATE DIMENSION DATA
+    _aggregateDimensionData(data, key) {
+        const aggregation = {};
+        data.forEach(row => {
+            const value = row[`dimensions->>${key}`];
+            if (!value) return;
+
+            if (!aggregation[value]) {
+                aggregation[value] = {
+                    count: 0,
+                    estimated_cost: 0,
+                    actual_cost: 0,
+                    by_status: {}
+                };
+            }
+
+            aggregation[value].count++;
+            aggregation[value].estimated_cost += parseFloat(row.estimated_cost || 0);
+            aggregation[value].actual_cost += parseFloat(row.actual_cost || 0);
+
+            const status = row.status || 'unknown';
+            aggregation[value].by_status[status] = (aggregation[value].by_status[status] || 0) + 1;
+        });
+
+        return aggregation;
+    }
+}
+
+// SUPABASE RPC FUNCTION (To be created in database)
+/*
+CREATE OR REPLACE FUNCTION move_wbs_node(
+    p_node_id UUID,
+    p_new_parent_id UUID,
+    p_tenant_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+    result JSONB;
+BEGIN
+    -- Verify tenant ownership
+    -- Calculate new code_path
+    -- Update node and all descendants in single transaction
+    -- Return success with new structure
+    RETURN result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+*/
+```
+
+### **2.3 Frontend WBS Builder Component**
+**Objective:** Create a drag-and-drop, real-time WBS interface with dimension editing.
+
+**Instructions:** "Create the file `/components/wbs/WbsBuilder.jsx` with the following implementation."
+
+```jsx
+// /components/wbs/WbsBuilder.jsx
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { WbsNode } from './WbsNode';
+import { DimensionPanel } from './DimensionPanel';
+
+export function WbsBuilder({ projectId, tenantId }) {
+    const [tree, setTree] = useState([]);
+    const [selectedNode, setSelectedNode] = useState(null);
+    const [dimensionSchema, setDimensionSchema] = useState([]);
+
+    // Initialize sensors for drag-and-drop
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    // Fetch tree and dimension schema on load
+    useEffect(() => {
+        fetchTree();
+        fetchDimensionSchema();
+    }, [projectId]);
+
+    const fetchTree = async () => {
+        const res = await fetch(`/api/wbs/tree?projectId=${projectId}`);
+        const data = await res.json();
+        setTree(data);
+    };
+
+    const fetchDimensionSchema = async () => {
+        // Get from tenant config
+        const res = await fetch(`/api/tenant/config`);
+        const config = await res.json();
+        setDimensionSchema(config.wbsDimensions || []);
+    };
+
+    // Handle drag end - update parent relationship
+    const handleDragEnd = async (event) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        try {
+            await fetch(`/api/wbs/nodes/${active.id}/move`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newParentId: over.id })
+            });
+            fetchTree(); // Refresh
+        } catch (error) {
+            console.error('Failed to move node:', error);
+        }
+    };
+
+    // Render tree recursively
+    const renderNode = (node) => (
+        <WbsNode
+            key={node.id}
+            node={node}
+            isSelected={selectedNode?.id === node.id}
+            onSelect={setSelectedNode}
+            dimensionSchema={dimensionSchema}
+        >
+            {node.children.map(renderNode)}
+        </WbsNode>
+    );
+
+    return (
+        <div className="flex h-screen">
+            {/* Left Panel: Tree View */}
+            <div className="w-3/4 border-r overflow-auto">
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                >
+                    <SortableContext items={tree.map(n => n.id)} strategy={verticalListSortingStrategy}>
+                        <div className="p-4">
+                            {tree.map(renderNode)}
+                        </div>
+                    </SortableContext>
+                </DndContext>
+            </div>
+
+            {/* Right Panel: Dimension Editor */}
+            <div className="w-1/4 bg-gray-50 p-4">
+                <DimensionPanel
+                    node={selectedNode}
+                    dimensionSchema={dimensionSchema}
+                    onSave={async (updates) => {
+                        await fetch(`/api/wbs/nodes/${selectedNode.id}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify(updates)
+                        });
+                        fetchTree();
+                    }}
+                />
+            </div>
+        </div>
+    );
+}
+```
+
+---
+
+## **PART 3: PROJECT TEMPLATES & AUTOMATIC FILE REPLICATION**
+
+### **3.1 Template Schema & Relationships**
+**Objective:** Create a system to define and instantiate complete project templates, including WBS structure, documents, and configurations.
+
+**Instructions:** Execute this SQL to create template-related tables.
+
+```sql
+---------------------------------------------
+-- 1. PROJECT_TEMPLATES: Master Template Definition
+---------------------------------------------
+CREATE TABLE project_templates (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    category TEXT CHECK (category IN ('residential', 'commercial', 'civil', 'custom')),
+    version INTEGER DEFAULT 1,
+    is_active BOOLEAN DEFAULT TRUE,
+
+    -- TEMPLATE CONTENT AS JSON STRUCTURE
+    template_schema JSONB NOT NULL DEFAULT '{
+        "wbsRootNodes": [],
+        "defaultDocuments": [],
+        "requiredAttributes": {},
+        "workflowRules": {}
+    }'::jsonb,
+
+    -- FILE ASSOCIATIONS (for automatic copying)
+    file_associations JSONB DEFAULT '[]', -- [{source_path, target_in_project, is_required}]
+
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, name, version)
+);
+
+---------------------------------------------
+-- 2. PROJECTS: Instances Created from Templates
+---------------------------------------------
+CREATE TABLE projects (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    template_id UUID REFERENCES project_templates(id),
+
+    -- PROJECT IDENTITY
+    project_number TEXT GENERATED ALWAYS AS (
+        'PRJ-' || to_char(created_at, 'YYMM') || '-' || lpad(id::text, 6, '0')
+    ) STORED,
+    name TEXT NOT NULL,
+    address JSONB, -- {street, city, state, zip, lot_number}
+    project_type TEXT,
+
+    -- STATUS & DATES
+    status TEXT DEFAULT 'planning' CHECK (status IN ('planning', 'active', 'on_hold', 'completed', 'cancelled')),
+    start_date DATE,
+    target_completion_date DATE,
+    actual_completion_date DATE,
+
+    -- FINANCIALS
+    budget DECIMAL(15,2),
+    contract_amount DECIMAL(15,2),
+    estimated_profit DECIMAL(15,2),
+
+    -- METADATA
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Now add the foreign key reference from wbs_nodes to projects
+ALTER TABLE wbs_nodes ADD CONSTRAINT wbs_nodes_project_fkey 
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE;
+
+---------------------------------------------
+-- 3. TEMPLATE INSTANTIATION LOG
+---------------------------------------------
+CREATE TABLE template_instantiations (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    template_id UUID NOT NULL REFERENCES project_templates(id),
+    project_id UUID NOT NULL REFERENCES projects(id),
+    instantiated_by UUID REFERENCES tenant_users(id),
+
+    -- SNAPSHOT OF WHAT WAS COPIED
+    snapshot JSONB NOT NULL, -- {wbs_nodes_created: 45, documents_copied: 12, attributes_set: 8}
+    errors JSONB, -- Any errors during instantiation
+
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### **3.2 Template Service with File Replication**
+**Objective:** Create `/lib/template-service.js` that handles the complex instantiation process.
+
+**Instructions:** "Create the following service file with comprehensive template instantiation logic."
+
+```javascript
+// /lib/template-service.js
+import { createClient } from './supabase-server';
+import { StorageRouter } from './storage-router';
+
+export class TemplateService {
+    constructor(tenantId) {
+        this.tenantId = tenantId;
+        this.supabase = createClient();
+        this.storage = new StorageRouter(tenantId);
+    }
+
+    // MAIN INSTANTIATION METHOD
+    async instantiateTemplate(templateId, projectData, userId) {
+        const transaction = await this.supabase.rpc('begin_instantiation', {
+            p_template_id: templateId,
+            p_tenant_id: this.tenantId,
+            p_user_id: userId
+        });
+
+        try {
+            // 1. CREATE PROJECT SHELL
+            const project = await this.createProjectFromTemplate(templateId, projectData);
+
+            // 2. GENERATE WBS STRUCTURE (Recursive)
+            const wbsNodes = await this.generateWbsFromTemplate(templateId, project.id);
+
+            // 3. COPY TEMPLATE FILES (Dual-mode aware)
+            const copiedFiles = await this.replicateTemplateFiles(templateId, project.id);
+
+            // 4. SET DEFAULT ATTRIBUTES & RELATIONSHIPS
+            await this.applyTemplateDefaults(templateId, project.id, wbsNodes);
+
+            // 5. LOG SUCCESSFUL INSTANTIATION
+            await this.logInstantiation({
+                templateId,
+                projectId: project.id,
+                userId,
+                snapshot: {
+                    wbs_nodes_created: wbsNodes.length,
+                    documents_copied: copiedFiles.length,
+                    project_data: projectData
+                }
+            });
+
+            return {
+                success: true,
+                project,
+                wbsNodes,
+                copiedFiles
+            };
+
+        } catch (error) {
+            await this.supabase.rpc('rollback_instantiation');
+            throw new Error(`Template instantiation failed: ${error.message}`);
+        }
+    }
+
+    // FILE REPLICATION ENGINE
+    async replicateTemplateFiles(templateId, targetProjectId) {
+        // Get file associations from template
+        const { data: template } = await this.supabase
+            .from('project_templates')
+            .select('file_associations')
+            .eq('id', templateId)
+            .single();
+
+        const copiedFiles = [];
+        const errors = [];
+
+        for (const association of template.file_associations || []) {
+            try {
+                // Determine source path (could be in template bucket or URL)
+                const sourcePath = association.source_path;
+
+                // Determine target path in new project
+                const targetPath = `projects/${targetProjectId}/${association.target_in_project}`;
+
+                // Use StorageRouter to copy (handles cloud/local mode)
+                const result = await this.storage.copyFile({
+                    sourcePath,
+                    targetPath,
+                    metadata: {
+                        original_template: templateId,
+                        copied_at: new Date().toISOString()
+                    }
+                });
+
+                copiedFiles.push({
+                    original: sourcePath,
+                    copy: result.path,
+                    association
+                });
+
+            } catch (error) {
+                errors.push({
+                    association,
+                    error: error.message
+                });
+                if (association.is_required) {
+                    throw new Error(`Required file copy failed: ${association.source_path}`);
+                }
+            }
+        }
+
+        return { copiedFiles, errors };
+    }
+
+    // WBS GENERATION FROM TEMPLATE SCHEMA
+    async generateWbsFromTemplate(templateId, projectId) {
+        const { data: template } = await this.supabase
+            .from('project_templates')
+            .select('template_schema')
+            .eq('id', templateId)
+            .single();
+
+        const rootNodes = template.template_schema?.wbsRootNodes || [];
+        const createdNodes = [];
+
+        // Recursive function to create node hierarchy
+        const createNode = async (nodeSchema, parentId = null, codePath = '') => {
+            const nodeData = {
+                tenant_id: this.tenantId,
+                project_id: projectId,
+                parent_id: parentId,
+                title: nodeSchema.title,
+                description: nodeSchema.description,
+                dimensions: nodeSchema.dimensions || {},
+                estimated_hours: nodeSchema.estimated_hours,
+                is_template_node: true,
+                order_index: nodeSchema.order
+            };
+
+            const { data: node, error } = await this.supabase
+                .from('wbs_nodes')
+                .insert(nodeData)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            createdNodes.push(node);
+
+            // Create child nodes recursively
+            for (const childSchema of nodeSchema.children || []) {
+                await createNode(childSchema, node.id);
+            }
+
+            return node;
+        };
+
+        // Create all root nodes
+        for (const rootSchema of rootNodes) {
+            await createNode(rootSchema);
+        }
+
+        return createdNodes;
+    }
+
+    // LOGGING FUNCTION
+    async logInstantiation(logData) {
+        await this.supabase
+            .from('template_instantiations')
+            .insert({
+                tenant_id: this.tenantId,
+                ...logData
+            });
+    }
+}
+```
+
+### **3.3 Template Management API Endpoints**
+**Objective:** Create API routes for template operations.
+
+**Instructions:** "Create the following API route files."
+
+```javascript
+// /app/api/templates/instantiate/route.js
+import { TemplateService } from '@/lib/template-service';
+import { getTenantId } from '@/lib/auth-utils';
+
+export async function POST(request) {
+    try {
+        const tenantId = await getTenantId(request);
+        const { templateId, projectData } = await request.json();
+        const userId = request.user?.id;
+
+        const service = new TemplateService(tenantId);
+        const result = await service.instantiateTemplate(templateId, projectData, userId);
+
+        return Response.json(result);
+    } catch (error) {
+        return Response.json(
+            { error: error.message },
+            { status: 500 }
+        );
+    }
+}
+
+// /app/api/templates/[id]/files/route.js
+export async function GET(request, { params }) {
+    // Returns file associations for a template
+}
+
+export async function POST(request, { params }) {
+    // Upload new file to template library
+}
+```
+
+---
+
+## **PART 4: BAMBOOHR INTEGRATION MODULE**
+
+### **4.1 Enhanced HR Schema & Sync Engine**
+**Objective:** Extend the schema for HR data and create a robust synchronization service.
+
+**Instructions:** Execute this SQL to add HR-specific tables.
+
+```sql
+---------------------------------------------
+-- 1. EMPLOYEES: Synced from BambooHR
+---------------------------------------------
+CREATE TABLE employees (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    bamboohr_id INTEGER UNIQUE, -- External ID from BambooHR
+    employee_number TEXT,
+    
+    -- PERSONAL INFORMATION
+    personal_info JSONB NOT NULL DEFAULT '{
+        "firstName": null,
+        "lastName": null,
+        "middleName": null,
+        "gender": null,
+        "dateOfBirth": null,
+        "maritalStatus": null,
+        "ethnicity": null
+    }'::jsonb,
+    
+    -- CONTACT INFORMATION
+    contact_info JSONB NOT NULL DEFAULT '{
+        "workEmail": null,
+        "personalEmail": null,
+        "workPhone": null,
+        "mobilePhone": null,
+        "address": {}
+    }'::jsonb,
+    
+    -- EMPLOYMENT DETAILS
+    employment_info JSONB NOT NULL DEFAULT '{
+        "hireDate": null,
+        "originalHireDate": null,
+        "terminationDate": null,
+        "employmentStatus": "active",
+        "department": null,
+        "division": null,
+        "jobTitle": null,
+        "reportsTo": null,
+        "payRate": null,
+        "payType": null,
+        "employmentType": null
+    }'::jsonb,
+    
+    -- TIME OFF BALANCES
+    time_off_balances JSONB DEFAULT '{
+        "pto": 0,
+        "sick": 0,
+        "vacation": 0
+    }'::jsonb,
+    
+    -- SYNC METADATA
+    last_sync_at TIMESTAMPTZ,
+    sync_status TEXT DEFAULT 'pending',
+    raw_bamboohr_data JSONB, -- Full raw response for debugging
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- COMPOSITE INDEXES FOR PERFORMANCE
+    CONSTRAINT fk_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+);
+
+-- Indexes for common queries
+CREATE INDEX idx_employees_tenant ON employees(tenant_id);
+CREATE INDEX idx_employees_status ON employees(tenant_id, (employment_info->>'employmentStatus'));
+CREATE INDEX idx_employees_department ON employees(tenant_id, (employment_info->>'department'));
+
+---------------------------------------------
+-- 2. EMPLOYEE-WBS ASSIGNMENTS
+---------------------------------------------
+CREATE TABLE employee_assignments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    employee_id UUID NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    wbs_node_id UUID NOT NULL REFERENCES wbs_nodes(id) ON DELETE CASCADE,
+    
+    assignment_type TEXT NOT NULL CHECK (assignment_type IN ('primary', 'secondary', 'reviewer')),
+    allocation_percentage INTEGER CHECK (allocation_percentage BETWEEN 0 AND 100),
+    start_date DATE,
+    end_date DATE,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    UNIQUE(tenant_id, employee_id, wbs_node_id, assignment_type)
+);
+
+---------------------------------------------
+-- 3. SYNC AUDIT LOG
+---------------------------------------------
+CREATE TABLE bamboohr_sync_log (
+    id BIGSERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    sync_type TEXT NOT NULL CHECK (sync_type IN ('full', 'incremental', 'manual')),
+    employees_processed INTEGER,
+    employees_created INTEGER,
+    employees_updated INTEGER,
+    employees_failed INTEGER,
+    time_off_updated BOOLEAN,
+    
+    started_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'running' CHECK (status IN ('running', 'completed', 'failed')),
+    error_message TEXT,
+    raw_response JSONB,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+### **4.2 BambooHR Service with OAuth & Webhooks**
+**Objective:** Create a comprehensive service for BambooHR integration.
+
+**Instructions:** "Create `/lib/bamboohr-service.js` with full OAuth and sync capabilities."
+
+```javascript
+// /lib/bamboohr-service.js
+import axios from 'axios';
+import { createClient } from './supabase-server';
+
+export class BambooHRService {
+    constructor(tenantId) {
+        this.tenantId = tenantId;
+        this.supabase = createClient();
+        this.apiVersion = 'v1';
+    }
+
+    // INITIALIZE CLIENT WITH TENANT CREDENTIALS
+    async initialize() {
+        const { data: tenant } = await this.supabase
+            .from('tenants')
+            .select('bamboohr_api_key, bamboohr_company_domain, bamboohr_oauth_token')
+            .eq('id', this.tenantId)
+            .single();
+
+        if (!tenant) throw new Error('Tenant not found');
+        
+        this.companyDomain = tenant.bamboohr_company_domain;
+        this.apiKey = tenant.bamboohr_api_key;
+        this.oauthToken = tenant.bamboohr_oauth_token;
+        
+        // Configure axios instance
+        this.client = axios.create({
+            baseURL: `https://api.bamboohr.com/api/gateway.php/${this.companyDomain}/${this.apiVersion}/`,
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // Add authentication
+        if (this.oauthToken?.access_token) {
+            this.client.defaults.headers.common['Authorization'] = `Bearer ${this.oauthToken.access_token}`;
+        } else if (this.apiKey) {
+            const auth = Buffer.from(`${this.apiKey}:x`).toString('base64');
+            this.client.defaults.headers.common['Authorization'] = `Basic ${auth}`;
+        } else {
+            throw new Error('No BambooHR authentication configured');
+        }
+    }
+
+    // FULL EMPLOYEE SYNC WITH INCREMENTAL UPDATES
+    async syncEmployees(fullSync = false) {
+        await this.initialize();
+        
+        const syncLog = await this.createSyncLog('full');
+        
+        try {
+            let employees = [];
+            
+            if (fullSync) {
+                // Use Reports API for bulk data (more reliable than individual endpoints)
+                employees = await this.fetchEmployeeReport();
+            } else {
+                // Incremental sync using changed records
+                employees = await this.fetchChangedEmployees();
+            }
+
+            // Process each employee
+            const results = {
+                created: 0,
+                updated: 0,
+                failed: 0,
+                errors: []
+            };
+
+            for (const emp of employees) {
+                try {
+                    const result = await this.upsertEmployee(emp);
+                    if (result.created) results.created++;
+                    if (result.updated) results.updated++;
+                } catch (error) {
+                    results.failed++;
+                    results.errors.push({
+                        employeeId: emp.id,
+                        error: error.message
+                    });
+                }
+            }
+
+            // Sync time off balances
+            await this.syncTimeOffBalances();
+
+            // Update sync log
+            await this.updateSyncLog(syncLog.id, {
+                status: 'completed',
+                employees_processed: employees.length,
+                employees_created: results.created,
+                employees_updated: results.updated,
+                employees_failed: results.failed,
+                completed_at: new Date().toISOString()
+            });
+
+            return results;
+
+        } catch (error) {
+            await this.updateSyncLog(syncLog.id, {
+                status: 'failed',
+                error_message: error.message,
+                completed_at: new Date().toISOString()
+            });
+            throw error;
+        }
+    }
+
+    // FETCH EMPLOYEE REPORT (Customizable fields)
+    async fetchEmployeeReport() {
+        const reportFields = [
+            'id', 'employeeNumber', 'firstName', 'lastName', 'middleName',
+            'gender', 'dateOfBirth', 'hireDate', 'originalHireDate',
+            'terminationDate', 'department', 'division', 'jobTitle',
+            'workEmail', 'workPhone', 'mobilePhone', 'payRate', 'payType'
+        ];
+
+        const report = {
+            title: 'ERP Sync Report',
+            fields: reportFields
+        };
+
+        const response = await this.client.post('/reports/custom', report);
+        
+        // Transform BambooHR response to our schema
+        return response.data.employees.map(emp => this.transformEmployeeData(emp));
+    }
+
+    // TRANSFORM BAMBOOHR DATA TO OUR SCHEMA
+    transformEmployeeData(bambooData) {
+        return {
+            bamboohr_id: parseInt(bambooData.id),
+            employee_number: bambooData.employeeNumber,
+            personal_info: {
+                firstName: bambooData.firstName,
+                lastName: bambooData.lastName,
+                middleName: bambooData.middleName,
+                gender: bambooData.gender,
+                dateOfBirth: bambooData.dateOfBirth
+            },
+            employment_info: {
+                hireDate: bambooData.hireDate,
+                originalHireDate: bambooData.originalHireDate,
+                terminationDate: bambooData.terminationDate,
+                department: bambooData.department,
+                division: bambooData.division,
+                jobTitle: bambooData.jobTitle,
+                payRate: bambooData.payRate,
+                payType: bambooData.payType
+            },
+            contact_info: {
+                workEmail: bambooData.workEmail,
+                workPhone: bambooData.workPhone,
+                mobilePhone: bambooData.mobilePhone
+            }
+        };
+    }
+
+    // UPSERT EMPLOYEE WITH CONFLICT RESOLUTION
+    async upsertEmployee(employeeData) {
+        const { data: existing } = await this.supabase
+            .from('employees')
+            .select('id')
+            .eq('tenant_id', this.tenantId)
+            .eq('bamboohr_id', employeeData.bamboohr_id)
+            .maybeSingle();
+
+        const now = new Date().toISOString();
+        const employeeRecord = {
+            ...employeeData,
+            tenant_id: this.tenantId,
+            last_sync_at: now,
+            sync_status: 'synced',
+            updated_at: now
+        };
+
+        if (existing) {
+            // Update existing
+            const { error } = await this.supabase
+                .from('employees')
+                .update(employeeRecord)
+                .eq('id', existing.id);
+            
+            if (error) throw error;
+            return { updated: true, id: existing.id };
+        } else {
+            // Insert new
+            const { data, error } = await this.supabase
+                .from('employees')
+                .insert([employeeRecord])
+                .select()
+                .single();
+            
+            if (error) throw error;
+            return { created: true, id: data.id };
+        }
+    }
+
+    // WEBHOOK HANDLER FOR REAL-TIME UPDATES
+    async handleWebhook(payload) {
+        const { action, employeeId } = payload;
+        
+        switch (action) {
+            case 'updated':
+            case 'created':
+                await this.syncSingleEmployee(employeeId);
+                break;
+            case 'terminated':
+                await this.markEmployeeTerminated(employeeId);
+                break;
+            case 'time_off_updated':
+                await this.syncTimeOffForEmployee(employeeId);
+                break;
+        }
+    }
+
+    // LOGGING METHODS
+    async createSyncLog(syncType) {
+        const { data, error } = await this.supabase
+            .from('bamboohr_sync_log')
+            .insert([{
+                tenant_id: this.tenantId,
+                sync_type: syncType,
+                status: 'running',
+                started_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+        
+        if (error) throw error;
+        return data;
+    }
+
+    async updateSyncLog(logId, updates) {
+        await this.supabase
+            .from('bamboohr_sync_log')
+            .update(updates)
+            .eq('id', logId);
+    }
+}
+```
+
+---
+
+## **PART 5: DUAL-MODE STORAGE ROUTER WITH AUTOMATIC FILE COPYING**
+
+### **5.1 Enhanced Storage Schema**
+**Objective:** Extend the documents table for template file tracking.
+
+**Instructions:** Execute this SQL to enhance the documents system.
+
+```sql
+---------------------------------------------
+-- 1. DOCUMENTS: Enhanced for Template Tracking
+---------------------------------------------
+CREATE TABLE documents (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    -- MULTIPLE RELATIONSHIPS
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+    wbs_node_id UUID REFERENCES wbs_nodes(id) ON DELETE CASCADE,
+    template_id UUID REFERENCES project_templates(id) ON DELETE CASCADE,
+    employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
+    
+    -- FILE METADATA
+    file_name TEXT NOT NULL,
+    file_type TEXT,
+    file_size BIGINT,
+    mime_type TEXT,
+    
+    -- STORAGE LOCATION (Mode-agnostic)
+    storage_mode TEXT NOT NULL DEFAULT 'cloud' CHECK (storage_mode IN ('cloud', 'local_gateway')),
+    storage_identifier TEXT NOT NULL, -- Path in bucket or local filesystem
+    
+    -- TEMPLATE RELATIONSHIPS
+    is_template_asset BOOLEAN DEFAULT FALSE,
+    original_template_asset_id UUID REFERENCES documents(id), -- For copied files
+    copy_generation INTEGER DEFAULT 0,
+    
+    -- VERSIONING
+    version INTEGER DEFAULT 1,
+    previous_version_id UUID REFERENCES documents(id),
+    
+    -- SECURITY & ACCESS
+    encrypted BOOLEAN DEFAULT FALSE,
+    access_control JSONB DEFAULT '{"roles": [], "users": []}',
+    
+    -- METADATA
+    metadata JSONB DEFAULT '{}',
+    created_by UUID REFERENCES tenant_users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    -- CONSTRAINT: Must belong to at least one entity
+    CONSTRAINT document_entity_check CHECK (
+        (project_id IS NOT NULL) OR
+        (wbs_node_id IS NOT NULL) OR
+        (template_id IS NOT NULL) OR
+        (employee_id IS NOT NULL)
+    )
+);
+
+-- Indexes for common queries
+CREATE INDEX idx_documents_tenant_project ON documents(tenant_id, project_id);
+CREATE INDEX idx_documents_template ON documents(tenant_id, template_id, is_template_asset);
+CREATE INDEX idx_documents_wbs ON documents(tenant_id, wbs_node_id);
+CREATE INDEX idx_documents_storage ON documents(storage_mode, storage_identifier);
+
+---------------------------------------------
+-- 2. DOCUMENT_VERSIONS: Complete History
+---------------------------------------------
+CREATE TABLE document_versions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL,
+    storage_identifier TEXT NOT NULL,
+    file_size BIGINT,
+    created_by UUID REFERENCES tenant_users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    UNIQUE(document_id, version)
+);
+```
+
+### **5.2 Storage Router with Intelligent Copying**
+**Objective:** Create `/lib/storage-router.js` that handles dual-mode storage and automatic file replication.
+
+**Instructions:** "Create this comprehensive storage service."
+
+```javascript
+// /lib/storage-router.js
+import { createClient } from './supabase-server';
+import { createReadStream, createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+import crypto from 'crypto';
+
+export class StorageRouter {
+    constructor(tenantId) {
+        this.tenantId = tenantId;
+        this.supabase = createClient();
+    }
+
+    // MAIN FILE COPY METHOD
+    async copyFile(options) {
+        const {
+            sourcePath,
+            targetPath,
+            metadata = {},
+            encryptionKey = null
+        } = options;
+
+        // 1. Determine source storage mode
+        const sourceInfo = await this.analyzePath(sourcePath);
+        
+        // 2. Determine target storage mode (from tenant config)
+        const targetMode = await this.getTenantStorageMode();
+        
+        // 3. Perform the copy based on mode combinations
+        let result;
+        if (sourceInfo.mode === 'cloud' && targetMode === 'cloud') {
+            result = await this.copyCloudToCloud(sourceInfo, targetPath);
+        } else if (sourceInfo.mode === 'local' && targetMode === 'cloud') {
+            result = await this.copyLocalToCloud(sourceInfo, targetPath);
+        } else if (sourceInfo.mode === 'cloud' && targetMode === 'local') {
+            result = await this.copyCloudToLocal(sourceInfo, targetPath);
+        } else {
+            result = await this.copyLocalToLocal(sourceInfo, targetPath);
+        }
+
+        // 4. Encrypt if requested
+        if (encryptionKey) {
+            result = await this.encryptFile(result.finalPath, encryptionKey);
+        }
+
+        // 5. Create document record
+        const docRecord = await this.createDocumentRecord({
+            path: result.finalPath,
+            mode: targetMode,
+            metadata: {
+                ...metadata,
+                copied_from: sourcePath,
+                copied_at: new Date().toISOString()
+            }
+        });
+
+        return {
+            ...result,
+            documentId: docRecord.id
+        };
+    }
+
+    // CLOUD-TO-CLOUD COPY (Supabase/S3)
+    async copyCloudToCloud(sourceInfo, targetPath) {
+        const { supabase } = this;
+
+        // Download to buffer
+        const { data: fileData, error: downloadError } = await supabase.storage
+            .from(sourceInfo.bucket)
+            .download(sourceInfo.path);
+
+        if (downloadError) throw downloadError;
+
+        // Upload to target
+        const targetBucket = this.getTargetBucket();
+        const { error: uploadError } = await supabase.storage
+            .from(targetBucket)
+            .upload(targetPath, fileData, {
+                contentType: sourceInfo.mimeType,
+                cacheControl: '3600'
+            });
+
+        if (uploadError) throw uploadError;
+
+        return {
+            finalPath: targetPath,
+            mode: 'cloud',
+            bucket: targetBucket,
+            url: this.getPublicUrl(targetBucket, targetPath)
+        };
+    }
+
+    // LOCAL-TO-CLOUD COPY (Gateway to Cloud)
+    async copyLocalToCloud(sourceInfo, targetPath) {
+        // Call local gateway API
+        const gatewayEndpoint = await this.getGatewayEndpoint();
+        
+        const response = await fetch(`${gatewayEndpoint}/api/file/read`, {
+            method: 'POST',
+            headers: {
+                'X-API-Key': await this.getGatewayApiKey(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                path: sourceInfo.fullPath,
+                operation: 'read_for_upload'
+            })
+        });
+
+        if (!response.ok) throw new Error('Gateway read failed');
+
+        const { fileData, fileName, mimeType } = await response.json();
+
+        // Upload to cloud
+        const targetBucket = this.getTargetBucket();
+        const { error } = await this.supabase.storage
+            .from(targetBucket)
+            .upload(targetPath, fileData, {
+                contentType: mimeType
+            });
+
+        if (error) throw error;
+
+        return {
+            finalPath: targetPath,
+            mode: 'cloud',
+            bucket: targetBucket
+        };
+    }
+
+    // AUTOMATIC TEMPLATE FILE REPLICATION
+    async replicateTemplateFiles(templateId, targetProjectId) {
+        // Get all template assets
+        const { data: templateAssets } = await this.supabase
+            .from('documents')
+            .select('*')
+            .eq('tenant_id', this.tenantId)
+            .eq('template_id', templateId)
+            .eq('is_template_asset', true);
+
+        const results = [];
+
+        for (const asset of templateAssets) {
+            const targetPath = `projects/${targetProjectId}/templates/${asset.file_name}`;
+            
+            try {
+                const result = await this.copyFile({
+                    sourcePath: asset.storage_identifier,
+                    targetPath,
+                    metadata: {
+                        original_asset_id: asset.id,
+                        template_id: templateId,
+                        generation: 1
+                    }
+                });
+
+                results.push({
+                    success: true,
+                    original: asset,
+                    copy: result
+                });
+
+            } catch (error) {
+                results.push({
+                    success: false,
+                    original: asset,
+                    error: error.message
+                });
+            }
+        }
+
+        return results;
+    }
+
+    // FILE ENCRYPTION FOR SENSITIVE DOCUMENTS
+    async encryptFile(filePath, encryptionKey) {
+        const algorithm = 'aes-256-gcm';
+        const iv = crypto.randomBytes(16);
+        
+        const cipher = crypto.createCipheriv(algorithm, encryptionKey, iv);
+        
+        // Implementation depends on storage mode
+        // This would involve reading, encrypting, and re-writing the file
+        
+        return {
+            encrypted: true,
+            iv: iv.toString('hex'),
+            algorithm
+        };
+    }
+
+    // PATH ANALYSIS HELPER
+    async analyzePath(path) {
+        // Determine if path is cloud URL, local path, or gateway reference
+        if (path.startsWith('http')) {
+            return {
+                mode: 'cloud',
+                url: path,
+                bucket: this.extractBucketFromUrl(path),
+                path: this.extractPathFromUrl(path)
+            };
+        } else if (path.startsWith('/') || path.includes('\\')) {
+            return {
+                mode: 'local',
+                fullPath: path
+            };
+        } else {
+            // Assume it's already a storage identifier
+            const { data: doc } = await this.supabase
+                .from('documents')
+                .select('storage_mode, storage_identifier')
+                .eq('storage_identifier', path)
+                .single();
+
+            return {
+                mode: doc?.storage_mode || 'cloud',
+                path: doc?.storage_identifier || path
+            };
+        }
+    }
+
+    // UTILITY METHODS
+    async getTenantStorageMode() {
+        const { data } = await this.supabase
+            .from('tenants')
+            .select('storage_mode')
+            .eq('id', this.tenantId)
+            .single();
+        
+        return data?.storage_mode || 'cloud';
+    }
+
+    async getGatewayEndpoint() {
+        const { data } = await this.supabase
+            .from('tenants')
+            .select('gateway_endpoint')
+            .eq('id', this.tenantId)
+            .single();
+        
+        return data?.gateway_endpoint;
+    }
+
+    getPublicUrl(bucket, path) {
+        const { data } = this.supabase.storage
+            .from(bucket)
+            .getPublicUrl(path);
+        
+        return data?.publicUrl;
+    }
+
+    // DOCUMENT RECORD CREATION
+    async createDocumentRecord(fileInfo) {
+        const { data, error } = await this.supabase
+            .from('documents')
+            .insert([{
+                tenant_id: this.tenantId,
+                file_name: fileInfo.path.split('/').pop(),
+                storage_mode: fileInfo.mode,
+                storage_identifier: fileInfo.path,
+                file_size: fileInfo.size,
+                mime_type: fileInfo.mimeType,
+                metadata: fileInfo.metadata,
+                created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+}
+```
+
+---
+
+## **PART 6: STRIPE BILLING INTEGRATION WITH PER-USER SEAT MANAGEMENT**
+
+### **6.1 Billing Schema Extensions**
+**Objective:** Add tables for billing management and seat tracking.
+
+**Instructions:** Execute this SQL to create billing tables.
+
+```sql
+---------------------------------------------
+-- 1. BILLING_PLANS: Stripe Product Mappings
+---------------------------------------------
+CREATE TABLE billing_plans (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    -- STRIPE MAPPINGS
+    stripe_product_id TEXT NOT NULL,
+    stripe_price_id TEXT NOT NULL,
+    
+    -- PLAN DETAILS
+    plan_name TEXT NOT NULL,
+    description TEXT,
+    features JSONB DEFAULT '[]',
+    
+    -- PRICING MODEL
+    pricing_model TEXT NOT NULL CHECK (pricing_model IN ('per_seat', 'flat', 'usage')),
+    base_price DECIMAL(10,2),
+    price_per_seat DECIMAL(10,2),
+    
+    -- LIMITS
+    seat_limit INTEGER,
+    storage_limit_gb INTEGER,
+    wbs_dimension_limit INTEGER,
+    
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    UNIQUE(tenant_id, stripe_price_id)
+);
+
+---------------------------------------------
+-- 2. SUBSCRIPTIONS: Active Tenant Subscriptions
+---------------------------------------------
+CREATE TABLE subscriptions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    -- STRIPE DATA
+    stripe_subscription_id TEXT UNIQUE NOT NULL,
+    stripe_customer_id TEXT NOT NULL,
+    stripe_status TEXT NOT NULL,
+    
+    -- PLAN INFO
+    billing_plan_id UUID REFERENCES billing_plans(id),
+    current_period_start TIMESTAMPTZ,
+    current_period_end TIMESTAMPTZ,
+    
+    -- SEAT MANAGEMENT
+    purchased_seats INTEGER NOT NULL DEFAULT 1,
+    occupied_seats INTEGER NOT NULL DEFAULT 0,
+    
+    -- BILLING INFO
+    currency TEXT DEFAULT 'usd',
+    amount_due DECIMAL(10,2),
+    amount_paid DECIMAL(10,2),
+    
+    -- METADATA
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+---------------------------------------------
+-- 3. SEAT_ALLOCATIONS: User-to-Seat Mapping
+---------------------------------------------
+CREATE TABLE seat_allocations (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    subscription_id UUID NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES tenant_users(id) ON DELETE CASCADE,
+    
+    allocation_type TEXT NOT NULL CHECK (allocation_type IN ('primary', 'guest', 'service')),
+    allocated_at TIMESTAMPTZ DEFAULT NOW(),
+    deallocated_at TIMESTAMPTZ,
+    
+    is_active BOOLEAN GENERATED ALWAYS AS (deallocated_at IS NULL) STORED,
+    
+    UNIQUE(tenant_id, user_id) WHERE (deallocated_at IS NULL)
+);
+
+---------------------------------------------
+-- 4. BILLING_EVENTS: Webhook & Invoice Logging
+---------------------------------------------
+CREATE TABLE billing_events (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE SET NULL,
+    subscription_id UUID REFERENCES subscriptions(id) ON DELETE SET NULL,
+    
+    event_type TEXT NOT NULL,
+    stripe_event_id TEXT UNIQUE,
+    stripe_invoice_id TEXT,
+    
+    -- EVENT DATA
+    event_data JSONB NOT NULL,
+    processed BOOLEAN DEFAULT FALSE,
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    INDEX idx_stripe_event_id (stripe_event_id)
+);
+```
+
+### **6.2 Seat Management Service**
+**Objective:** Create `/lib/billing-service.js` with intelligent seat management.
+
+**Instructions:** "Create this comprehensive billing service."
+
+```javascript
+// /lib/billing-service.js
+import Stripe from 'stripe';
+import { createClient } from './supabase-server';
+
+export class BillingService {
+    constructor(tenantId) {
+        this.tenantId = tenantId;
+        this.supabase = createClient();
+        this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    }
+
+    // AUTOMATIC SEAT ALLOCATION ON USER CREATION
+    async allocateSeatForUser(userId, allocationType = 'primary') {
+        const transaction = await this.supabase.rpc('begin_transaction');
+
+        try {
+            // 1. Get tenant's active subscription
+            const subscription = await this.getActiveSubscription();
+            if (!subscription) {
+                throw new Error('No active subscription for tenant');
+            }
+
+            // 2. Check seat availability
+            if (subscription.occupied_seats >= subscription.purchased_seats) {
+                // Attempt to automatically add a seat
+                const updated = await this.addSeatToSubscription();
+                if (!updated) {
+                    throw new Error('No seats available and auto-add failed');
+                }
+            }
+
+            // 3. Allocate the seat
+            const { error } = await this.supabase
+                .from('seat_allocations')
+                .insert([{
+                    tenant_id: this.tenantId,
+                    subscription_id: subscription.id,
+                    user_id: userId,
+                    allocation_type: allocationType
+                }]);
+
+            if (error) throw error;
+
+            // 4. Update occupied seat count
+            await this.updateOccupiedSeatCount(subscription.id);
+
+            await this.supabase.rpc('commit_transaction');
+            return true;
+
+        } catch (error) {
+            await this.supabase.rpc('rollback_transaction');
+            throw error;
+        }
+    }
+
+    // AUTOMATIC SEAT MANAGEMENT (CRON JOB)
+    async reconcileSeats() {
+        const subscription = await this.getActiveSubscription();
+        if (!subscription) return;
+
+        // Count active seat allocations
+        const { count: occupiedSeats } = await this.supabase
+            .from('seat_allocations')
+            .select('*', { count: 'exact', head: true })
+            .eq('tenant_id', this.tenantId)
+            .eq('is_active', true);
+
+        // If different from subscription count, update
+        if (occupiedSeats !== subscription.occupied_seats) {
+            await this.supabase
+                .from('subscriptions')
+                .update({ occupied_seats: occupiedSeats })
+                .eq('id', subscription.id);
+        }
+
+        // Check if we need to adjust purchased seats
+        const neededSeats = Math.max(occupiedSeats, subscription.purchased_seats);
+        if (neededSeats > subscription.purchased_seats) {
+            await this.addSeatsToSubscription(neededSeats - subscription.purchased_seats);
+        }
+    }
+
+    // ADD SEATS WITH PRORATION
+    async addSeatsToSubscription(quantity = 1) {
+        const subscription = await this.getActiveSubscription();
+        
+        // Update Stripe subscription
+        const stripeSub = await this.stripe.subscriptions.update(
+            subscription.stripe_subscription_id,
+            {
+                items: [{
+                    id: subscription.stripe_item_id,
+                    quantity: subscription.purchased_seats + quantity
+                }],
+                proration_behavior: 'create_prorations'
+            }
+        );
+
+        // Update local record
+        await this.supabase
+            .from('subscriptions')
+            .update({
+                purchased_seats: stripeSub.items.data[0].quantity,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', subscription.id);
+
+        return stripeSub;
+    }
+
+    // WEBHOOK HANDLER FOR STRIPE EVENTS
+    async handleStripeWebhook(event) {
+        // Store raw event
+        await this.supabase
+            .from('billing_events')
+            .insert([{
+                tenant_id: await this.getTenantIdFromStripeEvent(event),
+                event_type: event.type,
+                stripe_event_id: event.id,
+                event_data: event.data.object,
+                processed: false
+            }]);
+
+        // Process based on event type
+        switch (event.type) {
+            case 'customer.subscription.updated':
+                await this.handleSubscriptionUpdate(event.data.object);
+                break;
+            case 'invoice.payment_succeeded':
+                await this.handlePaymentSuccess(event.data.object);
+                break;
+            case 'invoice.payment_failed':
+                await this.handlePaymentFailure(event.data.object);
+                break;
+        }
+
+        // Mark as processed
+        await this.supabase
+            .from('billing_events')
+            .update({ processed: true })
+            .eq('stripe_event_id', event.id);
+    }
+
+    // HANDLE SUBSCRIPTION QUANTITY CHANGES FROM STRIPE
+    async handleSubscriptionUpdate(stripeSubscription) {
+        const { data: subscription } = await this.supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('stripe_subscription_id', stripeSubscription.id)
+            .single();
+
+        if (subscription) {
+            // Extract quantity from Stripe
+            const purchasedSeats = stripeSubscription.items.data[0].quantity;
+            
+            await this.supabase
+                .from('subscriptions')
+                .update({
+                    purchased_seats: purchasedSeats,
+                    stripe_status: stripeSubscription.status,
+                    current_period_end: new Date(stripeSubscription.current_period_end * 1000),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', subscription.id);
+
+            // If seats were reduced, may need to deallocate some users
+            if (purchasedSeats < subscription.purchased_seats) {
+                await this.handleSeatReduction(subscription.id, purchasedSeats);
+            }
+        }
+    }
+
+    // DEALLOCATE SEATS WHEN SUBSCRIPTION DOWNSIZED
+    async handleSeatReduction(subscriptionId, newSeatCount) {
+        // Get excess active allocations (oldest first)
+        const { data: excessAllocations } = await this.supabase
+            .from('seat_allocations')
+            .select('*')
+            .eq('subscription_id', subscriptionId)
+            .eq('is_active', true)
+            .order('allocated_at', { ascending: true })
+            .range(newSeatCount, 999); // Get all beyond new limit
+
+        // Deallocate the excess
+        for (const allocation of excessAllocations) {
+            await this.supabase
+                .from('seat_allocations')
+                .update({ deallocated_at: new Date().toISOString() })
+                .eq('id', allocation.id);
+
+            // Optionally notify user or admin
+            await this.notifySeatDeallocation(allocation.user_id);
+        }
+    }
+
+    // UTILITY METHODS
+    async getActiveSubscription() {
+        const { data } = await this.supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('tenant_id', this.tenantId)
+            .eq('stripe_status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+        return data;
+    }
+
+    async getTenantIdFromStripeEvent(event) {
+        // Extract from event metadata or customer ID
+        const customerId = event.data.object.customer;
+        
+        const { data } = await this.supabase
+            .from('subscriptions')
+            .select('tenant_id')
+            .eq('stripe_customer_id', customerId)
+            .single();
+
+        return data?.tenant_id;
+    }
+
+    async updateOccupiedSeatCount(subscriptionId) {
+        const { count } = await this.supabase
+            .from('seat_allocations')
+            .select('*', { count: 'exact', head: true })
+            .eq('subscription_id', subscriptionId)
+            .eq('is_active', true);
+
+        await this.supabase
+            .from('subscriptions')
+            .update({ occupied_seats: count })
+            .eq('id', subscriptionId);
+    }
+
+    async notifySeatDeallocation(userId) {
+        // Implementation for email/SMS notification
+        console.log(`User ${userId} deallocated from seat`);
+    }
+}
+```
+
+---
+
+## **PART 7: DEPLOYMENT & OPERATIONS GUIDE**
+
+### **7.1 Replit-Specific Deployment Configuration**
+
+**Objective:** Configure the Replit environment for production deployment.
+
+**Instructions for Replit AI/Developer:**
+
+1. **Configure `.replit` file:**
+```toml
+# .replit
+language = "nodejs"
+run = "npm run dev"
+
+[nix]
+channel = "stable-23_11"
+
+[env]
+NEXT_PUBLIC_APP_URL = "https://${REPL_SLUG}.${REPL_OWNER}.repl.co"
+NEXT_PUBLIC_SUPABASE_URL = "${SUPABASE_URL}"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "${SUPABASE_ANON_KEY}"
+
+[deployment]
+run = ["sh", "-c", "npm run build && npm run start"]
+deploymentTarget = "autoscale"
+```
+
+2. **Create `replit.nix` for custom dependencies:**
+```nix
+# replit.nix
+{ pkgs }: {
+  deps = [
+    pkgs.nodejs-18_x
+    pkgs.postgresql_15
+    pkgs.libuuid
+    pkgs.openssl
+  ];
+}
+```
+
+3. **Configure `next.config.js` for Replit:**
+```javascript
+// next.config.js
+module.exports = {
+  output: 'standalone',
+  env: {
+    REPLIT: process.env.REPLIT || false,
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: '/api/:path*',
+      },
+    ];
+  },
+};
+```
+
+### **7.2 Multi-Tenant DNS & Subdomain Configuration**
+
+**Objective:** Setup wildcard subdomain routing for tenant isolation.
+
+**Instructions:**
+
+1. **Configure Replit Web Preview for subdomains:**
+```javascript
+// middleware.js
+import { NextResponse } from 'next/server';
+
+export function middleware(request) {
+  const url = request.nextUrl.clone();
+  const hostname = request.headers.get('host');
+  
+  // Extract subdomain
+  const subdomain = hostname.split('.')[0];
+  
+  // Skip for main domain or known paths
+  if (subdomain === 'app' || subdomain === 'www' || subdomain.includes('localhost')) {
+    return NextResponse.next();
+  }
+  
+  // Rewrite to tenant-specific path
+  url.pathname = `/${subdomain}${url.pathname}`;
+  return NextResponse.rewrite(url);
+}
+
+export const config = {
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
+};
+```
+
+2. **Create dynamic tenant routing:**
+```javascript
+// app/[tenant]/layout.jsx
+export default async function TenantLayout({ children, params }) {
+  const { tenant } = params;
+  
+  // Validate tenant exists and is active
+  const { data: tenantData } = await supabase
+    .from('tenants')
+    .select('id, company_name, config->branding')
+    .eq('subdomain', tenant)
+    .eq('instance_status', 'active')
+    .single();
+  
+  if (!tenantData) {
+    return <div>Tenant not found or inactive</div>;
+  }
+  
+  // Set tenant context
+  return (
+    <TenantProvider value={tenantData}>
+      {children}
+    </TenantProvider>
+  );
+}
+```
+
+### **7.3 Automated Client Onboarding Pipeline**
+
+**Objective:** Create a script that automates new client setup.
+
+**Instructions:** "Create `/scripts/onboard-client.js`"
+
+```javascript
+// scripts/onboard-client.js
+import { createClient } from '../lib/supabase-server';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const supabase = createClient();
+
+export async function onboardNewClient(clientData) {
+  const {
+    companyName,
+    contactEmail,
+    subdomain,
+    plan = 'basic',
+    userCount = 5,
+    storageMode = 'cloud'
+  } = clientData;
+
+  console.log(`Starting onboarding for ${companyName}...`);
+
+  // 1. CREATE STRIPE CUSTOMER
+  const stripeCustomer = await stripe.customers.create({
+    email: contactEmail,
+    name: companyName,
+    metadata: { subdomain }
+  });
+
+  // 2. CREATE SUBSCRIPTION
+  const priceId = plan === 'premium' 
+    ? process.env.STRIPE_PREMIUM_PRICE_ID 
+    : process.env.STRIPE_BASIC_PRICE_ID;
+
+  const stripeSubscription = await stripe.subscriptions.create({
+    customer: stripeCustomer.id,
+    items: [{ price: priceId, quantity: userCount }],
+    payment_behavior: 'default_incomplete',
+    expand: ['latest_invoice.payment_intent'],
+    metadata: { subdomain }
+  });
+
+  // 3. CREATE TENANT RECORD
+  const { data: tenant, error: tenantError } = await supabase
+    .from('tenants')
+    .insert([{
+      subdomain,
+      company_name: companyName,
+      contact_email: contactEmail,
+      stripe_customer_id: stripeCustomer.id,
+      stripe_subscription_id: stripeSubscription.id,
+      storage_mode: storageMode,
+      config: {
+        branding: {
+          primaryColor: '#0f766e',
+          companyName: companyName
+        }
+      }
+    }])
+    .select()
+    .single();
+
+  if (tenantError) throw tenantError;
+
+  // 4. CREATE INITIAL ADMIN USER
+  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+    email: contactEmail,
+    email_confirm: true,
+    user_metadata: {
+      tenant_id: tenant.id,
+      role: 'admin'
+    }
+  });
+
+  if (authError) throw authError;
+
+  // 5. LINK USER TO TENANT
+  const { error: linkError } = await supabase
+    .from('tenant_users')
+    .insert([{
+      tenant_id: tenant.id,
+      auth_user_id: authUser.user.id,
+      email: contactEmail,
+      role: 'admin',
+      profile: {
+        firstName: companyName.split(' ')[0],
+        lastName: 'Admin'
+      }
+    }]);
+
+  if (linkError) throw linkError;
+
+  // 6. APPLY DEFAULT TEMPLATES
+  await applyDefaultTemplates(tenant.id);
+
+  // 7. SEND WELCOME EMAIL
+  await sendWelcomeEmail(contactEmail, {
+    companyName,
+    subdomain,
+    loginUrl: `https://${subdomain}.yourapp.com`,
+    stripeInvoiceUrl: stripeSubscription.latest_invoice.hosted_invoice_url
+  });
+
+  console.log(`✅ Onboarding complete for ${companyName}`);
+  return {
+    tenantId: tenant.id,
+    subdomain,
+    stripeCustomerId: stripeCustomer.id,
+    adminUserId: authUser.user.id
+  };
+}
+
+// Helper function to apply default project templates
+async function applyDefaultTemplates(tenantId) {
+  const templates = ['residential-basic', 'commercial-standard'];
+  
+  for (const templateName of templates) {
+    const { data: template } = await supabase
+      .from('project_templates')
+      .select('id')
+      .eq('name', templateName)
+      .single();
+
+    if (template) {
+      // Clone template for tenant
+      await supabase.rpc('clone_template_for_tenant', {
+        p_template_id: template.id,
+        p_tenant_id: tenantId
+      });
+    }
+  }
+}
+```
+
+### **7.4 Monitoring & Maintenance Cron Jobs**
+
+**Objective:** Setup automated maintenance tasks.
+
+**Instructions:** "Create `/scripts/cron-jobs.js`"
+
+```javascript
+// scripts/cron-jobs.js
+import { CronJob } from 'cron';
+import { BillingService } from '../lib/billing-service';
+import { BambooHRService } from '../lib/bamboohr-service';
+
+// DAILY: Reconcile seats and subscriptions
+new CronJob('0 2 * * *', async () => {
+  console.log('Running daily billing reconciliation...');
+  
+  const { data: tenants } = await supabase
+    .from('tenants')
+    .select('id')
+    .eq('instance_status', 'active');
+
+  for (const tenant of tenants) {
+    try {
+      const billing = new BillingService(tenant.id);
+      await billing.reconcileSeats();
+    } catch (error) {
+      console.error(`Failed for tenant ${tenant.id}:`, error);
+    }
+  }
+}, null, true, 'America/New_York');
+
+// HOURLY: Sync BambooHR data
+new CronJob('0 * * * *', async () => {
+  console.log('Running hourly BambooHR sync...');
+  
+  const { data: tenants } = await supabase
+    .from('tenants')
+    .select('id, bamboohr_api_key')
+    .eq('instance_status', 'active')
+    .not('bamboohr_api_key', 'is', null);
+
+  for (const tenant of tenants) {
+    try {
+      const hrService = new BambooHRService(tenant.id);
+      await hrService.syncEmployees(false); // Incremental sync
+    } catch (error) {
+      console.error(`BambooHR sync failed for tenant ${tenant.id}:`, error);
+    }
+  }
+}, null, true, 'America/New_York');
+
+// WEEKLY: Cleanup old files and audit logs
+new CronJob('0 3 * * 0', async () => {
+  console.log('Running weekly cleanup...');
+  
+  // Delete soft-deleted records older than 30 days
+  await supabase.rpc('purge_old_records', {
+    p_days_old: 30
+  });
+
+  // Cleanup temporary storage files
+  await supabase.rpc('cleanup_temp_files');
+}, null, true, 'America/New_York');
+```
+
+---
+
+## **PART 8: SECURITY & COMPLIANCE IMPLEMENTATION**
+
+### **8.1 Enhanced Row Level Security Policies**
+
+**Objective:** Add comprehensive RLS policies for all tables.
+
+**Instructions:** Execute this SQL to enhance security.
+
+```sql
+---------------------------------------------
+-- 1. TENANT_USERS: Enhanced Security
+---------------------------------------------
+CREATE POLICY "Users can only manage their own profile"
+    ON tenant_users FOR UPDATE
+    USING (auth_user_id = auth.uid())
+    WITH CHECK (auth_user_id = auth.uid());
+
+CREATE POLICY "Admins can manage all users in tenant"
+    ON tenant_users FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM tenant_users AS admin
+            WHERE admin.auth_user_id = auth.uid()
+            AND admin.tenant_id = tenant_users.tenant_id
+            AND admin.role = 'admin'
+        )
+    );
+
+---------------------------------------------
+-- 2. PROJECTS: Role-Based Access
+---------------------------------------------
+CREATE POLICY "Users can view projects in their tenant"
+    ON projects FOR SELECT
+    USING (tenant_id = current_setting('app.current_tenant_id')::UUID);
+
+CREATE POLICY "Project managers can create projects"
+    ON projects FOR INSERT
+    WITH CHECK (
+        tenant_id = current_setting('app.current_tenant_id')::UUID
+        AND EXISTS (
+            SELECT 1 FROM tenant_users
+            WHERE auth_user_id = auth.uid()
+            AND role IN ('admin', 'project_manager')
+        )
+    );
+
+---------------------------------------------
+-- 3. DOCUMENTS: File-Level Security
+---------------------------------------------
+CREATE POLICY "Users can access documents based on project access"
+    ON documents FOR SELECT
+    USING (
+        tenant_id = current_setting('app.current_tenant_id')::UUID
+        AND (
+            -- User has access to the related project
+            project_id IN (
+                SELECT id FROM projects
+                WHERE tenant_id = current_setting('app.current_tenant_id')::UUID
+            )
+            OR
+            -- Document is public within tenant
+            (access_control->>'is_public')::boolean = true
+            OR
+            -- User is explicitly in access control list
+            auth.uid() IN (
+                SELECT jsonb_array_elements_text(access_control->'users')::UUID
+            )
+        )
+    );
+
+---------------------------------------------
+-- 4. AUDIT LOG: Read-Only Access
+---------------------------------------------
+CREATE POLICY "Admins can view audit logs"
+    ON audit_log FOR SELECT
+    USING (
+        tenant_id = current_setting('app.current_tenant_id')::UUID
+        AND EXISTS (
+            SELECT 1 FROM tenant_users
+            WHERE auth_user_id = auth.uid()
+            AND role = 'admin'
+        )
+    );
+```
+
+### **8.2 Data Encryption at Rest & in Transit**
+
+**Objective:** Implement comprehensive encryption.
+
+**Instructions:** "Create `/lib/encryption.js`"
+
+```javascript
+// lib/encryption.js
+import crypto from 'crypto';
+import { createClient } from './supabase-server';
+
+export class EncryptionService {
+    constructor() {
+        this.algorithm = 'aes-256-gcm';
+        this.key = Buffer.from(process.env.ENCRYPTION_SECRET, 'hex');
+    }
+
+    // ENCRYPT SENSITIVE DATA BEFORE DATABASE INSERTION
+    async encryptDatabaseField(fieldValue, context = {}) {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv(this.algorithm, this.key, iv);
+        
+        let encrypted = cipher.update(fieldValue, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        
+        const authTag = cipher.getAuthTag();
+        
+        return {
+            encrypted: true,
+            version: '1.0',
+            algorithm: this.algorithm,
+            iv: iv.toString('hex'),
+            authTag: authTag.toString('hex'),
+            ciphertext: encrypted,
+            context: context
+        };
+    }
+
+    // DECRYPT DATABASE FIELD
+    async decryptDatabaseField(encryptedData) {
+        if (!encryptedData.encrypted) return encryptedData;
+        
+        const decipher = crypto.createDecipheriv(
+            this.algorithm,
+            this.key,
+            Buffer.from(encryptedData.iv, 'hex')
+        );
+        
+        decipher.setAuthTag(Buffer.from(encryptedData.authTag, 'hex'));
+        
+        let decrypted = decipher.update(encryptedData.ciphertext, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        
+        return decrypted;
+    }
+
+    // ENCRYPT FILE STREAM
+    async encryptFileStream(inputStream, outputStream) {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv(this.algorithm, this.key, iv);
+        
+        // Write IV to beginning of file
+        outputStream.write(iv);
+        
+        // Pipe through cipher
+        inputStream.pipe(cipher).pipe(outputStream);
+        
+        // Return auth tag for storage in metadata
+        return cipher.getAuthTag();
+    }
+
+    // COLUMN-LEVEL ENCRYPTION WRAPPER FOR SUPABASE
+    static createEncryptedColumn(columnName) {
+        return {
+            get: async (value) => {
+                const service = new EncryptionService();
+                return service.encryptDatabaseField(value, { column: columnName });
+            },
+            set: async (encryptedValue) => {
+                if (!encryptedValue) return null;
+                const service = new EncryptionService();
+                return service.decryptDatabaseField(encryptedValue);
+            }
+        };
+    }
+}
+
+// USAGE EXAMPLE IN DATABASE SCHEMA:
+/*
+CREATE TABLE sensitive_data (
+    id UUID PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id),
+    
+    -- Encrypted columns
+    ssn JSONB, -- Stores encrypted {encrypted: true, iv: ..., ciphertext: ...}
+    salary JSONB,
+    
+    -- Plain text columns
+    employee_id TEXT
+);
+*/
+```
+
+---
+
+## **PART 9: COMPREHENSIVE TESTING STRATEGY**
+
+### **9.1 Test Suite Structure**
+**Objective:** Create a complete testing environment.
+
+**Instructions:** "Setup testing infrastructure."
+
+```javascript
+// jest.config.js
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  testMatch: ['**/tests/**/*.test.js'],
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
+};
+
+// tests/setup.js
+import { supabaseTestClient } from './helpers/supabase-test-client';
+
+beforeAll(async () => {
+  await supabaseTestClient.initialize();
+});
+
+afterAll(async () => {
+  await supabaseTestClient.cleanup();
+});
+
+// tests/unit/wbs-engine.test.js
+import { WBSEngine } from '@/lib/wbs-engine';
+
+describe('WBS Engine', () => {
+  let engine;
+  const testTenantId = 'test-tenant-uuid';
+  const testProjectId = 'test-project-uuid';
+
+  beforeEach(() => {
+    engine = new WBSEngine(testTenantId);
+  });
+
+  test('should create hierarchical tree structure', async () => {
+    const mockNodes = [
+      { id: '1', parent_id: null, title: 'Root', code_path: '1' },
+      { id: '2', parent_id: '1', title: 'Child 1', code_path: '1.2' },
+      { id: '3', parent_id: '1', title: 'Child 2', code_path: '1.3' },
+    ];
+
+    // Mock Supabase response
+    jest.spyOn(engine.supabase, 'from').mockReturnValue({
+      select: () => ({
+        eq: () => ({
+          order: () => ({
+            then: (callback) => callback({ data: mockNodes, error: null })
+          })
+        })
+      })
+    });
+
+    const tree = await engine.getProjectTree(testProjectId);
+    expect(tree).toHaveLength(1);
+    expect(tree[0].children).toHaveLength(2);
+  });
+
+  test('should handle dimension filtering', async () => {
+    const filters = { trade: 'Electrical' };
+    const tree = await engine.getProjectTree(testProjectId, filters);
+    // Verify filtering logic
+  });
+});
+
+// tests/integration/template-instantiation.test.js
+describe('Template Instantiation', () => {
+  test('should replicate complete project structure', async () => {
+    const service = new TemplateService('test-tenant');
+    
+    const result = await service.instantiateTemplate(
+      'template-uuid',
+      { name: 'Test Project' },
+      'user-uuid'
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.project).toHaveProperty('id');
+    expect(result.wbsNodes.length).toBeGreaterThan(0);
+    expect(result.copiedFiles).toBeDefined();
+  });
+
+  test('should handle file copy errors gracefully', async () => {
+    // Test error handling when file copy fails
+  });
+});
+```
+
+### **9.2 Load Testing Configuration**
+**Objective:** Create performance testing scripts.
+
+**Instructions:** "Create `tests/load/load-test.js`"
+
+```javascript
+// tests/load/load-test.js
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export const options = {
+  stages: [
+    { duration: '2m', target: 100 }, // Ramp up to 100 users
+    { duration: '5m', target: 100 }, // Stay at 100 users
+    { duration: '2m', target: 0 },   // Ramp down
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<500'], // 95% of requests under 500ms
+    http_req_failed: ['rate<0.01'],   // Less than 1% failures
+  },
+};
+
+export default function () {
+  // Test WBS tree loading
+  const wbsResponse = http.get('https://your-app.com/api/wbs/tree?projectId=test');
+  check(wbsResponse, {
+    'WBS tree returns 200': (r) => r.status === 200,
+    'WBS tree returns JSON': (r) => r.headers['Content-Type'].includes('application/json'),
+  });
+
+  // Test file upload
+  const fileData = open('./test-file.pdf', 'b');
+  const uploadResponse = http.post(
+    'https://your-app.com/api/storage/upload',
+    { file: http.file(fileData, 'test.pdf') },
+    { headers: { 'Authorization': 'Bearer test-token' } }
+  );
+
+  check(uploadResponse, {
+    'File upload successful': (r) => r.status === 200,
+  });
+
+  sleep(1);
+}
+```
+
+---
+
+## **PART 10: DEPLOYMENT CHECKLIST & GO-LIVE PROCEDURE**
+
+### **Final Deployment Checklist**
+
+| Phase | Task | Status | Owner |
+|-------|------|--------|-------|
+| **Infrastructure** | Supabase project provisioned | □ | DevOps |
+| | Replit workspace configured | □ | DevOps |
+| | Stripe account & products setup | □ | Finance |
+| | BambooHR developer account | □ | HR |
+| **Database** | Core schema deployed | □ | DBA |
+| | RLS policies applied | □ | Security |
+| | Seed data loaded | □ | DBA |
+| **Application** | Frontend built & deployed | □ | Frontend |
+| | API routes verified | □ | Backend |
+| | Environment variables set | □ | DevOps |
+| **Integration** | Stripe webhooks configured | □ | Backend |
+| | BambooHR webhooks setup | □ | HR/Backend |
+| | Storage buckets created | □ | DevOps |
+| **Security** | SSL certificates installed | □ | Security |
+| | Firewall rules configured | □ | Security |
+| | Access controls tested | □ | QA |
+| **Monitoring** | Logging configured | □ | DevOps |
+| | Analytics setup | □ | Product |
+| | Backup schedule defined | □ | DBA |
+
+### **Go-Live Sequence**
+
+1. **Pre-Launch (T-24 hours)**
+   - Final database backup
+   - DNS propagation started
+   - Maintenance mode enabled
+
+2. **Launch Window (T-0)**
+   - Deploy final build
+   - Run database migrations
+   - Disable maintenance mode
+   - Verify all services
+
+3. **Post-Launch (T+1 hour)**
+   - Smoke tests execution
+   - Monitor error rates
+   - Verify payment processing
+   - Check integration webhooks
+
+4. **Stabilization (First 24 hours)**
+   - Real-time monitoring
+   - User feedback collection
+   - Performance optimization
+   - Bug triage and hotfixes
+
+---
+
+## **CONCLUSION & NEXT STEPS**
+
+This comprehensive specification provides everything needed to build your enterprise-grade, multi-tenant construction ERP system. The architecture is designed for scalability, security, and flexibility, with particular emphasis on:
+
+1. **True Multi-Tenancy** via subdomain isolation and RLS policies
+2. **Advanced WBS Engine** with 13-dimensional categorization
+3. **Intelligent Template System** with automatic file replication
+4. **Robust Integrations** with BambooHR and Stripe
+5. **Dual-Mode Storage** supporting both cloud and on-premise
+
+### **Immediate Next Actions:**
+
+1. **Execute Phase 1**: Run the initial Supabase SQL scripts to create the core schema
+2. **Configure Replit**: Set up the workspace with all environment secrets
+3. **Build Core Services**: Start with the WBS Engine and Template Service
+4. **Implement Authentication**: Set up Supabase Auth with tenant context
+5. **Create First Templates**: Build residential construction templates for demo
+
+### **Development Priorities (Weeks 1-4):**
+- Week 1: Database schema and core services
+- Week 2: WBS Builder UI and template management
+- Week 3: BambooHR integration and file storage
+- Week 4: Stripe billing and deployment automation
+
+This system represents approximately 3-4 months of development time for a senior full-stack developer. Consider starting with a minimum viable product (MVP) focusing on the WBS and templating features, then adding BambooHR and advanced billing in subsequent releases.
+
+**Copy this entire document into your Replit workspace and begin with Part 1.1 (Replit Workspace Initialization).** The system is designed to be built incrementally, with each part building upon the previous foundation.

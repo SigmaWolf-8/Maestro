@@ -1,0 +1,725 @@
+I will add **Part 12: Hierarchical Navigation & Role-Based Access Control (RBAC) with 3/5 Choice UX**. This integrates cleanly with your existing multi-tenant database and provides the constrained, modern interface you've described.
+
+## **PART 12: HIERARCHICAL NAVIGATION & ROLE-BASED ACCESS CONTROL (3/5 CHOICE UX)**
+
+### **12.1 Core Philosophy & Architecture**
+**Objective:** Design a navigation and permission system where users are presented with **3 or 5 clear choices at each decision level**, creating a guided, powerful workflow. Access to subsequent choices is dynamically filtered by their role and parent-level permissions.
+
+**Key Principles:**
+1.  **Progressive Disclosure:** Users only see what they need to accomplish their next task.
+2.  **Role-Driven Menus:** Navigation items are filters based on `tenant_users.role` and explicit permissions.
+3.  **Hierarchical Security:** Access to a child menu or action requires permission for its parent.
+4.  **Visual Constraint:** UI components are designed to present 1, 3, or 5 primary options as a default pattern.
+
+### **12.2 Database Schema for Hierarchical Navigation**
+**Instructions:** Execute this SQL in Supabase to add the navigation and permission system.
+
+```sql
+---------------------------------------------
+-- 1. NAVIGATION_ITEMS: The Hierarchy Definition
+---------------------------------------------
+CREATE TABLE navigation_items (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    
+    -- HIERARCHICAL STRUCTURE
+    parent_id UUID REFERENCES navigation_items(id) ON DELETE CASCADE,
+    item_order INTEGER NOT NULL DEFAULT 0,
+    
+    -- ITEM CONTENT
+    item_type TEXT NOT NULL CHECK (item_type IN ('menu', 'action', 'divider', 'header')),
+    title TEXT NOT NULL,
+    icon_name TEXT, -- Lucide React icon identifier
+    path TEXT, -- e.g., '/projects', '/reports/financial'
+    component TEXT, -- For dynamic loading: 'ProjectList', 'WbsBuilder'
+    
+    -- VISUAL BEHAVIOR
+    ui_slot TEXT CHECK (ui_slot IN ('sidebar', 'topbar', 'dashboard', 'toolbar')),
+    max_children_display INTEGER DEFAULT 5 CHECK (max_children_display IN (3, 5)),
+    is_collapsible BOOLEAN DEFAULT TRUE,
+    
+    -- SECURITY ROOT: HIGH-LEVEL VISIBILITY
+    min_role_required TEXT DEFAULT 'viewer' CHECK (min_role_required IN ('viewer', 'accountant', 'project_manager', 'admin')),
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    CONSTRAINT navigation_path_unique UNIQUE (tenant_id, path)
+);
+
+-- Index for efficient parent-child queries and ordering
+CREATE INDEX idx_nav_items_hierarchy ON navigation_items(tenant_id, parent_id, item_order);
+CREATE INDEX idx_nav_items_role ON navigation_items(tenant_id, min_role_required);
+
+---------------------------------------------
+-- 2. ROLE_PERMISSIONS: Granular Overrides
+---------------------------------------------
+-- Extends the base min_role_required with specific grants/denials
+CREATE TABLE role_permissions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    navigation_item_id UUID NOT NULL REFERENCES navigation_items(id) ON DELETE CASCADE,
+    user_role TEXT NOT NULL CHECK (user_role IN ('viewer', 'accountant', 'project_manager', 'admin')),
+    
+    -- GRANULAR PERMISSIONS
+    can_view BOOLEAN DEFAULT TRUE,
+    can_access BOOLEAN DEFAULT TRUE, -- Can navigate to the path/component
+    can_action BOOLEAN DEFAULT FALSE, -- Can perform the primary action (e.g., 'Create')
+    
+    -- INHERITANCE RULE
+    inherit_from_parent BOOLEAN DEFAULT TRUE,
+    
+    UNIQUE(tenant_id, navigation_item_id, user_role)
+);
+
+---------------------------------------------
+-- 3. USER_NAVIGATION_STATE: Personalization
+---------------------------------------------
+CREATE TABLE user_navigation_state (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES tenant_users(id) ON DELETE CASCADE,
+    navigation_item_id UUID NOT NULL REFERENCES navigation_items(id) ON DELETE CASCADE,
+    
+    -- USER PREFERENCES
+    is_pinned BOOLEAN DEFAULT FALSE,
+    is_collapsed BOOLEAN DEFAULT FALSE,
+    last_accessed TIMESTAMPTZ,
+    access_count INTEGER DEFAULT 0,
+    
+    UNIQUE(tenant_id, user_id, navigation_item_id)
+);
+```
+
+### **12.3 Navigation Service with Role Filtering**
+**Objective:** Create `/lib/navigation-service.js` that builds the hierarchical menu for a user, applying the 3/5 rule and role checks.
+
+**Instructions:** "Create this service file."
+
+```javascript
+// /lib/navigation-service.js
+import { createClient } from './supabase-server';
+
+export class NavigationService {
+    constructor(tenantId, userId, userRole) {
+        this.tenantId = tenantId;
+        this.userId = userId;
+        this.userRole = userRole;
+        this.supabase = createClient();
+        // Role hierarchy for permission inheritance
+        this.roleHierarchy = {
+            'viewer': 0,
+            'accountant': 1,
+            'project_manager': 2,
+            'admin': 3
+        };
+    }
+
+    // MAIN METHOD: Get filtered navigation tree for current user
+    async getNavigationTree(uiSlot = 'sidebar') {
+        // 1. Fetch all possible navigation items for this tenant
+        const { data: allItems, error } = await this.supabase
+            .from('navigation_items')
+            .select('*, role_permissions!left(*)')
+            .eq('tenant_id', this.tenantId)
+            .eq('ui_slot', uiSlot)
+            .order('item_order', { ascending: true });
+
+        if (error) throw new Error(`Failed to fetch navigation: ${error.message}`);
+
+        // 2. Filter items based on role and permissions
+        const filteredItems = this.filterItemsByRole(allItems);
+
+        // 3. Apply the 3/5 Choice Rule: Limit children at each level
+        const limitedTree = this.applyChoiceConstraint(filteredItems);
+
+        // 4. Build hierarchical tree structure
+        return this.buildHierarchy(limitedTree);
+    }
+
+    // ROLE-BASED FILTERING LOGIC
+    filterItemsByRole(items) {
+        return items.filter(item => {
+            // Check base role requirement
+            const userRoleLevel = this.roleHierarchy[this.userRole];
+            const itemRoleLevel = this.roleHierarchy[item.min_role_required];
+            
+            if (userRoleLevel < itemRoleLevel) {
+                return false; // User role insufficient for base requirement
+            }
+
+            // Check for explicit permission override
+            const explicitPerm = item.role_permissions?.find(p => p.user_role === this.userRole);
+            if (explicitPerm) {
+                // If inherit_from_parent is false, use explicit setting
+                if (!explicitPerm.inherit_from_parent) {
+                    return explicitPerm.can_view;
+                }
+            }
+
+            return true; // Item is visible to user
+        });
+    }
+
+    // APPLY 3/5 CHOICE CONSTRAINT
+    applyChoiceConstraint(items) {
+        const itemMap = new Map(items.map(item => [item.id, { ...item, children: [] }]));
+        const rootItems = [];
+
+        // First, build the tree structure
+        items.forEach(item => {
+            const node = itemMap.get(item.id);
+            if (item.parent_id && itemMap.has(item.parent_id)) {
+                itemMap.get(item.parent_id).children.push(node);
+            } else {
+                rootItems.push(node);
+            }
+        });
+
+        // Recursively limit children to max_children_display (3 or 5)
+        const limitChildren = (node) => {
+            if (!node.children || node.children.length === 0) return;
+
+            // Sort by order, then pin status, then access frequency
+            node.children.sort((a, b) => {
+                // Pinned items first
+                if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+                // Then by order
+                return a.item_order - b.item_order;
+            });
+
+            // Apply the limit (default 5, configurable per item)
+            const maxDisplay = node.max_children_display || 5;
+            if (node.children.length > maxDisplay) {
+                // Separate pinned and unpinned
+                const pinned = node.children.filter(c => c.is_pinned);
+                const unpinned = node.children.filter(c => !c.is_pinned);
+                
+                // Always show all pinned, limit unpinned
+                const unpinnedToShow = Math.max(0, maxDisplay - pinned.length);
+                node.children = [
+                    ...pinned,
+                    ...unpinned.slice(0, unpinnedToShow)
+                ];
+                
+                // Add a "More..." item if there are hidden items
+                if (unpinned.length > unpinnedToShow) {
+                    node.children.push({
+                        id: `more-${node.id}`,
+                        title: `${unpinned.length - unpinnedToShow} more...`,
+                        item_type: 'action',
+                        icon_name: 'ChevronDown',
+                        is_more_action: true,
+                        hidden_children: unpinned.slice(unpinnedToShow)
+                    });
+                }
+            }
+
+            // Recurse for remaining children
+            node.children.forEach(child => {
+                if (!child.is_more_action) {
+                    limitChildren(child);
+                }
+            });
+        };
+
+        // Start from root
+        rootItems.forEach(limitChildren);
+        return rootItems;
+    }
+
+    // BUILD HIERARCHICAL TREE
+    buildHierarchy(filteredItems) {
+        // Items are already hierarchical after applyChoiceConstraint
+        return filteredItems;
+    }
+
+    // CHECK PERMISSION FOR A SPECIFIC ACTION
+    async checkPermission(navigationPath, action = 'access') {
+        // Find the navigation item
+        const { data: item, error } = await this.supabase
+            .from('navigation_items')
+            .select('*, role_permissions!left(*)')
+            .eq('tenant_id', this.tenantId)
+            .eq('path', navigationPath)
+            .single();
+
+        if (error || !item) return false;
+
+        // Check hierarchical permission: user must have access to all parents
+        const hasParentAccess = await this.checkParentPermissions(item.id);
+        if (!hasParentAccess) return false;
+
+        // Check role hierarchy
+        const userRoleLevel = this.roleHierarchy[this.userRole];
+        const itemRoleLevel = this.roleHierarchy[item.min_role_required];
+        if (userRoleLevel < itemRoleLevel) return false;
+
+        // Check explicit permission
+        const explicitPerm = item.role_permissions?.find(p => p.user_role === this.userRole);
+        if (explicitPerm) {
+            switch (action) {
+                case 'view': return explicitPerm.can_view;
+                case 'access': return explicitPerm.can_access;
+                case 'action': return explicitPerm.can_action;
+                default: return false;
+            }
+        }
+
+        // Default permission based on role hierarchy
+        return true;
+    }
+
+    // RECURSIVE PARENT PERMISSION CHECK
+    async checkParentPermissions(itemId) {
+        const { data: item, error } = await this.supabase
+            .from('navigation_items')
+            .select('parent_id, min_role_required')
+            .eq('id', itemId)
+            .single();
+
+        if (error || !item) return true; // No parent = root level permission OK
+
+        // Check current item's base role requirement
+        const userRoleLevel = this.roleHierarchy[this.userRole];
+        const itemRoleLevel = this.roleHierarchy[item.min_role_required];
+        if (userRoleLevel < itemRoleLevel) return false;
+
+        // Recursively check parent
+        if (item.parent_id) {
+            return await this.checkParentPermissions(item.parent_id);
+        }
+
+        return true; // Reached root successfully
+    }
+
+    // LOG NAVIGATION ACCESS FOR PERSONALIZATION
+    async logAccess(navigationItemId) {
+        await this.supabase
+            .from('user_navigation_state')
+            .upsert({
+                tenant_id: this.tenantId,
+                user_id: this.userId,
+                navigation_item_id: navigationItemId,
+                last_accessed: new Date().toISOString(),
+                access_count: this.supabase.sql('COALESCE(access_count, 0) + 1')
+            }, {
+                onConflict: 'tenant_id,user_id,navigation_item_id'
+            });
+    }
+}
+```
+
+### **12.4 React Navigation Components (3/5 Choice UI)**
+**Objective:** Create clean, modern React components that enforce the 3/5 choice constraint.
+
+**Instructions:** "Create these component files."
+
+```jsx
+// /components/navigation/ChoiceTrio.jsx
+'use client';
+// Component for displaying exactly 3 primary choices
+export function ChoiceTrio({ items, onSelect, title, icon }) {
+    if (!items || items.length !== 3) {
+        console.warn('ChoiceTrio requires exactly 3 items');
+        return null;
+    }
+
+    return (
+        <div className="choice-trio-container">
+            {title && (
+                <div className="trio-header">
+                    {icon && <Icon name={icon} />}
+                    <h3>{title}</h3>
+                </div>
+            )}
+            <div className="trio-grid">
+                {items.map((item, index) => (
+                    <ChoiceCard
+                        key={item.id || index}
+                        item={item}
+                        onSelect={() => onSelect(item)}
+                        position={index} // For visual styling
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// /components/navigation/ChoiceQuintet.jsx
+'use client';
+// Component for displaying up to 5 primary choices
+export function ChoiceQuintet({ items, onSelect, title, variant = 'grid' }) {
+    const displayItems = items.slice(0, 5); // Enforce the constraint
+    
+    return (
+        <div className={`choice-quintet ${variant}`}>
+            {title && <h4 className="quintet-title">{title}</h4>}
+            {variant === 'grid' ? (
+                <div className="quintet-grid">
+                    {displayItems.map(item => (
+                        <ChoiceCard
+                            key={item.id}
+                            item={item}
+                            onSelect={() => onSelect(item)}
+                            size="medium"
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="quintet-list">
+                    {displayItems.map(item => (
+                        <ChoiceListItem
+                            key={item.id}
+                            item={item}
+                            onSelect={() => onSelect(item)}
+                        />
+                    ))}
+                </div>
+            )}
+            {items.length > 5 && (
+                <div className="more-indicator">
+                    <span>+{items.length - 5} more options available</span>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// /components/navigation/NavigationSidebar.jsx
+'use client';
+import { useState, useEffect } from 'react';
+import { NavigationService } from '@/lib/navigation-service';
+import { ChoiceQuintet } from './ChoiceQuintet';
+import { ChoiceTrio } from './ChoiceTrio';
+
+export function NavigationSidebar({ tenantId, userId, userRole }) {
+    const [navTree, setNavTree] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [activePath, setActivePath] = useState('/');
+
+    useEffect(() => {
+        loadNavigation();
+    }, [tenantId, userRole]);
+
+    async function loadNavigation() {
+        setLoading(true);
+        const service = new NavigationService(tenantId, userId, userRole);
+        const tree = await service.getNavigationTree('sidebar');
+        setNavTree(tree);
+        setLoading(false);
+    }
+
+    // Render navigation tree recursively
+    const renderNavItem = (item) => {
+        // Determine if we should render as Trio or Quintet
+        const childCount = item.children?.length || 0;
+        
+        if (childCount === 3 && item.item_type === 'menu') {
+            return (
+                <div key={item.id} className="nav-section">
+                    <h5 className="section-title">{item.title}</h5>
+                    <ChoiceTrio
+                        items={item.children}
+                        onSelect={handleItemSelect}
+                        icon={item.icon_name}
+                    />
+                </div>
+            );
+        } else if (childCount > 0 && childCount <= 5) {
+            return (
+                <div key={item.id} className="nav-section">
+                    <h5 className="section-title">{item.title}</h5>
+                    <ChoiceQuintet
+                        items={item.children}
+                        onSelect={handleItemSelect}
+                        variant="list"
+                    />
+                </div>
+            );
+        } else if (childCount > 5) {
+            // Already limited by NavigationService, but handle display
+            return (
+                <div key={item.id} className="nav-section">
+                    <h5 className="section-title">{item.title}</h5>
+                    <ChoiceQuintet
+                        items={item.children.filter(c => !c.is_more_action)}
+                        onSelect={handleItemSelect}
+                        variant="list"
+                    />
+                    {/* The "More..." action is already included in children by the service */}
+                </div>
+            );
+        } else {
+            // Single action item
+            return (
+                <button
+                    key={item.id}
+                    className={`nav-action ${activePath === item.path ? 'active' : ''}`}
+                    onClick={() => handleItemSelect(item)}
+                >
+                    {item.icon_name && <Icon name={item.icon_name} />}
+                    <span>{item.title}</span>
+                </button>
+            );
+        }
+    };
+
+    const handleItemSelect = async (item) => {
+        if (item.is_more_action) {
+            // Handle "More..." click - could expand or show modal
+            handleShowMore(item.hidden_children);
+            return;
+        }
+
+        setActivePath(item.path);
+        
+        // Log the access for personalization
+        const service = new NavigationService(tenantId, userId, userRole);
+        await service.logAccess(item.id);
+        
+        // Navigate or load component
+        if (item.path) {
+            window.location.href = item.path;
+        } else if (item.component) {
+            // Dynamic component loading
+            loadComponent(item.component);
+        }
+    };
+
+    if (loading) {
+        return <div className="sidebar-loading">Loading navigation...</div>;
+    }
+
+    return (
+        <aside className="navigation-sidebar">
+            <div className="sidebar-header">
+                <h3>Workspace</h3>
+            </div>
+            <nav className="sidebar-nav">
+                {navTree.map(renderNavItem)}
+            </nav>
+            {/* Fixed bottom section with 3 key actions */}
+            <div className="sidebar-footer">
+                <ChoiceTrio
+                    items={[
+                        { id: 'help', title: 'Help', icon_name: 'HelpCircle' },
+                        { id: 'settings', title: 'Settings', icon_name: 'Settings' },
+                        { id: 'profile', title: 'Profile', icon_name: 'User' }
+                    ]}
+                    onSelect={handleItemSelect}
+                />
+            </div>
+        </aside>
+    );
+}
+```
+
+### **12.5 Seed Data: Example Navigation Structure**
+**Objective:** Provide initial navigation setup for a construction ERP.
+
+**Instructions:** "Execute this SQL to seed the navigation for a new tenant."
+
+```sql
+-- SAMPLE NAVIGATION FOR CONSTRUCTION ERP
+INSERT INTO navigation_items (tenant_id, parent_id, item_order, item_type, title, icon_name, path, ui_slot, min_role_required, max_children_display) VALUES
+-- DASHBOARD ROOT (3 main sections)
+('your-tenant-uuid', NULL, 1, 'menu', 'Dashboard', 'LayoutDashboard', '/dashboard', 'sidebar', 'viewer', 3),
+
+-- Dashboard's 3 main choices
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Dashboard' AND tenant_id='your-tenant-uuid'), 1, 'action', 'Overview', 'Home', '/dashboard/overview', 'sidebar', 'viewer', NULL),
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Dashboard' AND tenant_id='your-tenant-uuid'), 2, 'action', 'My Tasks', 'CheckSquare', '/dashboard/tasks', 'sidebar', 'project_manager', NULL),
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Dashboard' AND tenant_id='your-tenant-uuid'), 3, 'action', 'Alerts', 'Bell', '/dashboard/alerts', 'sidebar', 'viewer', NULL),
+
+-- PROJECTS ROOT (5 main choices max)
+('your-tenant-uuid', NULL, 2, 'menu', 'Projects', 'Folder', NULL, 'sidebar', 'project_manager', 5),
+
+-- Projects' 5 choices
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Projects' AND tenant_id='your-tenant-uuid'), 1, 'action', 'All Projects', 'List', '/projects', 'sidebar', 'project_manager', NULL),
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Projects' AND tenant_id='your-tenant-uuid'), 2, 'action', 'WBS Builder', 'GitBranch', '/projects/wbs', 'sidebar', 'project_manager', NULL),
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Projects' AND tenant_id='your-tenant-uuid'), 3, 'action', 'Templates', 'Copy', '/projects/templates', 'sidebar', 'admin', NULL),
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Projects' AND tenant_id='your-tenant-uuid'), 4, 'action', 'Documents', 'FileText', '/projects/documents', 'sidebar', 'viewer', NULL),
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Projects' AND tenant_id='your-tenant-uuid'), 5, 'action', 'Reports', 'BarChart', '/projects/reports', 'sidebar', 'accountant', NULL),
+
+-- FINANCE ROOT (3 choices for accountants)
+('your-tenant-uuid', NULL, 3, 'menu', 'Finance', 'DollarSign', NULL, 'sidebar', 'accountant', 3),
+
+-- Finance's 3 choices
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Finance' AND tenant_id='your-tenant-uuid'), 1, 'action', 'Invoices', 'FileText', '/finance/invoices', 'sidebar', 'accountant', NULL),
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Finance' AND tenant_id='your-tenant-uuid'), 2, 'action', 'Expenses', 'CreditCard', '/finance/expenses', 'sidebar', 'accountant', NULL),
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Finance' AND tenant_id='your-tenant-uuid'), 3, 'action', 'Budget', 'PieChart', '/finance/budget', 'sidebar', 'accountant', NULL),
+
+-- HR ROOT (Hidden from viewers, 5 choices for admins)
+('your-tenant-uuid', NULL, 4, 'menu', 'Human Resources', 'Users', NULL, 'sidebar', 'admin', 5),
+
+-- Admin only: Role-specific permission overrides
+INSERT INTO role_permissions (tenant_id, navigation_item_id, user_role, can_view, can_access) VALUES
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Templates' AND tenant_id='your-tenant-uuid'), 'project_manager', true, false),
+('your-tenant-uuid', (SELECT id FROM navigation_items WHERE title='Templates' AND tenant_id='your-tenant-uuid'), 'admin', true, true);
+```
+
+### **12.6 Integration with Existing Authentication**
+**Objective:** Modify the tenant layout to inject navigation service.
+
+**Instructions:** "Update your existing `app/[tenant]/layout.jsx`."
+
+```jsx
+// app/[tenant]/layout.jsx (Updated)
+import { NavigationSidebar } from '@/components/navigation/NavigationSidebar';
+import { getCurrentUser } from '@/lib/auth-utils';
+
+export default async function TenantLayout({ children, params }) {
+  const { tenant } = params;
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    redirect('/login');
+  }
+
+  return (
+    <div className="tenant-container">
+      <NavigationSidebar 
+        tenantId={user.tenant_id}
+        userId={user.id}
+        userRole={user.role}
+      />
+      <main className="tenant-main">
+        <div className="main-header">
+          {/* Contextual Choice Trio for current page */}
+          <ContextualActions />
+        </div>
+        <div className="main-content">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// Helper component for contextual actions
+function ContextualActions() {
+  // This would fetch actions relevant to the current page
+  // Example: On a project page, show [Edit, Share, Report] as a ChoiceTrio
+  return (
+    <div className="contextual-actions">
+      <ChoiceTrio
+        items={[
+          { id: 'edit', title: 'Edit', icon_name: 'Edit' },
+          { id: 'share', title: 'Share', icon_name: 'Share' },
+          { id: 'report', title: 'Report', icon_name: 'Flag' }
+        ]}
+        onSelect={(item) => handleContextAction(item)}
+      />
+    </div>
+  );
+}
+```
+
+### **12.7 CSS for 3/5 Choice Layout**
+**Objective:** Add Tailwind CSS for the constrained choice layouts.
+
+**Instructions:** "Add to your `globals.css`."
+
+```css
+/* 3/5 Choice Layout Styles */
+.choice-trio-container {
+  @apply p-4 bg-white rounded-xl shadow-sm border border-gray-100;
+}
+
+.trio-grid {
+  @apply grid grid-cols-3 gap-3;
+}
+
+.choice-card {
+  @apply p-4 flex flex-col items-center justify-center 
+         border border-gray-200 rounded-lg 
+         hover:border-blue-300 hover:bg-blue-50 
+         transition-all duration-200 cursor-pointer;
+}
+
+.choice-card:hover .choice-icon {
+  @apply text-blue-600 transform scale-110;
+}
+
+.choice-card.position-0 {
+  @apply border-l-4 border-l-blue-500;
+}
+.choice-card.position-1 {
+  @apply border-l-4 border-l-green-500;
+}
+.choice-card.position-2 {
+  @apply border-l-4 border-l-amber-500;
+}
+
+.quintet-grid {
+  @apply grid grid-cols-5 gap-2;
+}
+
+.quintet-list {
+  @apply space-y-2;
+}
+
+.choice-list-item {
+  @apply flex items-center p-3 rounded-lg 
+         hover:bg-gray-50 cursor-pointer 
+         transition-colors duration-150;
+}
+
+/* Sidebar Constraints */
+.navigation-sidebar {
+  @apply w-64 border-r border-gray-200 
+         flex flex-col h-screen;
+}
+
+.sidebar-nav {
+  @apply flex-1 space-y-6 p-4 
+         overflow-y-auto;
+}
+
+.nav-section {
+  @apply space-y-3;
+}
+
+.section-title {
+  @apply text-xs font-semibold text-gray-500 
+         uppercase tracking-wider px-2;
+}
+
+/* Responsive: Collapse to icons on small screens */
+@media (max-width: 768px) {
+  .trio-grid {
+    @apply grid-cols-1;
+  }
+  
+  .quintet-grid {
+    @apply grid-cols-2;
+  }
+  
+  .choice-card, .choice-list-item {
+    @apply p-3;
+  }
+  
+  .navigation-sidebar {
+    @apply w-16;
+  }
+  
+  .section-title, .choice-card span, .choice-list-item span {
+    @apply hidden;
+  }
+}
+```
+
+### **How This Achieves Your Vision:**
+
+1. **3/5 Choice Enforcement:** The `max_children_display` column and `applyChoiceConstraint()` method ensure no menu shows more than 5 choices. Trios (3) are handled as a special optimal case.
+
+2. **Progressive Disclosure with Security:** The `checkParentPermissions()` method ensures users cannot access child items without parent permission, creating true hierarchical security.
+
+3. **Role-Based Filtering:** Items are filtered by `min_role_required` and explicit `role_permissions` overrides before the UI even receives them.
+
+4. **Clean, Modern UI:** The `ChoiceTrio` and `ChoiceQuintet` components provide visually distinct, card-based interfaces that work on desktop and mobile.
+
+5. **Personalization:** The `user_navigation_state` table tracks user behavior to potentially reorder choices based on frequency of use.
+
+This system ensures that a `viewer` role might see only **Dashboard** (with 3 choices), while an `admin` sees **Dashboard**, **Projects** (5 choices), **Finance** (3 choices), and **HR** (5 choices) - each level respecting the 3/5 constraint and security hierarchy.
