@@ -131,12 +131,26 @@ export const rolePermissions = pgTable("role_permissions", {
   inheritFromParent: boolean("inherit_from_parent").default(true)
 });
 
+export const wbsTemplates = pgTable("wbs_templates", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category"),
+  structure: jsonb("structure").notNull().default([]),
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by", { length: 36 }).references(() => tenantUsers.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTenantUserSchema = createInsertSchema(tenantUsers).omit({ id: true, createdAt: true, lastLoginAt: true });
 export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWbsNodeSchema = createInsertSchema(wbsNodes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertNavigationItemSchema = createInsertSchema(navigationItems).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({ id: true });
+export const insertWbsTemplateSchema = createInsertSchema(wbsTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertTenant = z.infer<typeof insertTenantSchema>;
 export type InsertTenantUser = z.infer<typeof insertTenantUserSchema>;
@@ -144,6 +158,7 @@ export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type InsertWbsNode = z.infer<typeof insertWbsNodeSchema>;
 export type InsertNavigationItem = z.infer<typeof insertNavigationItemSchema>;
 export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+export type InsertWbsTemplate = z.infer<typeof insertWbsTemplateSchema>;
 
 export type Tenant = typeof tenants.$inferSelect;
 export type TenantUser = typeof tenantUsers.$inferSelect;
@@ -151,6 +166,7 @@ export type Project = typeof projects.$inferSelect;
 export type WbsNode = typeof wbsNodes.$inferSelect;
 export type NavigationItem = typeof navigationItems.$inferSelect;
 export type RolePermission = typeof rolePermissions.$inferSelect;
+export type WbsTemplate = typeof wbsTemplates.$inferSelect;
 
 export interface TenantConfig {
   branding: {
@@ -200,4 +216,14 @@ export interface DashboardStats {
   teamMembers: number;
   budgetTotal: number;
   budgetUsed: number;
+}
+
+export interface WbsTemplateNode {
+  title: string;
+  description?: string;
+  codePath: string;
+  codeDisplay: string;
+  dimensions?: WbsDimensions;
+  estimatedHours?: number;
+  children?: WbsTemplateNode[];
 }

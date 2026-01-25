@@ -12,6 +12,7 @@ import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import WBS from "@/pages/wbs";
 import WbsDimensions from "@/pages/wbs-dimensions";
+import WbsTemplatesPage from "@/pages/wbs-templates";
 import Team from "@/pages/team";
 import Settings from "@/pages/settings";
 import NotFound from "@/pages/not-found";
@@ -33,7 +34,6 @@ import {
   FinanceReportsPage,
   FileManagerPage,
   PlanRoomPage,
-  TemplatesPage,
   DocumentReportsPage,
   ArchivesPage,
 } from "@/pages/placeholder";
@@ -76,7 +76,7 @@ function Router() {
       
       <Route path="/documents/files" component={FileManagerPage} />
       <Route path="/documents/plans" component={PlanRoomPage} />
-      <Route path="/documents/templates" component={TemplatesPage} />
+      <Route path="/documents/templates" component={WbsTemplatesPage} />
       <Route path="/documents/reports" component={DocumentReportsPage} />
       <Route path="/documents/archives" component={ArchivesPage} />
       

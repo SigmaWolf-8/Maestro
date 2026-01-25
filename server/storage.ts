@@ -7,16 +7,19 @@ import {
   projects,
   wbsNodes,
   navigationItems,
+  wbsTemplates,
   type Tenant,
   type TenantUser,
   type Project,
   type WbsNode,
   type NavigationItem,
+  type WbsTemplate,
   type InsertTenant,
   type InsertTenantUser,
   type InsertProject,
   type InsertWbsNode,
   type InsertNavigationItem,
+  type InsertWbsTemplate,
   type DashboardStats,
 } from "@shared/schema";
 
@@ -47,6 +50,12 @@ export interface IStorage {
   
   getNavigationItems(tenantId: string): Promise<NavigationItem[]>;
   createNavigationItem(item: InsertNavigationItem): Promise<NavigationItem>;
+  
+  getWbsTemplates(tenantId: string): Promise<WbsTemplate[]>;
+  getWbsTemplate(id: string): Promise<WbsTemplate | undefined>;
+  createWbsTemplate(template: InsertWbsTemplate): Promise<WbsTemplate>;
+  updateWbsTemplate(id: string, updates: Partial<WbsTemplate>): Promise<WbsTemplate | undefined>;
+  deleteWbsTemplate(id: string): Promise<boolean>;
   
   getDashboardStats(tenantId: string): Promise<DashboardStats>;
 }
@@ -298,6 +307,46 @@ export class DatabaseStorage implements IStorage {
       updatedAt: now,
     }).returning();
     return newItem;
+  }
+
+  async getWbsTemplates(tenantId: string): Promise<WbsTemplate[]> {
+    return db.select().from(wbsTemplates).where(eq(wbsTemplates.tenantId, tenantId));
+  }
+
+  async getWbsTemplate(id: string): Promise<WbsTemplate | undefined> {
+    const [template] = await db.select().from(wbsTemplates).where(eq(wbsTemplates.id, id));
+    return template || undefined;
+  }
+
+  async createWbsTemplate(template: InsertWbsTemplate): Promise<WbsTemplate> {
+    const id = randomUUID();
+    const now = new Date();
+    const [newTemplate] = await db.insert(wbsTemplates).values({
+      id,
+      tenantId: template.tenantId,
+      name: template.name,
+      description: template.description || null,
+      category: template.category || null,
+      structure: template.structure || [],
+      isActive: template.isActive ?? true,
+      createdBy: template.createdBy || null,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return newTemplate;
+  }
+
+  async updateWbsTemplate(id: string, updates: Partial<WbsTemplate>): Promise<WbsTemplate | undefined> {
+    const [updated] = await db.update(wbsTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(wbsTemplates.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteWbsTemplate(id: string): Promise<boolean> {
+    const result = await db.delete(wbsTemplates).where(eq(wbsTemplates.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getDashboardStats(tenantId: string): Promise<DashboardStats> {
@@ -584,7 +633,7 @@ export async function seedDatabase() {
   console.log("Database seeded successfully with sample data and navigation structure");
 }
 
-async function seedNavigationForTenant(tenantId: string) {
+export async function seedNavigationForTenant(tenantId: string) {
   const navDashboardId = randomUUID();
   const navProjectsId = randomUUID();
   const navPeopleId = randomUUID();

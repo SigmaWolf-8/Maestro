@@ -104,9 +104,6 @@ export function PlanRoomPage() {
   return <PlaceholderPage title="Plan Room" section="Documents" description="View and manage construction plans and blueprints." />;
 }
 
-export function TemplatesPage() {
-  return <PlaceholderPage title="Templates" section="Documents" description="Manage document templates and forms." />;
-}
 
 export function DocumentReportsPage() {
   return <PlaceholderPage title="Reports" section="Documents" description="Generate and export document reports." />;

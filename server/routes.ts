@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, seedNavigationForTenant } from "./storage";
 import { z } from "zod";
 import { insertProjectSchema, insertWbsNodeSchema, insertTenantUserSchema } from "@shared/schema";
 
@@ -46,6 +46,32 @@ const teamMemberCreateSchema = z.object({
     department: z.string().nullable().optional(),
     avatarUrl: z.string().nullable().optional(),
   }).optional(),
+});
+
+const wbsTemplateNodeSchema: z.ZodType<any> = z.lazy(() => z.object({
+  title: z.string(),
+  description: z.string().optional(),
+  codePath: z.string(),
+  codeDisplay: z.string(),
+  dimensions: z.record(z.any()).optional(),
+  estimatedHours: z.number().optional(),
+  children: z.array(wbsTemplateNodeSchema).optional(),
+}));
+
+const wbsTemplateCreateSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  category: z.string().max(50).optional(),
+  structure: z.array(wbsTemplateNodeSchema).optional(),
+  tenantId: z.string().optional(),
+});
+
+const wbsTemplateUpdateSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  category: z.string().max(50).optional(),
+  structure: z.array(wbsTemplateNodeSchema).optional(),
+  isActive: z.boolean().optional(),
 });
 
 function validateBody<T>(schema: z.ZodSchema<T>) {
@@ -133,6 +159,9 @@ export async function registerRoutes(
         onboardingComplete: true,
         instanceStatus: "active",
       });
+      
+      await seedNavigationForTenant(tenant.id);
+      
       res.status(201).json(tenant);
     } catch (error) {
       console.error("Error creating tenant:", error);
@@ -294,6 +323,88 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting WBS node:", error);
       res.status(500).json({ error: "Failed to delete WBS node" });
+    }
+  });
+
+  // WBS Templates API
+  app.get("/api/wbs-templates", async (req, res) => {
+    try {
+      const tenantId = typeof req.query.tenantId === "string" 
+        ? req.query.tenantId 
+        : await getDefaultTenantId();
+      const templates = await storage.getWbsTemplates(tenantId);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching WBS templates:", error);
+      res.status(500).json({ error: "Failed to fetch WBS templates" });
+    }
+  });
+
+  app.get("/api/wbs-templates/:id", async (req, res) => {
+    try {
+      const tenantId = typeof req.query.tenantId === "string" 
+        ? req.query.tenantId 
+        : await getDefaultTenantId();
+      const template = await storage.getWbsTemplate(req.params.id);
+      if (!template || template.tenantId !== tenantId) {
+        return res.status(404).json({ error: "WBS template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching WBS template:", error);
+      res.status(500).json({ error: "Failed to fetch WBS template" });
+    }
+  });
+
+  app.post("/api/wbs-templates", validateBody(wbsTemplateCreateSchema), async (req, res) => {
+    try {
+      const { name, description, category, structure, tenantId } = req.body;
+      const finalTenantId = tenantId || await getDefaultTenantId();
+      const template = await storage.createWbsTemplate({
+        tenantId: finalTenantId,
+        name,
+        description,
+        category,
+        structure: structure || [],
+      });
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("Error creating WBS template:", error);
+      res.status(500).json({ error: "Failed to create WBS template" });
+    }
+  });
+
+  app.patch("/api/wbs-templates/:id", validateBody(wbsTemplateUpdateSchema), async (req, res) => {
+    try {
+      const tenantId = typeof req.query.tenantId === "string" 
+        ? req.query.tenantId 
+        : await getDefaultTenantId();
+      const existing = await storage.getWbsTemplate(req.params.id);
+      if (!existing || existing.tenantId !== tenantId) {
+        return res.status(404).json({ error: "WBS template not found" });
+      }
+      const template = await storage.updateWbsTemplate(req.params.id, req.body);
+      res.json(template);
+    } catch (error) {
+      console.error("Error updating WBS template:", error);
+      res.status(500).json({ error: "Failed to update WBS template" });
+    }
+  });
+
+  app.delete("/api/wbs-templates/:id", async (req, res) => {
+    try {
+      const tenantId = typeof req.query.tenantId === "string" 
+        ? req.query.tenantId 
+        : await getDefaultTenantId();
+      const existing = await storage.getWbsTemplate(req.params.id);
+      if (!existing || existing.tenantId !== tenantId) {
+        return res.status(404).json({ error: "WBS template not found" });
+      }
+      await storage.deleteWbsTemplate(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting WBS template:", error);
+      res.status(500).json({ error: "Failed to delete WBS template" });
     }
   });
 
