@@ -123,10 +123,14 @@ export default function WbsTemplatesPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<WbsTemplate> }) => {
-      return apiRequest("PATCH", `/api/wbs-templates/${id}?tenantId=${tenantId}`, data);
+      const response = await apiRequest("PATCH", `/api/wbs-templates/${id}?tenantId=${tenantId}`, data);
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (updatedTemplate: WbsTemplate) => {
       queryClient.invalidateQueries({ queryKey: ["/api/wbs-templates", { tenantId }] });
+      if (selectedTemplate && selectedTemplate.id === updatedTemplate.id) {
+        setSelectedTemplate(updatedTemplate);
+      }
       setIsEditOpen(false);
       setEditingTemplate(null);
       form.reset();
