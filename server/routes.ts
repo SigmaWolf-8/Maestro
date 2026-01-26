@@ -552,5 +552,217 @@ export async function registerRoutes(
     }
   });
 
+  // ===== USER GROUPS =====
+  
+  // Get all user groups for a tenant
+  app.get("/api/user-groups", async (req: Request, res: Response) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || (await getDefaultTenantId());
+      const groups = await storage.getUserGroups(tenantId);
+      res.json(groups);
+    } catch (error) {
+      console.error("Error fetching user groups:", error);
+      res.status(500).json({ error: "Failed to fetch user groups" });
+    }
+  });
+
+  // Get a single user group
+  app.get("/api/user-groups/:id", async (req: Request, res: Response) => {
+    try {
+      const group = await storage.getUserGroup(req.params.id);
+      if (!group) {
+        return res.status(404).json({ error: "User group not found" });
+      }
+      res.json(group);
+    } catch (error) {
+      console.error("Error fetching user group:", error);
+      res.status(500).json({ error: "Failed to fetch user group" });
+    }
+  });
+
+  // Create a user group
+  app.post("/api/user-groups", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        tenantId: z.string().min(1),
+        name: z.string().min(1).max(100),
+        description: z.string().max(500).optional(),
+        isActive: z.boolean().optional(),
+      });
+      const data = schema.parse(req.body);
+      const group = await storage.createUserGroup(data);
+      res.status(201).json(group);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error creating user group:", error);
+      res.status(500).json({ error: "Failed to create user group" });
+    }
+  });
+
+  // Update a user group
+  app.patch("/api/user-groups/:id", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        name: z.string().min(1).max(100).optional(),
+        description: z.string().max(500).optional(),
+        isActive: z.boolean().optional(),
+      });
+      const data = schema.parse(req.body);
+      const group = await storage.updateUserGroup(req.params.id, data);
+      if (!group) {
+        return res.status(404).json({ error: "User group not found" });
+      }
+      res.json(group);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error updating user group:", error);
+      res.status(500).json({ error: "Failed to update user group" });
+    }
+  });
+
+  // Delete a user group
+  app.delete("/api/user-groups/:id", async (req: Request, res: Response) => {
+    try {
+      await storage.deleteUserGroup(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting user group:", error);
+      res.status(500).json({ error: "Failed to delete user group" });
+    }
+  });
+
+  // ===== USER GROUP MEMBERS =====
+  
+  // Get members of a group
+  app.get("/api/user-groups/:groupId/members", async (req: Request, res: Response) => {
+    try {
+      const members = await storage.getUserGroupMembers(req.params.groupId);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching group members:", error);
+      res.status(500).json({ error: "Failed to fetch group members" });
+    }
+  });
+
+  // Add a user to a group
+  app.post("/api/user-groups/:groupId/members", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        tenantId: z.string().min(1),
+        userId: z.string().min(1),
+      });
+      const data = schema.parse(req.body);
+      const member = await storage.addUserToGroup({
+        tenantId: data.tenantId,
+        groupId: req.params.groupId,
+        userId: data.userId,
+      });
+      res.status(201).json(member);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error adding user to group:", error);
+      res.status(500).json({ error: "Failed to add user to group" });
+    }
+  });
+
+  // Remove a user from a group
+  app.delete("/api/user-groups/:groupId/members/:userId", async (req: Request, res: Response) => {
+    try {
+      await storage.removeUserFromGroup(req.params.groupId, req.params.userId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error removing user from group:", error);
+      res.status(500).json({ error: "Failed to remove user from group" });
+    }
+  });
+
+  // ===== GROUP PERMISSIONS =====
+  
+  // Get permissions for a group
+  app.get("/api/user-groups/:groupId/permissions", async (req: Request, res: Response) => {
+    try {
+      const permissions = await storage.getGroupPermissions(req.params.groupId);
+      res.json(permissions);
+    } catch (error) {
+      console.error("Error fetching group permissions:", error);
+      res.status(500).json({ error: "Failed to fetch group permissions" });
+    }
+  });
+
+  // Set/update a permission for a group on a navigation item
+  app.post("/api/user-groups/:groupId/permissions", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        tenantId: z.string().min(1),
+        navigationItemId: z.string().min(1),
+        canView: z.boolean().optional(),
+        canCreate: z.boolean().optional(),
+        canEdit: z.boolean().optional(),
+        canDelete: z.boolean().optional(),
+        inheritToChildren: z.boolean().optional(),
+      });
+      const data = schema.parse(req.body);
+      const permission = await storage.setGroupPermission({
+        tenantId: data.tenantId,
+        groupId: req.params.groupId,
+        navigationItemId: data.navigationItemId,
+        canView: data.canView,
+        canCreate: data.canCreate,
+        canEdit: data.canEdit,
+        canDelete: data.canDelete,
+        inheritToChildren: data.inheritToChildren,
+      });
+      res.status(201).json(permission);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error setting group permission:", error);
+      res.status(500).json({ error: "Failed to set group permission" });
+    }
+  });
+
+  // Update a specific permission
+  app.patch("/api/permissions/:id", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        canView: z.boolean().optional(),
+        canCreate: z.boolean().optional(),
+        canEdit: z.boolean().optional(),
+        canDelete: z.boolean().optional(),
+        inheritToChildren: z.boolean().optional(),
+      });
+      const data = schema.parse(req.body);
+      const permission = await storage.updateGroupPermission(req.params.id, data);
+      if (!permission) {
+        return res.status(404).json({ error: "Permission not found" });
+      }
+      res.json(permission);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error updating permission:", error);
+      res.status(500).json({ error: "Failed to update permission" });
+    }
+  });
+
+  // Delete a permission
+  app.delete("/api/permissions/:id", async (req: Request, res: Response) => {
+    try {
+      await storage.deleteGroupPermission(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting permission:", error);
+      res.status(500).json({ error: "Failed to delete permission" });
+    }
+  });
+
   return httpServer;
 }

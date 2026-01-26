@@ -17,6 +17,8 @@ import WbsTemplatesPage from "@/pages/wbs-templates";
 import Team from "@/pages/team";
 import Settings from "@/pages/settings";
 import Profile from "@/pages/profile";
+import UserGroupsPage from "@/pages/user-groups";
+import GroupPermissionsPage from "@/pages/group-permissions";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
@@ -84,6 +86,8 @@ function Router() {
       
       <Route path="/team" component={Team} />
       <Route path="/settings" component={Settings} />
+      <Route path="/settings/user-groups" component={UserGroupsPage} />
+      <Route path="/settings/permissions" component={GroupPermissionsPage} />
       <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>

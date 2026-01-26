@@ -8,18 +8,27 @@ import {
   wbsNodes,
   navigationItems,
   wbsTemplates,
+  userGroups,
+  userGroupMembers,
+  groupPermissions,
   type Tenant,
   type TenantUser,
   type Project,
   type WbsNode,
   type NavigationItem,
   type WbsTemplate,
+  type UserGroup,
+  type UserGroupMember,
+  type GroupPermission,
   type InsertTenant,
   type InsertTenantUser,
   type InsertProject,
   type InsertWbsNode,
   type InsertNavigationItem,
   type InsertWbsTemplate,
+  type InsertUserGroup,
+  type InsertUserGroupMember,
+  type InsertGroupPermission,
   type DashboardStats,
 } from "@shared/schema";
 
@@ -58,6 +67,26 @@ export interface IStorage {
   deleteWbsTemplate(id: string): Promise<boolean>;
   
   getDashboardStats(tenantId: string): Promise<DashboardStats>;
+  
+  // User Groups
+  getUserGroups(tenantId: string): Promise<UserGroup[]>;
+  getUserGroup(id: string): Promise<UserGroup | undefined>;
+  createUserGroup(group: InsertUserGroup): Promise<UserGroup>;
+  updateUserGroup(id: string, updates: Partial<UserGroup>): Promise<UserGroup | undefined>;
+  deleteUserGroup(id: string): Promise<boolean>;
+  
+  // User Group Members
+  getUserGroupMembers(groupId: string): Promise<UserGroupMember[]>;
+  getUserGroupsForUser(userId: string): Promise<UserGroup[]>;
+  addUserToGroup(member: InsertUserGroupMember): Promise<UserGroupMember>;
+  removeUserFromGroup(groupId: string, userId: string): Promise<boolean>;
+  
+  // Group Permissions
+  getGroupPermissions(groupId: string): Promise<GroupPermission[]>;
+  getPermissionsForNavItem(tenantId: string, navigationItemId: string): Promise<GroupPermission[]>;
+  setGroupPermission(permission: InsertGroupPermission): Promise<GroupPermission>;
+  updateGroupPermission(id: string, updates: Partial<GroupPermission>): Promise<GroupPermission | undefined>;
+  deleteGroupPermission(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -371,6 +400,136 @@ export class DatabaseStorage implements IStorage {
       budgetTotal,
       budgetUsed,
     };
+  }
+
+  // User Groups
+  async getUserGroups(tenantId: string): Promise<UserGroup[]> {
+    return db.select().from(userGroups).where(eq(userGroups.tenantId, tenantId)).orderBy(userGroups.name);
+  }
+
+  async getUserGroup(id: string): Promise<UserGroup | undefined> {
+    const [group] = await db.select().from(userGroups).where(eq(userGroups.id, id));
+    return group || undefined;
+  }
+
+  async createUserGroup(group: InsertUserGroup): Promise<UserGroup> {
+    const id = randomUUID();
+    const now = new Date();
+    const [newGroup] = await db.insert(userGroups).values({
+      id,
+      ...group,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return newGroup;
+  }
+
+  async updateUserGroup(id: string, updates: Partial<UserGroup>): Promise<UserGroup | undefined> {
+    const [updated] = await db.update(userGroups)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(userGroups.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteUserGroup(id: string): Promise<boolean> {
+    // First delete all group members and permissions
+    await db.delete(userGroupMembers).where(eq(userGroupMembers.groupId, id));
+    await db.delete(groupPermissions).where(eq(groupPermissions.groupId, id));
+    const result = await db.delete(userGroups).where(eq(userGroups.id, id));
+    return true;
+  }
+
+  // User Group Members
+  async getUserGroupMembers(groupId: string): Promise<UserGroupMember[]> {
+    return db.select().from(userGroupMembers).where(eq(userGroupMembers.groupId, groupId));
+  }
+
+  async getUserGroupsForUser(userId: string): Promise<UserGroup[]> {
+    const memberships = await db.select().from(userGroupMembers).where(eq(userGroupMembers.userId, userId));
+    const groupIds = memberships.map(m => m.groupId);
+    if (groupIds.length === 0) return [];
+    
+    const groups = await db.select().from(userGroups);
+    return groups.filter(g => groupIds.includes(g.id));
+  }
+
+  async addUserToGroup(member: InsertUserGroupMember): Promise<UserGroupMember> {
+    const id = randomUUID();
+    const [newMember] = await db.insert(userGroupMembers).values({
+      id,
+      ...member,
+      createdAt: new Date(),
+    }).returning();
+    return newMember;
+  }
+
+  async removeUserFromGroup(groupId: string, userId: string): Promise<boolean> {
+    await db.delete(userGroupMembers).where(
+      and(eq(userGroupMembers.groupId, groupId), eq(userGroupMembers.userId, userId))
+    );
+    return true;
+  }
+
+  // Group Permissions
+  async getGroupPermissions(groupId: string): Promise<GroupPermission[]> {
+    return db.select().from(groupPermissions).where(eq(groupPermissions.groupId, groupId));
+  }
+
+  async getPermissionsForNavItem(tenantId: string, navigationItemId: string): Promise<GroupPermission[]> {
+    return db.select().from(groupPermissions).where(
+      and(eq(groupPermissions.tenantId, tenantId), eq(groupPermissions.navigationItemId, navigationItemId))
+    );
+  }
+
+  async setGroupPermission(permission: InsertGroupPermission): Promise<GroupPermission> {
+    // Check if permission already exists for this group + navigation item
+    const [existing] = await db.select().from(groupPermissions).where(
+      and(
+        eq(groupPermissions.groupId, permission.groupId),
+        eq(groupPermissions.navigationItemId, permission.navigationItemId)
+      )
+    );
+    
+    if (existing) {
+      // Update existing permission
+      const [updated] = await db.update(groupPermissions)
+        .set({
+          canView: permission.canView,
+          canCreate: permission.canCreate,
+          canEdit: permission.canEdit,
+          canDelete: permission.canDelete,
+          inheritToChildren: permission.inheritToChildren,
+          updatedAt: new Date(),
+        })
+        .where(eq(groupPermissions.id, existing.id))
+        .returning();
+      return updated;
+    }
+    
+    // Insert new permission
+    const id = randomUUID();
+    const now = new Date();
+    const [newPerm] = await db.insert(groupPermissions).values({
+      id,
+      ...permission,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return newPerm;
+  }
+
+  async updateGroupPermission(id: string, updates: Partial<GroupPermission>): Promise<GroupPermission | undefined> {
+    const [updated] = await db.update(groupPermissions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(groupPermissions.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteGroupPermission(id: string): Promise<boolean> {
+    await db.delete(groupPermissions).where(eq(groupPermissions.id, id));
+    return true;
   }
 }
 

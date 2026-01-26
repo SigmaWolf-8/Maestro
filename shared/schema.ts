@@ -146,6 +146,41 @@ export const wbsTemplates = pgTable("wbs_templates", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
+// User Groups for security module
+export const userGroups = pgTable("user_groups", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// User Group Memberships
+export const userGroupMembers = pgTable("user_group_members", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  groupId: varchar("group_id", { length: 36 }).notNull().references(() => userGroups.id),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => tenantUsers.id),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Group Permissions - what forms/navigation items each group can access
+export const groupPermissions = pgTable("group_permissions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  groupId: varchar("group_id", { length: 36 }).notNull().references(() => userGroups.id),
+  navigationItemId: varchar("navigation_item_id", { length: 36 }).notNull().references(() => navigationItems.id),
+  canView: boolean("can_view").default(false),
+  canCreate: boolean("can_create").default(false),
+  canEdit: boolean("can_edit").default(false),
+  canDelete: boolean("can_delete").default(false),
+  inheritToChildren: boolean("inherit_to_children").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTenantUserSchema = createInsertSchema(tenantUsers).omit({ id: true, createdAt: true, lastLoginAt: true });
 export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true, updatedAt: true });
@@ -153,6 +188,9 @@ export const insertWbsNodeSchema = createInsertSchema(wbsNodes).omit({ id: true,
 export const insertNavigationItemSchema = createInsertSchema(navigationItems).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({ id: true });
 export const insertWbsTemplateSchema = createInsertSchema(wbsTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserGroupSchema = createInsertSchema(userGroups).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserGroupMemberSchema = createInsertSchema(userGroupMembers).omit({ id: true, createdAt: true });
+export const insertGroupPermissionSchema = createInsertSchema(groupPermissions).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertTenant = z.infer<typeof insertTenantSchema>;
 export type InsertTenantUser = z.infer<typeof insertTenantUserSchema>;
@@ -161,6 +199,9 @@ export type InsertWbsNode = z.infer<typeof insertWbsNodeSchema>;
 export type InsertNavigationItem = z.infer<typeof insertNavigationItemSchema>;
 export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
 export type InsertWbsTemplate = z.infer<typeof insertWbsTemplateSchema>;
+export type InsertUserGroup = z.infer<typeof insertUserGroupSchema>;
+export type InsertUserGroupMember = z.infer<typeof insertUserGroupMemberSchema>;
+export type InsertGroupPermission = z.infer<typeof insertGroupPermissionSchema>;
 
 export type Tenant = typeof tenants.$inferSelect;
 export type TenantUser = typeof tenantUsers.$inferSelect;
@@ -169,6 +210,9 @@ export type WbsNode = typeof wbsNodes.$inferSelect;
 export type NavigationItem = typeof navigationItems.$inferSelect;
 export type RolePermission = typeof rolePermissions.$inferSelect;
 export type WbsTemplate = typeof wbsTemplates.$inferSelect;
+export type UserGroup = typeof userGroups.$inferSelect;
+export type UserGroupMember = typeof userGroupMembers.$inferSelect;
+export type GroupPermission = typeof groupPermissions.$inferSelect;
 
 export interface TenantConfig {
   branding: {
