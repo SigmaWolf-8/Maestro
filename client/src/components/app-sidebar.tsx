@@ -235,7 +235,7 @@ export function AppSidebar({
       <SidebarHeader className="p-2 pt-3">
         <div className="flex flex-col items-center">
           {activeTenant?.config?.branding?.logoUrl ? (
-            <div className="flex w-full h-20 items-center justify-center">
+            <div className="flex w-full h-[92px] items-center justify-center">
               <img
                 src={activeTenant.config.branding.logoUrl}
                 alt="Logo"
@@ -243,8 +243,8 @@ export function AppSidebar({
               />
             </div>
           ) : (
-            <div className="flex w-full h-20 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg">
-              <Building2 className="h-12 w-12" />
+            <div className="flex w-full h-[92px] items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg">
+              <Building2 className="h-14 w-14" />
             </div>
           )}
         </div>
