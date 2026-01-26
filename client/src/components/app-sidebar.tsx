@@ -232,19 +232,19 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" style={{ background: 'var(--sidebar-gradient, hsl(var(--sidebar)))' }}>
-      <SidebarHeader className="p-2 pt-1">
+      <SidebarHeader className="p-2 pt-0">
         <div className="flex flex-col items-center">
           {activeTenant?.config?.branding?.logoUrl ? (
-            <div className="flex w-[95%] aspect-square items-center justify-center">
+            <div className="flex w-full h-16 items-center justify-center">
               <img
                 src={activeTenant.config.branding.logoUrl}
                 alt="Logo"
-                className="w-full h-full object-contain"
+                className="max-w-full max-h-full object-contain"
               />
             </div>
           ) : (
-            <div className="flex w-[95%] aspect-square items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg">
-              <Building2 className="h-24 w-24" />
+            <div className="flex w-full h-16 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg">
+              <Building2 className="h-10 w-10" />
             </div>
           )}
         </div>
