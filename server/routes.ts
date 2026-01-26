@@ -169,6 +169,30 @@ export async function registerRoutes(
     }
   });
 
+  // Seed navigation for existing tenants that are missing items
+  app.post("/api/tenants/:id/seed-navigation", async (req, res) => {
+    try {
+      const tenantId = req.params.id;
+      const tenant = await storage.getTenant(tenantId);
+      if (!tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+      
+      // Check if navigation already exists
+      const existingNav = await storage.getNavigationItems(tenantId);
+      if (existingNav.length > 0) {
+        return res.status(400).json({ error: "Navigation already exists for this tenant", count: existingNav.length });
+      }
+      
+      await seedNavigationForTenant(tenantId);
+      const newNav = await storage.getNavigationItems(tenantId);
+      res.json({ message: "Navigation seeded successfully", count: newNav.length });
+    } catch (error) {
+      console.error("Error seeding navigation:", error);
+      res.status(500).json({ error: "Failed to seed navigation" });
+    }
+  });
+
   app.get("/api/navigation", async (req, res) => {
     try {
       const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();

@@ -93,6 +93,7 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 | GET | /api/tenants/:id | Get tenant by ID |
 | POST | /api/tenants | Create new tenant |
 | PATCH | /api/tenants/:id | Update tenant (name, email, branding) |
+| POST | /api/tenants/:id/seed-navigation | Seed navigation for existing tenant (if missing) |
 
 ## Design System
 
