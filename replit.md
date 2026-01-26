@@ -135,6 +135,16 @@ The application includes seeded demo data:
 
 ## Recent Changes
 
+### January 2026 - User Group Security Module
+- Added user group management (/settings/user-groups) for creating/editing/deleting groups
+- Added group membership management (assign users to groups)
+- Added permissions matrix (/settings/permissions) for form-level access control
+- Permission levels: View, Create, Edit, Delete per form/navigation item
+- Hierarchical permission inheritance from parent to child forms
+- Database tables: user_groups, user_group_members, group_permissions
+- Upsert logic for permissions prevents duplicate records
+- API endpoints: /api/user-groups, /api/user-groups/:id/members, /api/user-groups/:id/permissions
+
 ### January 2026 - 5-Section Navigation Architecture
 - Implemented comprehensive 5-section navigation structure (Dashboard, Projects, People & Contacts, Finance, Documents)
 - Navigation is database-driven with navigation_items table supporting tenant-specific customization
