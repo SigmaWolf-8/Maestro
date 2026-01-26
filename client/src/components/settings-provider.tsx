@@ -215,12 +215,14 @@ function applyBranding(branding: TenantBranding) {
   const isLightSidebar = sidebarLightness > 50;
   
   if (isLightSidebar) {
-    root.style.setProperty("--sidebar-foreground", `${sidebarHue} 25% 20%`);
-    root.style.setProperty("--sidebar-border", `${sidebarHue} 15% 85%`);
-    root.style.setProperty("--sidebar-accent", `${sidebarHue} 20% 90%`);
-    root.style.setProperty("--sidebar-accent-foreground", `${sidebarHue} 30% 25%`);
+    root.style.setProperty("--sidebar-foreground", `${sidebarHue} 40% 15%`);
+    root.style.setProperty("--sidebar-border", `${sidebarHue} 20% 80%`);
+    root.style.setProperty("--sidebar-accent", `${sidebarHue} 25% 88%`);
+    root.style.setProperty("--sidebar-accent-foreground", `${sidebarHue} 45% 12%`);
     root.style.setProperty("--sidebar-primary-foreground", `0 0% 100%`);
+    root.style.setProperty("--sidebar-gradient", `linear-gradient(180deg, hsl(${sidebar}) 0%, hsl(${sidebar} / 0.85) 50%, hsl(${sidebar} / 0.7) 100%)`);
   } else {
     root.style.setProperty("--sidebar-foreground", `${sidebarHue} 15% 95%`);
+    root.style.setProperty("--sidebar-gradient", `linear-gradient(180deg, hsl(${sidebar}) 0%, hsl(${sidebar} / 0.9) 50%, hsl(${sidebar} / 0.8) 100%)`);
   }
 }

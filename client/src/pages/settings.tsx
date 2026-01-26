@@ -19,6 +19,11 @@ const colorPresets = [
   { name: "Sunset Orange", primary: "24 85% 45%", accent: "180 70% 40%", sidebar: "24 40% 15%", category: "dark" },
   { name: "Slate Modern", primary: "215 20% 45%", accent: "200 80% 50%", sidebar: "215 25% 12%", category: "dark" },
   { name: "Salvi Corporate", primary: "212 61% 35%", accent: "14 10% 34%", sidebar: "212 45% 18%", category: "dark" },
+  { name: "Baby Blue", primary: "200 75% 55%", accent: "340 70% 60%", sidebar: "200 50% 18%", category: "dark" },
+  { name: "Vibrant Lime", primary: "85 75% 45%", accent: "45 90% 50%", sidebar: "85 45% 15%", category: "dark" },
+  { name: "Espresso Sky", primary: "30 55% 30%", accent: "200 70% 55%", sidebar: "30 40% 12%", category: "dark" },
+  { name: "Deep Crimson", primary: "0 70% 40%", accent: "35 80% 50%", sidebar: "0 50% 15%", category: "dark" },
+  { name: "Midnight Blue", primary: "230 60% 35%", accent: "45 85% 55%", sidebar: "230 45% 10%", category: "dark" },
   { name: "Cloud White", primary: "210 40% 50%", accent: "200 60% 45%", sidebar: "210 15% 96%", category: "light" },
   { name: "Soft Sage", primary: "142 35% 45%", accent: "85 50% 40%", sidebar: "142 20% 94%", category: "light" },
   { name: "Blush Rose", primary: "350 50% 55%", accent: "330 45% 50%", sidebar: "350 25% 95%", category: "light" },
@@ -27,6 +32,8 @@ const colorPresets = [
   { name: "Lavender Light", primary: "270 45% 55%", accent: "290 40% 50%", sidebar: "270 25% 96%", category: "light" },
   { name: "Mint Fresh", primary: "160 50% 42%", accent: "140 45% 38%", sidebar: "160 30% 95%", category: "light" },
   { name: "Pearl Gray", primary: "220 15% 50%", accent: "210 25% 45%", sidebar: "220 10% 95%", category: "light" },
+  { name: "Ivory Cream", primary: "40 40% 50%", accent: "30 50% 45%", sidebar: "40 20% 96%", category: "light" },
+  { name: "Arctic White", primary: "200 30% 45%", accent: "190 40% 40%", sidebar: "200 10% 98%", category: "light" },
 ];
 
 const fontOptions = [

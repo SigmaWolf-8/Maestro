@@ -226,11 +226,11 @@ export function AppSidebar({
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border" style={{ background: 'var(--sidebar-gradient, hsl(var(--sidebar)))' }}>
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col items-center gap-3">
           {activeTenant?.config?.branding?.logoUrl ? (
-            <div className="flex h-12 w-12 items-center justify-center rounded-md overflow-hidden bg-sidebar-primary">
+            <div className="flex h-20 w-20 items-center justify-center rounded-lg overflow-hidden bg-sidebar-primary shadow-md">
               <img
                 src={activeTenant.config.branding.logoUrl}
                 alt="Logo"
@@ -238,20 +238,20 @@ export function AppSidebar({
               />
             </div>
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-              <Building2 className="h-6 w-6" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-md">
+              <Building2 className="h-10 w-10" />
             </div>
           )}
           {state !== "collapsed" && (
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-semibold text-sidebar-foreground truncate">
+            <div className="flex flex-col items-center w-full text-center">
+              <span className="text-sm font-semibold text-sidebar-foreground truncate max-w-full">
                 {activeTenant?.companyName || "The Maestro"}
               </span>
               {tenants.length > 1 && (
                 <select
                   value={activeTenant?.id || ""}
                   onChange={(e) => setActiveTenant(e.target.value)}
-                  className="text-xs text-sidebar-foreground/70 bg-transparent border-0 p-0 cursor-pointer hover:text-sidebar-foreground focus:outline-none"
+                  className="text-xs text-sidebar-foreground/70 bg-transparent border-0 p-0 cursor-pointer hover:text-sidebar-foreground focus:outline-none text-center mt-1"
                   data-testid="select-company"
                 >
                   {tenants.map((t) => (
@@ -266,7 +266,7 @@ export function AppSidebar({
                 </select>
               )}
               {tenants.length <= 1 && (
-                <span className="text-xs text-sidebar-foreground/70">
+                <span className="text-xs text-sidebar-foreground/70 mt-1">
                   {tenantName}
                 </span>
               )}
