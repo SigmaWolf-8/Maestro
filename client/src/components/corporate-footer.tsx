@@ -1,5 +1,5 @@
 import { useSettings } from "@/components/settings-provider";
-import { Building2, Mail, Globe, Phone } from "lucide-react";
+import { Building2, Mail, Globe } from "lucide-react";
 
 export function CorporateFooter() {
   const { activeTenant } = useSettings();
