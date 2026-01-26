@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage, seedNavigationForTenant } from "./storage";
 import { z } from "zod";
 import { insertProjectSchema, insertWbsNodeSchema, insertTenantUserSchema } from "@shared/schema";
+import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 
 let cachedTenantId: string | null = null;
 
@@ -93,6 +94,9 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  await setupAuth(app);
+  registerAuthRoutes(app);
+
   app.get("/api/tenants", async (req, res) => {
     try {
       const tenants = await storage.getAllTenants();

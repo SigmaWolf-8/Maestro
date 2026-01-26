@@ -1,4 +1,5 @@
 import { useLocation, Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -195,6 +196,10 @@ export function AppSidebar({
   const [location] = useLocation();
   const { state } = useSidebar();
   const { activeTenant, tenants, setActiveTenant } = useSettings();
+  const { user: authUser } = useAuth();
+  
+  const displayFirstName = authUser?.firstName || currentUser?.profile?.firstName || "User";
+  const displayLastName = authUser?.lastName || currentUser?.profile?.lastName || "";
   const userRole = currentUser?.role || "admin";
   const userRoleLevel = roleHierarchy[userRole];
 
@@ -283,25 +288,28 @@ export function AppSidebar({
             </SidebarMenuItem>
           </SidebarMenu>
           
-          <div className="flex items-center gap-3 pt-3 border-t border-sidebar-border/50">
+          <Link 
+            href="/profile" 
+            className="flex items-center gap-3 pt-3 border-t border-sidebar-border/50 hover-elevate rounded-md p-2 -m-2 cursor-pointer"
+            data-testid="nav-profile"
+          >
             <Avatar className="h-8 w-8">
               <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs">
-                {currentUser?.profile.firstName?.[0] || "U"}
-                {currentUser?.profile.lastName?.[0] || ""}
+                {displayFirstName?.[0] || "U"}
+                {displayLastName?.[0] || ""}
               </AvatarFallback>
             </Avatar>
             {state !== "collapsed" && (
               <div className="flex flex-col min-w-0 flex-1">
                 <span className="text-sm font-medium text-sidebar-foreground truncate">
-                  {currentUser?.profile.firstName || "User"}{" "}
-                  {currentUser?.profile.lastName || ""}
+                  {displayFirstName} {displayLastName}
                 </span>
                 <span className="text-xs text-sidebar-foreground/60 truncate capitalize">
                   {userRole.replace("_", " ")}
                 </span>
               </div>
             )}
-          </div>
+          </Link>
         </div>
       </SidebarFooter>
       <SidebarRail />

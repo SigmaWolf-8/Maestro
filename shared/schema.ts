@@ -2,6 +2,8 @@ import { pgTable, text, varchar, boolean, integer, jsonb, timestamp, decimal } f
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export * from "./models/auth";
+
 export const userRoles = ["admin", "project_manager", "accountant", "viewer"] as const;
 export type UserRole = typeof userRoles[number];
 

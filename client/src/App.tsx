@@ -16,6 +16,7 @@ import WbsDimensions from "@/pages/wbs-dimensions";
 import WbsTemplatesPage from "@/pages/wbs-templates";
 import Team from "@/pages/team";
 import Settings from "@/pages/settings";
+import Profile from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
@@ -83,6 +84,7 @@ function Router() {
       
       <Route path="/team" component={Team} />
       <Route path="/settings" component={Settings} />
+      <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
   );
