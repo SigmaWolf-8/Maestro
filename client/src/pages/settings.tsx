@@ -11,22 +11,35 @@ import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Sav
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const colorPresets = [
-  { name: "Monochrome", primary: "0 0% 25%", accent: "0 0% 55%", sidebar: "0 0% 12%" },
-  { name: "Teal Construction", primary: "168 76% 36%", accent: "28 85% 52%", sidebar: "175 35% 15%" },
-  { name: "Navy Professional", primary: "220 70% 40%", accent: "35 90% 50%", sidebar: "220 40% 12%" },
-  { name: "Forest Green", primary: "142 60% 35%", accent: "38 92% 50%", sidebar: "142 35% 12%" },
-  { name: "Royal Purple", primary: "270 60% 45%", accent: "45 95% 55%", sidebar: "270 35% 15%" },
-  { name: "Sunset Orange", primary: "24 85% 45%", accent: "180 70% 40%", sidebar: "24 40% 15%" },
-  { name: "Slate Modern", primary: "215 20% 45%", accent: "200 80% 50%", sidebar: "215 25% 12%" },
-  { name: "Baby Blue", primary: "200 75% 55%", accent: "340 70% 60%", sidebar: "200 50% 18%" },
-  { name: "Vibrant Lime", primary: "85 75% 45%", accent: "45 90% 50%", sidebar: "85 45% 15%" },
-  { name: "Espresso Sky", primary: "30 55% 30%", accent: "200 70% 55%", sidebar: "30 40% 12%" },
+  { name: "Monochrome", primary: "0 0% 25%", accent: "0 0% 55%", sidebar: "0 0% 12%", category: "dark" },
+  { name: "Teal Construction", primary: "168 76% 36%", accent: "28 85% 52%", sidebar: "175 35% 15%", category: "dark" },
+  { name: "Navy Professional", primary: "220 70% 40%", accent: "35 90% 50%", sidebar: "220 40% 12%", category: "dark" },
+  { name: "Forest Green", primary: "142 60% 35%", accent: "38 92% 50%", sidebar: "142 35% 12%", category: "dark" },
+  { name: "Royal Purple", primary: "270 60% 45%", accent: "45 95% 55%", sidebar: "270 35% 15%", category: "dark" },
+  { name: "Sunset Orange", primary: "24 85% 45%", accent: "180 70% 40%", sidebar: "24 40% 15%", category: "dark" },
+  { name: "Slate Modern", primary: "215 20% 45%", accent: "200 80% 50%", sidebar: "215 25% 12%", category: "dark" },
+  { name: "Salvi Corporate", primary: "212 61% 35%", accent: "14 10% 34%", sidebar: "212 45% 18%", category: "dark" },
+  { name: "Cloud White", primary: "210 40% 50%", accent: "200 60% 45%", sidebar: "210 15% 96%", category: "light" },
+  { name: "Soft Sage", primary: "142 35% 45%", accent: "85 50% 40%", sidebar: "142 20% 94%", category: "light" },
+  { name: "Blush Rose", primary: "350 50% 55%", accent: "330 45% 50%", sidebar: "350 25% 95%", category: "light" },
+  { name: "Ocean Mist", primary: "195 55% 45%", accent: "180 50% 40%", sidebar: "195 30% 95%", category: "light" },
+  { name: "Warm Sand", primary: "35 45% 50%", accent: "25 55% 45%", sidebar: "35 25% 94%", category: "light" },
+  { name: "Lavender Light", primary: "270 45% 55%", accent: "290 40% 50%", sidebar: "270 25% 96%", category: "light" },
+  { name: "Mint Fresh", primary: "160 50% 42%", accent: "140 45% 38%", sidebar: "160 30% 95%", category: "light" },
+  { name: "Pearl Gray", primary: "220 15% 50%", accent: "210 25% 45%", sidebar: "220 10% 95%", category: "light" },
 ];
 
 const fontOptions = [
   { value: "elegant", label: "Playfair Display", description: "Elegant serif, similar to Felix" },
   { value: "classic", label: "Libre Baskerville", description: "Traditional serif, timeless feel" },
   { value: "modern", label: "Inter", description: "Clean modern sans-serif" },
+  { value: "script", label: "Great Vibes", description: "Elegant script, formal occasions" },
+  { value: "gotham", label: "Montserrat", description: "Geometric sans-serif, like Gotham" },
+  { value: "roboto", label: "Roboto", description: "Friendly and professional" },
+  { value: "lato", label: "Lato", description: "Warm and stable sans-serif" },
+  { value: "opensans", label: "Open Sans", description: "Neutral and legible" },
+  { value: "merriweather", label: "Merriweather", description: "Pleasant reading serif" },
+  { value: "raleway", label: "Raleway", description: "Elegant thin sans-serif" },
 ];
 
 export default function Settings() {
@@ -320,7 +333,7 @@ export default function Settings() {
               <Label>Logo</Label>
               <div className="flex items-center gap-4">
                 {branding?.logoUrl ? (
-                  <div className="w-16 h-16 rounded-md border border-border overflow-hidden bg-muted flex items-center justify-center">
+                  <div className="w-24 h-24 rounded-md border border-border overflow-hidden bg-muted flex items-center justify-center">
                     <img
                       src={branding.logoUrl}
                       alt="Custom logo"
@@ -328,8 +341,8 @@ export default function Settings() {
                     />
                   </div>
                 ) : (
-                  <div className="w-16 h-16 rounded-md border border-dashed border-border bg-muted flex items-center justify-center">
-                    <Image className="h-6 w-6 text-muted-foreground" />
+                  <div className="w-24 h-24 rounded-md border border-dashed border-border bg-muted flex items-center justify-center">
+                    <Image className="h-8 w-8 text-muted-foreground" />
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
@@ -429,49 +442,93 @@ export default function Settings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {colorPresets.map((preset) => {
-                const isActive =
-                  branding?.primaryColor === preset.primary &&
-                  branding?.secondaryColor === preset.accent &&
-                  branding?.sidebarColor === preset.sidebar;
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">Dark Sidebars</h4>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {colorPresets.filter(p => p.category === "dark").map((preset) => {
+                    const isActive =
+                      branding?.primaryColor === preset.primary &&
+                      branding?.secondaryColor === preset.accent &&
+                      branding?.sidebarColor === preset.sidebar;
 
-                return (
-                  <button
-                    key={preset.name}
-                    onClick={() => handleColorPreset(preset)}
-                    className={`p-4 rounded-md border text-left transition-all hover-elevate ${
-                      isActive
-                        ? "border-primary ring-2 ring-primary/20"
-                        : "border-border"
-                    }`}
-                    data-testid={`button-theme-${preset.name.toLowerCase().replace(/\s+/g, "-")}`}
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="flex gap-1">
-                        <div
-                          className="w-5 h-5 rounded-full border border-border"
-                          style={{ backgroundColor: `hsl(${preset.primary})` }}
-                        />
-                        <div
-                          className="w-5 h-5 rounded-full border border-border"
-                          style={{ backgroundColor: `hsl(${preset.accent})` }}
-                        />
-                        <div
-                          className="w-5 h-5 rounded-full border border-border"
-                          style={{ backgroundColor: `hsl(${preset.sidebar})` }}
-                        />
-                      </div>
-                      {isActive && (
-                        <Badge variant="default" className="ml-auto text-xs">
-                          Active
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="font-medium text-sm">{preset.name}</p>
-                  </button>
-                );
-              })}
+                    return (
+                      <button
+                        key={preset.name}
+                        onClick={() => handleColorPreset(preset)}
+                        className={`p-3 rounded-md border text-left transition-all hover-elevate ${
+                          isActive
+                            ? "border-primary ring-2 ring-primary/20"
+                            : "border-border"
+                        }`}
+                        data-testid={`button-theme-${preset.name.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex gap-1">
+                            <div
+                              className="w-4 h-4 rounded-full border border-border"
+                              style={{ backgroundColor: `hsl(${preset.primary})` }}
+                            />
+                            <div
+                              className="w-4 h-4 rounded-full border border-border"
+                              style={{ backgroundColor: `hsl(${preset.sidebar})` }}
+                            />
+                          </div>
+                          {isActive && (
+                            <Badge variant="default" className="ml-auto text-xs py-0">
+                              Active
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="font-medium text-xs">{preset.name}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-muted-foreground mb-3">Light Sidebars</h4>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {colorPresets.filter(p => p.category === "light").map((preset) => {
+                    const isActive =
+                      branding?.primaryColor === preset.primary &&
+                      branding?.secondaryColor === preset.accent &&
+                      branding?.sidebarColor === preset.sidebar;
+
+                    return (
+                      <button
+                        key={preset.name}
+                        onClick={() => handleColorPreset(preset)}
+                        className={`p-3 rounded-md border text-left transition-all hover-elevate ${
+                          isActive
+                            ? "border-primary ring-2 ring-primary/20"
+                            : "border-border"
+                        }`}
+                        data-testid={`button-theme-${preset.name.toLowerCase().replace(/\s+/g, "-")}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex gap-1">
+                            <div
+                              className="w-4 h-4 rounded-full border border-border"
+                              style={{ backgroundColor: `hsl(${preset.primary})` }}
+                            />
+                            <div
+                              className="w-4 h-4 rounded-full border border-border"
+                              style={{ backgroundColor: `hsl(${preset.sidebar})` }}
+                            />
+                          </div>
+                          {isActive && (
+                            <Badge variant="default" className="ml-auto text-xs py-0">
+                              Active
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="font-medium text-xs">{preset.name}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 p-4 rounded-md bg-muted/50">

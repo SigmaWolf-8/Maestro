@@ -6,7 +6,7 @@ export interface TenantBranding {
   primaryColor: string;
   secondaryColor: string;
   sidebarColor: string;
-  fontStyle: "modern" | "classic" | "elegant";
+  fontStyle: "modern" | "classic" | "elegant" | "script" | "gotham" | "roboto" | "lato" | "opensans" | "merriweather" | "raleway";
   logoUrl: string | null;
   faviconUrl: string | null;
 }
@@ -182,6 +182,27 @@ function applyBranding(branding: TenantBranding) {
     case "elegant":
       fontFamily = "'Playfair Display', 'Georgia', serif";
       break;
+    case "script":
+      fontFamily = "'Great Vibes', cursive";
+      break;
+    case "gotham":
+      fontFamily = "'Montserrat', 'Arial', sans-serif";
+      break;
+    case "roboto":
+      fontFamily = "'Roboto', 'system-ui', sans-serif";
+      break;
+    case "lato":
+      fontFamily = "'Lato', 'system-ui', sans-serif";
+      break;
+    case "opensans":
+      fontFamily = "'Open Sans', 'system-ui', sans-serif";
+      break;
+    case "merriweather":
+      fontFamily = "'Merriweather', 'Georgia', serif";
+      break;
+    case "raleway":
+      fontFamily = "'Raleway', 'system-ui', sans-serif";
+      break;
     case "modern":
     default:
       fontFamily = "'Inter', 'system-ui', sans-serif";
@@ -189,4 +210,17 @@ function applyBranding(branding: TenantBranding) {
   }
   root.style.setProperty("--font-sans", fontFamily);
   root.style.setProperty("--font-serif", fontFamily);
+
+  const sidebarLightness = parseInt(sidebar.split(" ")[2]) || 15;
+  const isLightSidebar = sidebarLightness > 50;
+  
+  if (isLightSidebar) {
+    root.style.setProperty("--sidebar-foreground", `${sidebarHue} 25% 20%`);
+    root.style.setProperty("--sidebar-border", `${sidebarHue} 15% 85%`);
+    root.style.setProperty("--sidebar-accent", `${sidebarHue} 20% 90%`);
+    root.style.setProperty("--sidebar-accent-foreground", `${sidebarHue} 30% 25%`);
+    root.style.setProperty("--sidebar-primary-foreground", `0 0% 100%`);
+  } else {
+    root.style.setProperty("--sidebar-foreground", `${sidebarHue} 15% 95%`);
+  }
 }
