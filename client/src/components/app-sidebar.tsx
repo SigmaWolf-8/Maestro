@@ -247,29 +247,6 @@ export function AppSidebar({
               <span className="text-sm font-semibold text-sidebar-foreground truncate max-w-full">
                 {activeTenant?.companyName || "The Maestro"}
               </span>
-              {tenants.length > 1 && (
-                <select
-                  value={activeTenant?.id || ""}
-                  onChange={(e) => setActiveTenant(e.target.value)}
-                  className="text-xs text-sidebar-foreground/70 bg-transparent border-0 p-0 cursor-pointer hover:text-sidebar-foreground focus:outline-none text-center mt-1"
-                  data-testid="select-company"
-                >
-                  {tenants.map((t) => (
-                    <option
-                      key={t.id}
-                      value={t.id}
-                      className="bg-sidebar text-sidebar-foreground"
-                    >
-                      {t.companyName}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {tenants.length <= 1 && (
-                <span className="text-xs text-sidebar-foreground/70 mt-1">
-                  {tenantName}
-                </span>
-              )}
             </div>
           )}
         </div>
@@ -294,48 +271,44 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs uppercase tracking-wider">
-            System
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive("/settings")}
-                  data-testid="nav-settings"
-                >
-                  <Link href="/settings">
-                    <Settings className="h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs">
-              {currentUser?.profile.firstName?.[0] || "U"}
-              {currentUser?.profile.lastName?.[0] || ""}
-            </AvatarFallback>
-          </Avatar>
-          {state !== "collapsed" && (
-            <div className="flex flex-col min-w-0 flex-1">
-              <span className="text-sm font-medium text-sidebar-foreground truncate">
-                {currentUser?.profile.firstName || "User"}{" "}
-                {currentUser?.profile.lastName || ""}
-              </span>
-              <span className="text-xs text-sidebar-foreground/60 truncate capitalize">
-                {userRole.replace("_", " ")}
-              </span>
-            </div>
-          )}
+      <SidebarFooter className="border-t-[3px] border-t-black/20 shadow-[inset_0_6px_12px_rgba(0,0,0,0.25),inset_0_-4px_8px_rgba(255,255,255,0.05)]">
+        <div className="p-3 space-y-3">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={isActive("/settings")}
+                data-testid="nav-settings"
+              >
+                <Link href="/settings">
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+          
+          <div className="flex items-center gap-3 pt-3 border-t border-sidebar-border/50">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs">
+                {currentUser?.profile.firstName?.[0] || "U"}
+                {currentUser?.profile.lastName?.[0] || ""}
+              </AvatarFallback>
+            </Avatar>
+            {state !== "collapsed" && (
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-sm font-medium text-sidebar-foreground truncate">
+                  {currentUser?.profile.firstName || "User"}{" "}
+                  {currentUser?.profile.lastName || ""}
+                </span>
+                <span className="text-xs text-sidebar-foreground/60 truncate capitalize">
+                  {userRole.replace("_", " ")}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </SidebarFooter>
       <SidebarRail />

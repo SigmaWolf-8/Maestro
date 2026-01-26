@@ -89,11 +89,27 @@ function Router() {
 }
 
 function HeaderBranding() {
-  const { activeTenant } = useSettings();
+  const { activeTenant, tenants, setActiveTenant } = useSettings();
   return (
-    <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
-      {activeTenant?.companyName || "The Maestro"} ERP
-    </span>
+    <div className="flex items-center gap-3">
+      <span className="text-sm font-medium text-foreground hidden sm:inline">
+        Salvi Homes Ltd ERP
+      </span>
+      {tenants.length > 1 && (
+        <select
+          value={activeTenant?.id || ""}
+          onChange={(e) => setActiveTenant(e.target.value)}
+          className="text-xs text-muted-foreground bg-transparent border border-border rounded px-2 py-1 cursor-pointer hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          data-testid="select-company-header"
+        >
+          {tenants.map((t) => (
+            <option key={t.id} value={t.id} className="bg-background text-foreground">
+              {t.companyName}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
   );
 }
 
