@@ -95,7 +95,7 @@ function HeaderBranding() {
   return (
     <div className="flex items-center gap-3">
       <span className="text-sm font-medium text-foreground hidden sm:inline">
-        Salvi Homes Ltd ERP
+        The Maestro
       </span>
       {tenants.length > 1 && (
         <select
