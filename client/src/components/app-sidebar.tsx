@@ -227,8 +227,8 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon" style={{ background: 'var(--sidebar-gradient, hsl(var(--sidebar)))' }}>
-      <SidebarHeader className="p-3">
-        <div className="flex flex-col items-center gap-3">
+      <SidebarHeader className="p-2 pt-1">
+        <div className="flex flex-col items-center">
           {activeTenant?.config?.branding?.logoUrl ? (
             <div className="flex w-[95%] aspect-square items-center justify-center">
               <img
@@ -240,13 +240,6 @@ export function AppSidebar({
           ) : (
             <div className="flex w-[95%] aspect-square items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg">
               <Building2 className="h-24 w-24" />
-            </div>
-          )}
-          {state !== "collapsed" && (
-            <div className="flex flex-col items-center w-full text-center">
-              <span className="text-sm font-semibold text-sidebar-foreground truncate max-w-full">
-                {activeTenant?.companyName || "The Maestro"}
-              </span>
             </div>
           )}
         </div>
