@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsProvider, useSettings } from "@/components/settings-provider";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { CorporateFooter } from "@/components/corporate-footer";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import WBS from "@/pages/wbs";
@@ -114,8 +115,11 @@ function AppLayout() {
             </div>
             <ThemeToggle />
           </header>
-          <main className="flex-1 overflow-auto">
-            <Router />
+          <main className="flex-1 overflow-auto flex flex-col">
+            <div className="flex-1">
+              <Router />
+            </div>
+            <CorporateFooter />
           </main>
         </SidebarInset>
       </div>

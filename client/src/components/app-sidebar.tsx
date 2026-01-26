@@ -230,7 +230,7 @@ export function AppSidebar({
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
           {activeTenant?.config?.branding?.logoUrl ? (
-            <div className="flex h-9 w-9 items-center justify-center rounded-md overflow-hidden bg-sidebar-primary">
+            <div className="flex h-12 w-12 items-center justify-center rounded-md overflow-hidden bg-sidebar-primary">
               <img
                 src={activeTenant.config.branding.logoUrl}
                 alt="Logo"
@@ -238,8 +238,8 @@ export function AppSidebar({
               />
             </div>
           ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-              <Building2 className="h-5 w-5" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+              <Building2 className="h-6 w-6" />
             </div>
           )}
           {state !== "collapsed" && (
