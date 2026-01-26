@@ -127,6 +127,7 @@ export default function Settings() {
   const [primaryColor, setPrimaryColor] = useState(branding?.primaryColor || "168 76% 36%");
   const [accentColor, setAccentColor] = useState(branding?.secondaryColor || "28 85% 52%");
   const [sidebarColor, setSidebarColor] = useState(branding?.sidebarColor || "175 35% 15%");
+  const [headerColor, setHeaderColor] = useState(branding?.headerColor || "0 0% 100%");
   const [companyName, setCompanyName] = useState(activeTenant?.companyName || "");
   const [contactEmail, setContactEmail] = useState(activeTenant?.contactEmail || "");
   const [newCompanyName, setNewCompanyName] = useState("");
@@ -138,6 +139,7 @@ export default function Settings() {
       setPrimaryColor(branding.primaryColor || "168 76% 36%");
       setAccentColor(branding.secondaryColor || "28 85% 52%");
       setSidebarColor(branding.sidebarColor || "175 35% 15%");
+      setHeaderColor(branding.headerColor || "0 0% 100%");
     }
   }, [branding]);
 
@@ -203,6 +205,7 @@ export default function Settings() {
       primaryColor,
       secondaryColor: accentColor,
       sidebarColor,
+      headerColor,
     });
     toast({
       title: "Colors Applied",
@@ -215,12 +218,14 @@ export default function Settings() {
       primaryColor: "168 76% 36%",
       secondaryColor: "28 85% 52%",
       sidebarColor: "175 35% 15%",
+      headerColor: "0 0% 100%",
       fontStyle: "elegant",
       logoUrl: null,
     });
     setPrimaryColor("168 76% 36%");
     setAccentColor("28 85% 52%");
     setSidebarColor("175 35% 15%");
+    setHeaderColor("0 0% 100%");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -609,7 +614,7 @@ export default function Settings() {
 
             <div className="mt-6 p-4 rounded-md bg-muted/50">
               <p className="text-sm font-medium mb-3">Custom Colors</p>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-2">
                   <Label htmlFor="primaryColor">Primary Color</Label>
                   <div className="flex items-center gap-2">
@@ -667,6 +672,26 @@ export default function Settings() {
                       placeholder="175 35% 15%"
                       className="flex-1"
                       data-testid="input-sidebar-color"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="headerColor">Header Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={hslToHex(headerColor)}
+                      onChange={(e) => setHeaderColor(hexToHsl(e.target.value))}
+                      className="w-12 h-10 rounded-md border border-border cursor-pointer"
+                      data-testid="picker-header-color"
+                    />
+                    <Input
+                      id="headerColor"
+                      value={headerColor}
+                      onChange={(e) => setHeaderColor(e.target.value)}
+                      placeholder="0 0% 100%"
+                      className="flex-1"
+                      data-testid="input-header-color"
                     />
                   </div>
                 </div>

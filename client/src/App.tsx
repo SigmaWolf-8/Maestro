@@ -126,7 +126,7 @@ function AppLayout() {
       <div className="flex h-screen w-full">
         <AppSidebar currentUser={mockUser} tenantName="Acme Construction Co." />
         <SidebarInset className="flex flex-col flex-1 min-w-0">
-          <header className="flex items-center justify-between gap-2 h-14 px-4 border-b border-border bg-background shrink-0">
+          <header className="flex items-center justify-between gap-2 h-14 px-4 border-b border-border shrink-0" style={{ backgroundColor: 'hsl(var(--header))', color: 'hsl(var(--header-foreground))' }}>
             <div className="flex items-center gap-2">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <HeaderBranding />

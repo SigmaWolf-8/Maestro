@@ -6,6 +6,7 @@ export interface TenantBranding {
   primaryColor: string;
   secondaryColor: string;
   sidebarColor: string;
+  headerColor: string;
   fontStyle: "modern" | "classic" | "elegant" | "script" | "gotham" | "roboto" | "lato" | "opensans" | "merriweather" | "raleway";
   logoUrl: string | null;
   faviconUrl: string | null;
@@ -44,6 +45,7 @@ const defaultBranding: TenantBranding = {
   primaryColor: "168 76% 36%",
   secondaryColor: "28 85% 52%",
   sidebarColor: "175 35% 15%",
+  headerColor: "0 0% 100%",
   fontStyle: "elegant",
   logoUrl: null,
   faviconUrl: null,
@@ -154,10 +156,17 @@ function applyBranding(branding: TenantBranding) {
   const primary = branding.primaryColor || defaultBranding.primaryColor;
   const accent = branding.secondaryColor || defaultBranding.secondaryColor;
   const sidebar = branding.sidebarColor || defaultBranding.sidebarColor;
+  const header = branding.headerColor || defaultBranding.headerColor;
   
   root.style.setProperty("--primary", primary);
   root.style.setProperty("--accent", accent);
   root.style.setProperty("--sidebar", sidebar);
+  root.style.setProperty("--header", header);
+  
+  // Calculate header foreground based on lightness
+  const headerLightness = parseInt(header.split(" ")[2]) || 50;
+  const headerForeground = headerLightness > 50 ? "0 0% 10%" : "0 0% 98%";
+  root.style.setProperty("--header-foreground", headerForeground);
   
   const sidebarHue = parseInt(sidebar.split(" ")[0]) || 175;
   const sidebarSat = parseInt(sidebar.split(" ")[1]) || 35;
