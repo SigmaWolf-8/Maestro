@@ -226,7 +226,7 @@ export function AppSidebar({
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r-2 border-sidebar-border shadow-[inset_-2px_0_4px_rgba(0,0,0,0.15),inset_2px_0_4px_rgba(255,255,255,0.1)]" style={{ background: 'var(--sidebar-gradient, hsl(var(--sidebar)))' }}>
+    <Sidebar collapsible="icon" className="border-r-[3px] border-r-black/20 border-l-[1px] border-l-white/10 shadow-[inset_-4px_0_8px_rgba(0,0,0,0.25),inset_4px_0_8px_rgba(255,255,255,0.08),0_0_20px_rgba(0,0,0,0.15)]" style={{ background: 'var(--sidebar-gradient, hsl(var(--sidebar)))' }}>
       <SidebarHeader className="p-3">
         <div className="flex flex-col items-center gap-3">
           {activeTenant?.config?.branding?.logoUrl ? (
