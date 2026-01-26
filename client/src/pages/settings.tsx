@@ -49,6 +49,75 @@ const fontOptions = [
   { value: "raleway", label: "Raleway", description: "Elegant thin sans-serif" },
 ];
 
+function hslToHex(hslString: string): string {
+  try {
+    const parts = hslString.trim().split(/\s+/);
+    if (parts.length < 3) return "#808080";
+    const h = parseFloat(parts[0]) / 360;
+    const s = parseFloat(parts[1].replace("%", "")) / 100;
+    const l = parseFloat(parts[2].replace("%", "")) / 100;
+    
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+
+    const toHex = (x: number) => {
+      const hex = Math.round(x * 255).toString(16);
+      return hex.length === 1 ? "0" + hex : hex;
+    };
+
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  } catch {
+    return "#808080";
+  }
+}
+
+function hexToHsl(hex: string): string {
+  try {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return "0 0% 50%";
+
+    const r = parseInt(result[1], 16) / 255;
+    const g = parseInt(result[2], 16) / 255;
+    const b = parseInt(result[3], 16) / 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+
+    return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+  } catch {
+    return "0 0% 50%";
+  }
+}
+
 export default function Settings() {
   const { activeTenant, updateTenantBranding, updateTenantDetails, createTenant, setActiveTenant, isLoading } = useSettings();
   const { toast } = useToast();
@@ -542,43 +611,73 @@ export default function Settings() {
               <p className="text-sm font-medium mb-3">Custom Colors</p>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="primaryColor">Primary Color (HSL)</Label>
-                  <Input
-                    id="primaryColor"
-                    value={primaryColor}
-                    onChange={(e) => setPrimaryColor(e.target.value)}
-                    placeholder="168 76% 36%"
-                    data-testid="input-primary-color"
-                  />
+                  <Label htmlFor="primaryColor">Primary Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={hslToHex(primaryColor)}
+                      onChange={(e) => setPrimaryColor(hexToHsl(e.target.value))}
+                      className="w-12 h-10 rounded-md border border-border cursor-pointer"
+                      data-testid="picker-primary-color"
+                    />
+                    <Input
+                      id="primaryColor"
+                      value={primaryColor}
+                      onChange={(e) => setPrimaryColor(e.target.value)}
+                      placeholder="168 76% 36%"
+                      className="flex-1"
+                      data-testid="input-primary-color"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="accentColor">Accent Color (HSL)</Label>
-                  <Input
-                    id="accentColor"
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    placeholder="28 85% 52%"
-                    data-testid="input-accent-color"
-                  />
+                  <Label htmlFor="accentColor">Accent Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={hslToHex(accentColor)}
+                      onChange={(e) => setAccentColor(hexToHsl(e.target.value))}
+                      className="w-12 h-10 rounded-md border border-border cursor-pointer"
+                      data-testid="picker-accent-color"
+                    />
+                    <Input
+                      id="accentColor"
+                      value={accentColor}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      placeholder="28 85% 52%"
+                      className="flex-1"
+                      data-testid="input-accent-color"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sidebarColor">Sidebar Color (HSL)</Label>
-                  <Input
-                    id="sidebarColor"
-                    value={sidebarColor}
-                    onChange={(e) => setSidebarColor(e.target.value)}
-                    placeholder="175 35% 15%"
-                    data-testid="input-sidebar-color"
-                  />
+                  <Label htmlFor="sidebarColor">Sidebar Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={hslToHex(sidebarColor)}
+                      onChange={(e) => setSidebarColor(hexToHsl(e.target.value))}
+                      className="w-12 h-10 rounded-md border border-border cursor-pointer"
+                      data-testid="picker-sidebar-color"
+                    />
+                    <Input
+                      id="sidebarColor"
+                      value={sidebarColor}
+                      onChange={(e) => setSidebarColor(e.target.value)}
+                      placeholder="175 35% 15%"
+                      className="flex-1"
+                      data-testid="input-sidebar-color"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center justify-between mt-4 gap-4 flex-wrap">
                 <p className="text-xs text-muted-foreground">
-                  Enter colors in HSL format: Hue Saturation% Lightness% (e.g., "168 76% 36%"). Use presets above for best results.
+                  Use the color pickers or enter HSL values directly (e.g., "168 76% 36%").
                 </p>
                 <Button size="sm" onClick={handleApplyCustomColors} data-testid="button-apply-colors">
                   <Check className="h-4 w-4 mr-2" />
-                  Apply
+                  Apply Custom Colors
                 </Button>
               </div>
             </div>

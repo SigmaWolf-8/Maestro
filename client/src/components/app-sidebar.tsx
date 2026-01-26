@@ -230,7 +230,7 @@ export function AppSidebar({
       <SidebarHeader className="p-3">
         <div className="flex flex-col items-center gap-3">
           {activeTenant?.config?.branding?.logoUrl ? (
-            <div className="flex w-[95%] aspect-square items-center justify-center rounded-lg overflow-hidden bg-sidebar-primary shadow-lg">
+            <div className="flex w-[95%] aspect-square items-center justify-center">
               <img
                 src={activeTenant.config.branding.logoUrl}
                 alt="Logo"
