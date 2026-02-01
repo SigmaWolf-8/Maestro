@@ -11,29 +11,37 @@ import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Sav
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const colorPresets = [
-  { name: "Monochrome", primary: "0 0% 25%", accent: "0 0% 55%", sidebar: "0 0% 12%", category: "dark" },
-  { name: "Teal Construction", primary: "168 76% 36%", accent: "28 85% 52%", sidebar: "175 35% 15%", category: "dark" },
-  { name: "Navy Professional", primary: "220 70% 40%", accent: "35 90% 50%", sidebar: "220 40% 12%", category: "dark" },
-  { name: "Forest Green", primary: "142 60% 35%", accent: "38 92% 50%", sidebar: "142 35% 12%", category: "dark" },
-  { name: "Royal Purple", primary: "270 60% 45%", accent: "45 95% 55%", sidebar: "270 35% 15%", category: "dark" },
-  { name: "Sunset Orange", primary: "24 85% 45%", accent: "180 70% 40%", sidebar: "24 40% 15%", category: "dark" },
-  { name: "Slate Modern", primary: "215 20% 45%", accent: "200 80% 50%", sidebar: "215 25% 12%", category: "dark" },
-  { name: "Salvi Corporate", primary: "212 61% 35%", accent: "14 10% 34%", sidebar: "212 45% 18%", category: "dark" },
-  { name: "Baby Blue", primary: "200 75% 55%", accent: "340 70% 60%", sidebar: "200 50% 18%", category: "dark" },
-  { name: "Vibrant Lime", primary: "85 75% 45%", accent: "45 90% 50%", sidebar: "85 45% 15%", category: "dark" },
-  { name: "Espresso Sky", primary: "30 55% 30%", accent: "200 70% 55%", sidebar: "30 40% 12%", category: "dark" },
-  { name: "Deep Crimson", primary: "0 70% 40%", accent: "35 80% 50%", sidebar: "0 50% 15%", category: "dark" },
-  { name: "Midnight Blue", primary: "230 60% 35%", accent: "45 85% 55%", sidebar: "230 45% 10%", category: "dark" },
-  { name: "Cloud White", primary: "210 40% 50%", accent: "200 60% 45%", sidebar: "210 15% 96%", category: "light" },
-  { name: "Soft Sage", primary: "142 35% 45%", accent: "85 50% 40%", sidebar: "142 20% 94%", category: "light" },
-  { name: "Blush Rose", primary: "350 50% 55%", accent: "330 45% 50%", sidebar: "350 25% 95%", category: "light" },
-  { name: "Ocean Mist", primary: "195 55% 45%", accent: "180 50% 40%", sidebar: "195 30% 95%", category: "light" },
-  { name: "Warm Sand", primary: "35 45% 50%", accent: "25 55% 45%", sidebar: "35 25% 94%", category: "light" },
-  { name: "Lavender Light", primary: "270 45% 55%", accent: "290 40% 50%", sidebar: "270 25% 96%", category: "light" },
-  { name: "Mint Fresh", primary: "160 50% 42%", accent: "140 45% 38%", sidebar: "160 30% 95%", category: "light" },
-  { name: "Pearl Gray", primary: "220 15% 50%", accent: "210 25% 45%", sidebar: "220 10% 95%", category: "light" },
-  { name: "Ivory Cream", primary: "40 40% 50%", accent: "30 50% 45%", sidebar: "40 20% 96%", category: "light" },
-  { name: "Arctic White", primary: "200 30% 45%", accent: "190 40% 40%", sidebar: "200 10% 98%", category: "light" },
+  // Marketing Guru Professional Themes (13 themes)
+  { name: "Azure Executive", primary: "217 91% 53%", accent: "188 95% 43%", sidebar: "222 47% 11%", category: "dark", description: "Tech / SaaS" },
+  { name: "Emerald Authority", primary: "158 84% 29%", accent: "38 92% 50%", sidebar: "158 50% 12%", category: "dark", description: "Finance / Legal" },
+  { name: "Crimson Pulse", primary: "0 72% 51%", accent: "21 90% 48%", sidebar: "224 76% 48%", category: "dark", description: "Healthcare / Data" },
+  { name: "Obsidian Pro", primary: "0 0% 0%", accent: "292 84% 40%", sidebar: "30 6% 25%", category: "dark", description: "Consulting / Enterprise" },
+  { name: "Violet Vision", primary: "263 70% 58%", accent: "24 94% 53%", sidebar: "174 72% 29%", category: "dark", description: "Creative / Marketing" },
+  { name: "Carbon & Flame", primary: "220 9% 34%", accent: "37 91% 43%", sidebar: "0 73% 41%", category: "dark", description: "Manufacturing / Logistics" },
+  { name: "Sage & Slate", primary: "85 76% 27%", accent: "174 72% 29%", sidebar: "215 16% 35%", category: "dark", description: "Sustainability / Education" },
+  { name: "Sunset Gradient", primary: "21 90% 48%", accent: "142 71% 45%", sidebar: "333 71% 51%", category: "dark", description: "Hospitality / Retail" },
+  { name: "Deep Ocean", primary: "224 76% 48%", accent: "84 81% 44%", sidebar: "202 80% 28%", category: "dark", description: "Maritime / Engineering" },
+  { name: "Platinum Suite", primary: "220 9% 46%", accent: "31 89% 42%", sidebar: "36 77% 33%", category: "dark", description: "Luxury / Real Estate" },
+  { name: "Citron Focus", primary: "84 81% 44%", accent: "0 72% 51%", sidebar: "224 76% 48%", category: "dark", description: "Productivity / Startups" },
+  { name: "Orchid Modern", primary: "294 72% 49%", accent: "38 92% 50%", sidebar: "174 72% 29%", category: "dark", description: "Beauty / Fashion" },
+  { name: "Arctic Dawn", primary: "199 89% 48%", accent: "160 84% 39%", sidebar: "258 90% 66%", category: "dark", description: "Clean Tech / BioTech" },
+  
+  // Salvi Theme (#14)
+  { name: "Salvi Corporate", primary: "212 61% 35%", accent: "14 10% 34%", sidebar: "212 45% 18%", category: "dark", description: "Salvi Signature" },
+  
+  // Classic Themes
+  { name: "Teal Construction", primary: "168 76% 36%", accent: "28 85% 52%", sidebar: "175 35% 15%", category: "dark", description: "Construction Classic" },
+  { name: "Navy Professional", primary: "220 70% 40%", accent: "35 90% 50%", sidebar: "220 40% 12%", category: "dark", description: "Professional Blue" },
+  { name: "Forest Green", primary: "142 60% 35%", accent: "38 92% 50%", sidebar: "142 35% 12%", category: "dark", description: "Natural Growth" },
+  { name: "Royal Purple", primary: "270 60% 45%", accent: "45 95% 55%", sidebar: "270 35% 15%", category: "dark", description: "Regal Elegance" },
+  { name: "Midnight Blue", primary: "230 60% 35%", accent: "45 85% 55%", sidebar: "230 45% 10%", category: "dark", description: "Night Sky" },
+  { name: "Monochrome", primary: "0 0% 25%", accent: "0 0% 55%", sidebar: "0 0% 12%", category: "dark", description: "Minimalist" },
+  
+  // Light Sidebar Themes
+  { name: "Cloud White", primary: "210 40% 50%", accent: "200 60% 45%", sidebar: "210 15% 96%", category: "light", description: "Clean & Bright" },
+  { name: "Soft Sage", primary: "142 35% 45%", accent: "85 50% 40%", sidebar: "142 20% 94%", category: "light", description: "Calm Nature" },
+  { name: "Ocean Mist", primary: "195 55% 45%", accent: "180 50% 40%", sidebar: "195 30% 95%", category: "light", description: "Coastal Fresh" },
+  { name: "Pearl Gray", primary: "220 15% 50%", accent: "210 25% 45%", sidebar: "220 10% 95%", category: "light", description: "Elegant Neutral" },
 ];
 
 const fontOptions = [
@@ -562,6 +570,9 @@ export default function Settings() {
                           )}
                         </div>
                         <p className="font-medium text-xs">{preset.name}</p>
+                        {preset.description && (
+                          <p className="text-[10px] text-muted-foreground">{preset.description}</p>
+                        )}
                       </button>
                     );
                   })}
@@ -605,6 +616,9 @@ export default function Settings() {
                           )}
                         </div>
                         <p className="font-medium text-xs">{preset.name}</p>
+                        {preset.description && (
+                          <p className="text-[10px] text-muted-foreground">{preset.description}</p>
+                        )}
                       </button>
                     );
                   })}
