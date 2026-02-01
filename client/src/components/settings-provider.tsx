@@ -168,16 +168,22 @@ function applyBranding(branding: TenantBranding) {
   const headerForeground = headerLightness > 50 ? "0 0% 10%" : "0 0% 98%";
   root.style.setProperty("--header-foreground", headerForeground);
   
-  const sidebarHue = parseInt(sidebar.split(" ")[0]) || 175;
-  const sidebarSat = parseInt(sidebar.split(" ")[1]) || 35;
-  root.style.setProperty("--sidebar-border", `${sidebarHue} ${sidebarSat - 5}% 20%`);
-  root.style.setProperty("--sidebar-accent", `${sidebarHue} ${sidebarSat}% 22%`);
-  root.style.setProperty("--sidebar-accent-foreground", `${sidebarHue} 15% 95%`);
+  const sidebarParts = sidebar.split(" ");
+  const sidebarHue = parseInt(sidebarParts[0]);
+  const sidebarSat = parseInt(sidebarParts[1]);
+  const finalSidebarHue = isNaN(sidebarHue) ? 175 : sidebarHue;
+  const finalSidebarSat = isNaN(sidebarSat) ? 35 : sidebarSat;
+  root.style.setProperty("--sidebar-border", `${finalSidebarHue} ${Math.max(finalSidebarSat - 5, 0)}% 20%`);
+  root.style.setProperty("--sidebar-accent", `${finalSidebarHue} ${finalSidebarSat}% 22%`);
+  root.style.setProperty("--sidebar-accent-foreground", `${finalSidebarHue} ${Math.min(finalSidebarSat, 15)}% 95%`);
   
   const primaryParts = primary.split(" ");
-  const primaryHue = parseInt(primaryParts[0]) || 168;
-  const primarySat = parseInt(primaryParts[1]) || 76;
-  const primaryLight = parseInt(primaryParts[2]) || 36;
+  const parsedPrimaryHue = parseInt(primaryParts[0]);
+  const parsedPrimarySat = parseInt(primaryParts[1]);
+  const parsedPrimaryLight = parseInt(primaryParts[2]);
+  const primaryHue = isNaN(parsedPrimaryHue) ? 168 : parsedPrimaryHue;
+  const primarySat = isNaN(parsedPrimarySat) ? 76 : parsedPrimarySat;
+  const primaryLight = isNaN(parsedPrimaryLight) ? 36 : parsedPrimaryLight;
   
   root.style.setProperty("--ring", primary);
   root.style.setProperty("--sidebar-ring", primary);
@@ -185,8 +191,10 @@ function applyBranding(branding: TenantBranding) {
   root.style.setProperty("--chart-1", `${primaryHue} ${primarySat}% ${Math.min(primaryLight + 6, 50)}%`);
   
   const accentParts = accent.split(" ");
-  const accentHue = parseInt(accentParts[0]) || 28;
-  const accentSat = parseInt(accentParts[1]) || 85;
+  const parsedAccentHue = parseInt(accentParts[0]);
+  const parsedAccentSat = parseInt(accentParts[1]);
+  const accentHue = isNaN(parsedAccentHue) ? 28 : parsedAccentHue;
+  const accentSat = isNaN(parsedAccentSat) ? 85 : parsedAccentSat;
   root.style.setProperty("--chart-2", `${accentHue} ${accentSat}% 52%`);
 
   let fontFamily: string;
