@@ -11,7 +11,7 @@ export function CorporateFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             {branding?.logoUrl ? (
-              <div className="flex h-10 w-10 items-center justify-center rounded overflow-hidden">
+              <div className="flex items-center justify-center rounded overflow-hidden" style={{ height: '30px', width: '60px' }}>
                 <img
                   src={branding.logoUrl}
                   alt="Logo"
@@ -19,8 +19,8 @@ export function CorporateFooter() {
                 />
               </div>
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded bg-primary text-primary-foreground">
-                <Building2 className="h-6 w-6" />
+              <div className="flex items-center justify-center rounded bg-primary text-primary-foreground" style={{ height: '30px', width: '60px' }}>
+                <Building2 className="h-5 w-5" />
               </div>
             )}
             <div className="flex flex-col">
