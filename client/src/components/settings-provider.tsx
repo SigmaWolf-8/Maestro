@@ -174,14 +174,20 @@ function applyBranding(branding: TenantBranding) {
   root.style.setProperty("--sidebar-accent", `${sidebarHue} ${sidebarSat}% 22%`);
   root.style.setProperty("--sidebar-accent-foreground", `${sidebarHue} 15% 95%`);
   
-  const primaryHue = parseInt(primary.split(" ")[0]) || 168;
+  const primaryParts = primary.split(" ");
+  const primaryHue = parseInt(primaryParts[0]) || 168;
+  const primarySat = parseInt(primaryParts[1]) || 76;
+  const primaryLight = parseInt(primaryParts[2]) || 36;
+  
   root.style.setProperty("--ring", primary);
   root.style.setProperty("--sidebar-ring", primary);
-  root.style.setProperty("--sidebar-primary", `${primaryHue} 76% 42%`);
-  root.style.setProperty("--chart-1", `${primaryHue} 76% 42%`);
+  root.style.setProperty("--sidebar-primary", `${primaryHue} ${primarySat}% ${Math.min(primaryLight + 6, 50)}%`);
+  root.style.setProperty("--chart-1", `${primaryHue} ${primarySat}% ${Math.min(primaryLight + 6, 50)}%`);
   
-  const accentHue = parseInt(accent.split(" ")[0]) || 28;
-  root.style.setProperty("--chart-2", `${accentHue} 85% 52%`);
+  const accentParts = accent.split(" ");
+  const accentHue = parseInt(accentParts[0]) || 28;
+  const accentSat = parseInt(accentParts[1]) || 85;
+  root.style.setProperty("--chart-2", `${accentHue} ${accentSat}% 52%`);
 
   let fontFamily: string;
   switch (branding.fontStyle) {
