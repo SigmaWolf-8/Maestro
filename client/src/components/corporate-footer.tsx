@@ -11,11 +11,11 @@ export function CorporateFooter() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             {branding?.logoUrl ? (
-              <div className="flex h-5 w-5 items-center justify-center rounded overflow-hidden bg-primary">
+              <div className="flex h-5 w-5 items-center justify-center rounded overflow-hidden">
                 <img
                   src={branding.logoUrl}
                   alt="Logo"
-                  className="w-full h-full object-cover"
+                  className="max-w-full max-h-full object-contain"
                 />
               </div>
             ) : (
