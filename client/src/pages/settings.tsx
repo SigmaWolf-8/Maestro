@@ -35,7 +35,7 @@ const colorPresets = [
   { name: "Forest Green", primary: "142 60% 35%", accent: "38 92% 50%", sidebar: "142 35% 12%", category: "dark", description: "Natural Growth" },
   { name: "Royal Purple", primary: "270 60% 45%", accent: "45 95% 55%", sidebar: "270 35% 15%", category: "dark", description: "Regal Elegance" },
   { name: "Midnight Blue", primary: "230 60% 35%", accent: "45 85% 55%", sidebar: "230 45% 10%", category: "dark", description: "Night Sky" },
-  { name: "Monochrome", primary: "0 0% 25%", accent: "0 0% 55%", sidebar: "0 0% 12%", category: "dark", description: "Minimalist" },
+  { name: "Monochrome", primary: "0 0% 35%", accent: "0 0% 50%", sidebar: "0 0% 12%", category: "dark", description: "Minimalist" },
   
   // Light Sidebar Themes
   { name: "Cloud White", primary: "210 40% 50%", accent: "200 60% 45%", sidebar: "210 15% 96%", category: "light", description: "Clean & Bright" },
