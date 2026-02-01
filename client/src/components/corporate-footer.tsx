@@ -9,9 +9,9 @@ export function CorporateFooter() {
     <footer className="mt-auto border-t border-border bg-card" data-testid="footer-corporate">
       <div className="px-6 py-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {branding?.logoUrl ? (
-              <div className="flex h-8 w-8 items-center justify-center rounded-md overflow-hidden bg-primary">
+              <div className="flex h-5 w-5 items-center justify-center rounded overflow-hidden bg-primary">
                 <img
                   src={branding.logoUrl}
                   alt="Logo"
@@ -19,8 +19,8 @@ export function CorporateFooter() {
                 />
               </div>
             ) : (
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <Building2 className="h-4 w-4" />
+              <div className="flex h-5 w-5 items-center justify-center rounded bg-primary text-primary-foreground">
+                <Building2 className="h-3 w-3" />
               </div>
             )}
             <div className="flex flex-col">
