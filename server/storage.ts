@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, like, or } from "drizzle-orm";
 import { db } from "./db";
 import {
   tenants,
@@ -12,6 +12,8 @@ import {
   userGroupMembers,
   groupPermissions,
   documents,
+  wbsMasterCodes,
+  documentMetaTags,
   type Tenant,
   type TenantUser,
   type Project,
@@ -22,6 +24,8 @@ import {
   type UserGroupMember,
   type GroupPermission,
   type Document,
+  type WbsMasterCode,
+  type DocumentMetaTag,
   type InsertTenant,
   type InsertTenantUser,
   type InsertProject,
@@ -32,6 +36,8 @@ import {
   type InsertUserGroupMember,
   type InsertGroupPermission,
   type InsertDocument,
+  type InsertWbsMasterCode,
+  type InsertDocumentMetaTag,
   type DashboardStats,
 } from "@shared/schema";
 
@@ -98,6 +104,19 @@ export interface IStorage {
   createDocument(doc: InsertDocument): Promise<Document>;
   updateDocument(id: string, updates: Partial<Document>): Promise<Document | undefined>;
   deleteDocument(id: string): Promise<boolean>;
+  
+  // WBS Master Codes (13-Dimensional)
+  getWbsMasterCodes(tenantId: string, dimensionType?: string): Promise<WbsMasterCode[]>;
+  getWbsMasterCode(id: string): Promise<WbsMasterCode | undefined>;
+  createWbsMasterCode(code: InsertWbsMasterCode): Promise<WbsMasterCode>;
+  updateWbsMasterCode(id: string, updates: Partial<WbsMasterCode>): Promise<WbsMasterCode | undefined>;
+  deleteWbsMasterCode(id: string): Promise<boolean>;
+  
+  // Document Meta Tags
+  getDocumentMetaTags(documentId: string): Promise<DocumentMetaTag[]>;
+  setDocumentMetaTags(documentId: string, tags: Omit<InsertDocumentMetaTag, 'documentId'>[]): Promise<DocumentMetaTag[]>;
+  deleteDocumentMetaTags(documentId: string): Promise<boolean>;
+  getDocumentsWithMetaTags(tenantId: string, filters: Record<string, string[]>): Promise<Document[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -600,8 +619,139 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDocument(id: string): Promise<boolean> {
+    // Also delete associated meta tags
+    await db.delete(documentMetaTags).where(eq(documentMetaTags.documentId, id));
     const result = await db.delete(documents).where(eq(documents.id, id)).returning();
     return result.length > 0;
+  }
+
+  // WBS Master Codes (13-Dimensional)
+  async getWbsMasterCodes(tenantId: string, dimensionType?: string): Promise<WbsMasterCode[]> {
+    if (dimensionType) {
+      return db.select().from(wbsMasterCodes)
+        .where(and(
+          eq(wbsMasterCodes.tenantId, tenantId),
+          eq(wbsMasterCodes.dimensionType, dimensionType),
+          eq(wbsMasterCodes.isActive, true)
+        ))
+        .orderBy(wbsMasterCodes.sortOrder);
+    }
+    return db.select().from(wbsMasterCodes)
+      .where(and(eq(wbsMasterCodes.tenantId, tenantId), eq(wbsMasterCodes.isActive, true)))
+      .orderBy(wbsMasterCodes.dimensionType, wbsMasterCodes.sortOrder);
+  }
+
+  async getWbsMasterCode(id: string): Promise<WbsMasterCode | undefined> {
+    const [code] = await db.select().from(wbsMasterCodes).where(eq(wbsMasterCodes.id, id));
+    return code || undefined;
+  }
+
+  async createWbsMasterCode(code: InsertWbsMasterCode): Promise<WbsMasterCode> {
+    const id = randomUUID();
+    const now = new Date();
+    const [newCode] = await db.insert(wbsMasterCodes).values({
+      id,
+      tenantId: code.tenantId,
+      dimensionType: code.dimensionType,
+      code: code.code,
+      name: code.name,
+      description: code.description || null,
+      parentCodeId: code.parentCodeId || null,
+      sortOrder: code.sortOrder ?? 0,
+      isActive: code.isActive ?? true,
+      metadata: code.metadata || {},
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return newCode;
+  }
+
+  async updateWbsMasterCode(id: string, updates: Partial<WbsMasterCode>): Promise<WbsMasterCode | undefined> {
+    const [updated] = await db.update(wbsMasterCodes)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(wbsMasterCodes.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteWbsMasterCode(id: string): Promise<boolean> {
+    // Soft delete by setting isActive to false
+    const result = await db.update(wbsMasterCodes)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(wbsMasterCodes.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Document Meta Tags
+  async getDocumentMetaTags(documentId: string): Promise<DocumentMetaTag[]> {
+    return db.select().from(documentMetaTags)
+      .where(eq(documentMetaTags.documentId, documentId));
+  }
+
+  async setDocumentMetaTags(documentId: string, tags: Omit<InsertDocumentMetaTag, 'documentId'>[]): Promise<DocumentMetaTag[]> {
+    // Delete existing tags for this document
+    await db.delete(documentMetaTags).where(eq(documentMetaTags.documentId, documentId));
+    
+    if (tags.length === 0) return [];
+    
+    // Insert new tags
+    const now = new Date();
+    const tagsToInsert = tags.map(tag => ({
+      id: randomUUID(),
+      documentId,
+      dimensionType: tag.dimensionType,
+      wbsCodeId: tag.wbsCodeId || null,
+      customValue: tag.customValue || null,
+      createdAt: now,
+    }));
+    
+    return db.insert(documentMetaTags).values(tagsToInsert).returning();
+  }
+
+  async deleteDocumentMetaTags(documentId: string): Promise<boolean> {
+    await db.delete(documentMetaTags).where(eq(documentMetaTags.documentId, documentId));
+    return true;
+  }
+
+  async getDocumentsWithMetaTags(tenantId: string, filters: Record<string, string[]>): Promise<Document[]> {
+    // If no filters, return all documents for tenant
+    if (Object.keys(filters).length === 0) {
+      return this.getDocuments(tenantId);
+    }
+    
+    // Get all documents for tenant first
+    const allDocs = await this.getDocuments(tenantId);
+    
+    // For each document, check if it matches all filters
+    const matchedDocs: Document[] = [];
+    for (const doc of allDocs) {
+      const docTags = await this.getDocumentMetaTags(doc.id);
+      
+      let matchesAllFilters = true;
+      for (const [dimensionType, values] of Object.entries(filters)) {
+        if (values.length === 0) continue;
+        
+        const tagForDimension = docTags.find(t => t.dimensionType === dimensionType);
+        if (!tagForDimension) {
+          matchesAllFilters = false;
+          break;
+        }
+        
+        // Check if tag value matches any of the filter values
+        const tagValue = tagForDimension.wbsCodeId || tagForDimension.customValue;
+        if (!tagValue || !values.includes(tagValue)) {
+          matchesAllFilters = false;
+          break;
+        }
+      }
+      
+      if (matchesAllFilters) {
+        matchedDocs.push(doc);
+      }
+    }
+    
+    return matchedDocs;
   }
 }
 

@@ -974,6 +974,295 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== WBS MASTER CODES (13-Dimensional) ====================
+
+  // List WBS master codes by tenant (optionally filter by dimension type)
+  app.get("/api/wbs-codes", async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.query.tenantId as string || await getDefaultTenantId();
+      const dimensionType = req.query.dimensionType as string | undefined;
+      const codes = await storage.getWbsMasterCodes(tenantId, dimensionType);
+      res.json(codes);
+    } catch (error) {
+      console.error("Error fetching WBS codes:", error);
+      res.status(500).json({ error: "Failed to fetch WBS codes" });
+    }
+  });
+
+  // Get a single WBS master code
+  app.get("/api/wbs-codes/:id", async (req: Request, res: Response) => {
+    try {
+      const code = await storage.getWbsMasterCode(req.params.id);
+      if (!code) {
+        return res.status(404).json({ error: "WBS code not found" });
+      }
+      res.json(code);
+    } catch (error) {
+      console.error("Error fetching WBS code:", error);
+      res.status(500).json({ error: "Failed to fetch WBS code" });
+    }
+  });
+
+  // Create WBS master code
+  app.post("/api/wbs-codes", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        tenantId: z.string().uuid().optional(),
+        dimensionType: z.string().min(1).max(50),
+        code: z.string().min(1).max(50),
+        name: z.string().min(1).max(200),
+        description: z.string().max(500).optional(),
+        parentCodeId: z.string().uuid().nullable().optional(),
+        sortOrder: z.number().int().optional(),
+        metadata: z.record(z.any()).optional(),
+      });
+      
+      const data = schema.parse(req.body);
+      const tenantId = data.tenantId || await getDefaultTenantId();
+      
+      const newCode = await storage.createWbsMasterCode({
+        ...data,
+        tenantId,
+      });
+      
+      res.status(201).json(newCode);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error creating WBS code:", error);
+      res.status(500).json({ error: "Failed to create WBS code" });
+    }
+  });
+
+  // Update WBS master code
+  app.patch("/api/wbs-codes/:id", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        code: z.string().min(1).max(50).optional(),
+        name: z.string().min(1).max(200).optional(),
+        description: z.string().max(500).nullable().optional(),
+        sortOrder: z.number().int().optional(),
+        isActive: z.boolean().optional(),
+        metadata: z.record(z.any()).optional(),
+      });
+      
+      const data = schema.parse(req.body);
+      const updated = await storage.updateWbsMasterCode(req.params.id, data);
+      
+      if (!updated) {
+        return res.status(404).json({ error: "WBS code not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error updating WBS code:", error);
+      res.status(500).json({ error: "Failed to update WBS code" });
+    }
+  });
+
+  // Delete (soft-delete) WBS master code
+  app.delete("/api/wbs-codes/:id", async (req: Request, res: Response) => {
+    try {
+      const deleted = await storage.deleteWbsMasterCode(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "WBS code not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting WBS code:", error);
+      res.status(500).json({ error: "Failed to delete WBS code" });
+    }
+  });
+
+  // ==================== DOCUMENT META TAGS ====================
+
+  // Get meta tags for a document
+  app.get("/api/documents/:id/meta-tags", async (req: Request, res: Response) => {
+    try {
+      const doc = await storage.getDocument(req.params.id);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      const tags = await storage.getDocumentMetaTags(req.params.id);
+      res.json(tags);
+    } catch (error) {
+      console.error("Error fetching document meta tags:", error);
+      res.status(500).json({ error: "Failed to fetch meta tags" });
+    }
+  });
+
+  // Set meta tags for a document (replaces all existing tags)
+  app.put("/api/documents/:id/meta-tags", async (req: Request, res: Response) => {
+    try {
+      const doc = await storage.getDocument(req.params.id);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      const schema = z.object({
+        tags: z.array(z.object({
+          dimensionType: z.string().min(1).max(50),
+          wbsCodeId: z.string().uuid().nullable().optional(),
+          customValue: z.string().max(200).nullable().optional(),
+        })),
+      });
+      
+      const data = schema.parse(req.body);
+      const savedTags = await storage.setDocumentMetaTags(req.params.id, data.tags);
+      
+      res.json(savedTags);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error setting document meta tags:", error);
+      res.status(500).json({ error: "Failed to set meta tags" });
+    }
+  });
+
+  // Filter documents by meta tags
+  app.post("/api/documents/filter", async (req: Request, res: Response) => {
+    try {
+      const schema = z.object({
+        tenantId: z.string().uuid().optional(),
+        filters: z.record(z.array(z.string())), // { dimensionType: [codeId1, codeId2] }
+      });
+      
+      const data = schema.parse(req.body);
+      const tenantId = data.tenantId || await getDefaultTenantId();
+      
+      const documents = await storage.getDocumentsWithMetaTags(tenantId, data.filters);
+      res.json(documents);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error filtering documents:", error);
+      res.status(500).json({ error: "Failed to filter documents" });
+    }
+  });
+
+  // Seed default WBS master codes for a tenant
+  app.post("/api/wbs-codes/seed/:tenantId", async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.params.tenantId;
+      
+      // Default WBS codes for each of the 13 dimensions
+      const defaultCodes = [
+        // Phase dimension
+        { dimensionType: "phase", code: "PRE", name: "Pre-Construction", sortOrder: 1 },
+        { dimensionType: "phase", code: "CON", name: "Construction", sortOrder: 2 },
+        { dimensionType: "phase", code: "CLO", name: "Close-Out", sortOrder: 3 },
+        { dimensionType: "phase", code: "WAR", name: "Warranty", sortOrder: 4 },
+        
+        // Trade dimension (CSI MasterFormat)
+        { dimensionType: "trade", code: "03", name: "Concrete", sortOrder: 1 },
+        { dimensionType: "trade", code: "04", name: "Masonry", sortOrder: 2 },
+        { dimensionType: "trade", code: "05", name: "Metals", sortOrder: 3 },
+        { dimensionType: "trade", code: "06", name: "Wood & Plastics", sortOrder: 4 },
+        { dimensionType: "trade", code: "07", name: "Thermal & Moisture", sortOrder: 5 },
+        { dimensionType: "trade", code: "08", name: "Doors & Windows", sortOrder: 6 },
+        { dimensionType: "trade", code: "09", name: "Finishes", sortOrder: 7 },
+        { dimensionType: "trade", code: "15", name: "Mechanical", sortOrder: 8 },
+        { dimensionType: "trade", code: "16", name: "Electrical", sortOrder: 9 },
+        
+        // Location dimension
+        { dimensionType: "location", code: "SITE", name: "Site Work", sortOrder: 1 },
+        { dimensionType: "location", code: "BLDG-A", name: "Building A", sortOrder: 2 },
+        { dimensionType: "location", code: "BLDG-B", name: "Building B", sortOrder: 3 },
+        { dimensionType: "location", code: "PARKING", name: "Parking Structure", sortOrder: 4 },
+        
+        // Building dimension
+        { dimensionType: "building", code: "MAIN", name: "Main Building", sortOrder: 1 },
+        { dimensionType: "building", code: "ANNEX", name: "Annex", sortOrder: 2 },
+        { dimensionType: "building", code: "GARAGE", name: "Garage", sortOrder: 3 },
+        
+        // Level dimension
+        { dimensionType: "level", code: "B1", name: "Basement Level 1", sortOrder: 1 },
+        { dimensionType: "level", code: "L1", name: "Level 1 (Ground)", sortOrder: 2 },
+        { dimensionType: "level", code: "L2", name: "Level 2", sortOrder: 3 },
+        { dimensionType: "level", code: "L3", name: "Level 3", sortOrder: 4 },
+        { dimensionType: "level", code: "ROOF", name: "Roof Level", sortOrder: 5 },
+        
+        // Zone dimension
+        { dimensionType: "zone", code: "Z-A", name: "Zone A (North)", sortOrder: 1 },
+        { dimensionType: "zone", code: "Z-B", name: "Zone B (South)", sortOrder: 2 },
+        { dimensionType: "zone", code: "Z-C", name: "Zone C (East)", sortOrder: 3 },
+        { dimensionType: "zone", code: "Z-D", name: "Zone D (West)", sortOrder: 4 },
+        
+        // System dimension
+        { dimensionType: "system", code: "HVAC", name: "HVAC System", sortOrder: 1 },
+        { dimensionType: "system", code: "PLUM", name: "Plumbing System", sortOrder: 2 },
+        { dimensionType: "system", code: "ELEC", name: "Electrical System", sortOrder: 3 },
+        { dimensionType: "system", code: "FIRE", name: "Fire Protection", sortOrder: 4 },
+        { dimensionType: "system", code: "STRUCT", name: "Structural", sortOrder: 5 },
+        
+        // Subsystem dimension
+        { dimensionType: "subsystem", code: "LIGHT", name: "Lighting", sortOrder: 1 },
+        { dimensionType: "subsystem", code: "POWER", name: "Power Distribution", sortOrder: 2 },
+        { dimensionType: "subsystem", code: "CTRL", name: "Controls & Automation", sortOrder: 3 },
+        { dimensionType: "subsystem", code: "DATA", name: "Data & Communications", sortOrder: 4 },
+        
+        // Element Type dimension
+        { dimensionType: "element_type", code: "WALL", name: "Wall", sortOrder: 1 },
+        { dimensionType: "element_type", code: "FLOOR", name: "Floor", sortOrder: 2 },
+        { dimensionType: "element_type", code: "CEIL", name: "Ceiling", sortOrder: 3 },
+        { dimensionType: "element_type", code: "DOOR", name: "Door", sortOrder: 4 },
+        { dimensionType: "element_type", code: "WIN", name: "Window", sortOrder: 5 },
+        { dimensionType: "element_type", code: "FIXT", name: "Fixture", sortOrder: 6 },
+        
+        // Material dimension
+        { dimensionType: "material", code: "CONC", name: "Concrete", sortOrder: 1 },
+        { dimensionType: "material", code: "STL", name: "Steel", sortOrder: 2 },
+        { dimensionType: "material", code: "WOOD", name: "Wood", sortOrder: 3 },
+        { dimensionType: "material", code: "GLS", name: "Glass", sortOrder: 4 },
+        { dimensionType: "material", code: "ALUM", name: "Aluminum", sortOrder: 5 },
+        
+        // Work Package dimension
+        { dimensionType: "work_package", code: "WP-001", name: "Foundation Package", sortOrder: 1 },
+        { dimensionType: "work_package", code: "WP-002", name: "Framing Package", sortOrder: 2 },
+        { dimensionType: "work_package", code: "WP-003", name: "MEP Rough-In", sortOrder: 3 },
+        { dimensionType: "work_package", code: "WP-004", name: "Interior Finishes", sortOrder: 4 },
+        
+        // Cost Code dimension
+        { dimensionType: "cost_code", code: "CC-100", name: "General Conditions", sortOrder: 1 },
+        { dimensionType: "cost_code", code: "CC-200", name: "Site Work", sortOrder: 2 },
+        { dimensionType: "cost_code", code: "CC-300", name: "Structure", sortOrder: 3 },
+        { dimensionType: "cost_code", code: "CC-400", name: "Exterior", sortOrder: 4 },
+        { dimensionType: "cost_code", code: "CC-500", name: "Interior", sortOrder: 5 },
+        
+        // Responsibility dimension
+        { dimensionType: "responsibility", code: "GC", name: "General Contractor", sortOrder: 1 },
+        { dimensionType: "responsibility", code: "OWNER", name: "Owner", sortOrder: 2 },
+        { dimensionType: "responsibility", code: "ARCH", name: "Architect", sortOrder: 3 },
+        { dimensionType: "responsibility", code: "ENG", name: "Engineer", sortOrder: 4 },
+        { dimensionType: "responsibility", code: "SUB", name: "Subcontractor", sortOrder: 5 },
+      ];
+      
+      const createdCodes = [];
+      for (const codeData of defaultCodes) {
+        const code = await storage.createWbsMasterCode({
+          tenantId,
+          ...codeData,
+        });
+        createdCodes.push(code);
+      }
+      
+      res.status(201).json({ 
+        message: `Created ${createdCodes.length} WBS master codes`,
+        codes: createdCodes 
+      });
+    } catch (error) {
+      console.error("Error seeding WBS codes:", error);
+      res.status(500).json({ error: "Failed to seed WBS codes" });
+    }
+  });
+
   // ==================== KONG SERVICE ENDPOINTS ====================
 
   // Get Kong timestamp (useful for auditing)
