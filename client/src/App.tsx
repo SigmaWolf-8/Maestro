@@ -14,6 +14,7 @@ import Projects from "@/pages/projects";
 import WBS from "@/pages/wbs";
 import WbsDimensions from "@/pages/wbs-dimensions";
 import WbsTemplatesPage from "@/pages/wbs-templates";
+import MasterWbsCodes from "@/pages/master-wbs-codes";
 import Team from "@/pages/team";
 import Settings from "@/pages/settings";
 import Profile from "@/pages/profile";
@@ -62,6 +63,7 @@ function Router() {
       
       <Route path="/projects" component={Projects} />
       <Route path="/wbs" component={WBS} />
+      <Route path="/wbs/master-codes" component={MasterWbsCodes} />
       <Route path="/wbs/dimensions" component={WbsDimensions} />
       <Route path="/schedule" component={SchedulePage} />
       <Route path="/specifications" component={SpecificationsPage} />

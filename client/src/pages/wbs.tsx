@@ -90,6 +90,7 @@ export default function WBS() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [csvPreview, setCsvPreview] = useState<Array<Record<string, string>>>([]);
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { activeTenant } = useSettings();
@@ -221,6 +222,26 @@ export default function WBS() {
       toast({
         title: "Error",
         description: "Failed to import CSV. Please check your data and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const copyMasterMutation = useMutation({
+    mutationFn: async (projectId: string) => {
+      return apiRequest("POST", `/api/projects/${projectId}/copy-master-wbs?tenantId=${activeTenant?.id}`);
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/wbs"] });
+      toast({
+        title: "Master Codes Copied",
+        description: data.message || "WBS nodes created from master codes.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to copy master WBS codes to project.",
         variant: "destructive",
       });
     },
@@ -489,7 +510,10 @@ export default function WBS() {
     return icons[status] || icons.not_started;
   };
 
-  const tree = wbsNodes ? buildTree(wbsNodes) : [];
+  const filteredNodes = selectedProjectId
+    ? wbsNodes?.filter((node) => node.projectId === selectedProjectId)
+    : wbsNodes;
+  const tree = filteredNodes ? buildTree(filteredNodes) : [];
   const isLoading = wbsLoading || projectsLoading;
 
   return (
@@ -515,13 +539,47 @@ export default function WBS() {
               </p>
             </div>
           </div>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-create-wbs">
-                <Plus className="mr-2 h-4 w-4" />
-                Add WBS Node
+          <div className="flex items-center gap-3">
+            <Select
+              value={selectedProjectId || "__all__"}
+              onValueChange={(value) => setSelectedProjectId(value === "__all__" ? null : value)}
+            >
+              <SelectTrigger className="w-[220px]" data-testid="select-project-filter">
+                <SelectValue placeholder="All Projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Projects</SelectItem>
+                {projects?.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <a href="/wbs/master-codes">
+              <Button variant="outline" data-testid="button-master-codes">
+                <Layers className="mr-2 h-4 w-4" />
+                Master Codes
               </Button>
-            </DialogTrigger>
+            </a>
+            {selectedProjectId && (
+              <Button
+                variant="outline"
+                onClick={() => copyMasterMutation.mutate(selectedProjectId)}
+                disabled={copyMasterMutation.isPending}
+                data-testid="button-copy-master"
+              >
+                <FolderTree className="mr-2 h-4 w-4" />
+                {copyMasterMutation.isPending ? "Copying..." : "Copy from Master"}
+              </Button>
+            )}
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-create-wbs">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add WBS Node
+                </Button>
+              </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Add WBS Node</DialogTitle>
@@ -723,6 +781,7 @@ export default function WBS() {
             </Form>
           </DialogContent>
           </Dialog>
+          </div>
         </div>
       </div>
 
@@ -732,7 +791,7 @@ export default function WBS() {
             <FolderTree className="h-5 w-5 text-primary" />
             Structure Tree
           </CardTitle>
-          <Badge variant="secondary">{wbsNodes?.length || 0} nodes</Badge>
+          <Badge variant="secondary">{filteredNodes?.length || 0} nodes</Badge>
         </CardHeader>
         <CardContent>
           {isLoading ? (

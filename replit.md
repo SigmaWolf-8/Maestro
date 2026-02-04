@@ -60,10 +60,16 @@ Base URL: `https://kong-9e76b3c08eusfq1zu.kongcloud.dev`
 - Search and filter capabilities
 
 ### 3. Work Breakdown Structure (WBS)
-- Hierarchical tree structure display
-- Parent-child relationships with automatic code path generation
-- Status tracking per node
-- Estimates for hours and costs
+- **Master WBS Codes** (/wbs/master-codes): Tenant-level 13-dimensional template codes
+  - 13 dimensions: phase, trade, location, building, level, zone, system, subsystem, element_type, material, work_package, cost_code, responsibility
+  - CRUD operations for master codes via easy-to-use table UI
+  - "Seed Defaults" button populates standard construction WBS codes
+- **Project WBS** (/wbs): Project-specific WBS nodes
+  - Project selection dropdown to filter by project
+  - "Copy from Master" button copies all master codes to the selected project
+  - Hierarchical tree structure with parent-child relationships
+  - Status tracking per node (not_started, in_progress, completed, on_hold, cancelled)
+  - Estimates for hours and costs
 
 ### 4. Team Management
 - User listing with roles and profiles

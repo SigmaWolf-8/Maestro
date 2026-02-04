@@ -1314,5 +1314,61 @@ export async function registerRoutes(
     }
   });
 
+  // Copy Master WBS Codes to Project - creates WBS nodes from master codes
+  app.post("/api/projects/:projectId/copy-master-wbs", async (req: Request, res: Response) => {
+    try {
+      const projectId = req.params.projectId;
+      const tenantId = req.query.tenantId as string;
+      
+      if (!tenantId) {
+        return res.status(400).json({ error: "tenantId is required" });
+      }
+      
+      // Get the project to verify it exists and belongs to the tenant
+      const project = await storage.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Verify project belongs to the tenant for security
+      if (project.tenantId !== tenantId) {
+        return res.status(403).json({ error: "Access denied: project does not belong to this tenant" });
+      }
+      
+      // Get all master codes for the tenant
+      const masterCodes = await storage.getWbsMasterCodes(tenantId);
+      if (!masterCodes || masterCodes.length === 0) {
+        return res.status(400).json({ error: "No master codes found. Please seed default codes first." });
+      }
+      
+      // Create WBS nodes for ALL master codes
+      const createdNodes: any[] = [];
+      let orderIndex = 1;
+      
+      for (const code of masterCodes) {
+        const node = await storage.createWbsNode({
+          tenantId,
+          projectId,
+          title: code.name,
+          description: code.description || `${code.dimensionType}: ${code.code}`,
+          status: "not_started",
+          codePath: `${code.dimensionType}_${code.code}`,
+          codeDisplay: code.code,
+          dimensions: { [code.dimensionType]: code.code },
+          orderIndex: orderIndex++,
+        });
+        createdNodes.push(node);
+      }
+      
+      res.json({ 
+        message: `Created ${createdNodes.length} WBS nodes from ${masterCodes.length} master codes`,
+        nodes: createdNodes 
+      });
+    } catch (error) {
+      console.error("Error copying master WBS to project:", error);
+      res.status(500).json({ error: "Failed to copy master WBS codes" });
+    }
+  });
+
   return httpServer;
 }
