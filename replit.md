@@ -150,6 +150,14 @@ The application includes seeded demo data:
 
 ## Recent Changes
 
+### February 2026 - WBS Page Enhancements
+- Made all parent and child WBS nodes fully editable via Edit dialog
+- Added Add Child functionality from node dropdown menu
+- Implemented drag-and-drop CSV import for bulk WBS node creation
+- CSV parsing handles quoted values with commas
+- CSV import validates required headers (title) and normalizes status values
+- Preview dialog shows parsed data before import
+
 ### February 2026 - File Manager with 13-Dimensional WBS Meta-Tagging
 - Built sophisticated File Manager at /documents/files with:
   - Drag-and-drop file upload zone
