@@ -150,6 +150,18 @@ The application includes seeded demo data:
 
 ## Recent Changes
 
+### February 2026 - File Manager with 13-Dimensional WBS Meta-Tagging
+- Built sophisticated File Manager at /documents/files with:
+  - Drag-and-drop file upload zone
+  - Left sidebar with 13-dimensional WBS filter tree (collapsible sections with checkboxes)
+  - Large document viewer panel (takes majority of screen)
+  - Search and sorting controls
+  - Document tags display for selected document
+- 13 WBS Dimensions: Phase, Trade/CSI, Location, Building, Level, Zone, System, Subsystem, Element Type, Material, Work Package, Cost Code, Responsibility
+- Database tables: wbs_master_codes (stores dimension code values), document_meta_tags (links documents to codes)
+- API endpoints: /api/wbs-codes (CRUD), /api/documents/:id/meta-tags, /api/documents/filter, /api/wbs-codes/seed/:tenantId
+- 63 default WBS codes seeded per tenant covering all 13 dimensions
+
 ### February 2026 - Kong API Integration for Document Encryption
 - Integrated Kong Proxy backend for document encryption and compression
 - Added documents table with encryption fields (encrypted_content, encryption_mode, checksum, kong_timestamp)
@@ -160,7 +172,6 @@ The application includes seeded demo data:
 - Document API endpoints: /api/documents (CRUD), /api/documents/:id/decrypt
 - Kong proxy endpoints: /api/kong/timestamp, /api/kong/stats, /api/kong/docs, /api/kong/phase-config/:mode
 - Graceful fallback: When Kong is unavailable (serverless sleeping), documents are stored unencrypted with content preserved
-- Documents page UI at /documents with encryption toggle, mode selector, and Kong status indicator
 
 ### January 2026 - User Group Security Module
 - Added user group management (/settings/user-groups) for creating/editing/deleting groups
