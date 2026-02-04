@@ -224,6 +224,54 @@ export const insertUserGroupMemberSchema = createInsertSchema(userGroupMembers).
 export const insertGroupPermissionSchema = createInsertSchema(groupPermissions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, updatedAt: true });
 
+// 13-Dimensional WBS Master Codes Table
+export const wbsDimensionTypes = [
+  "phase",           // 1. Project Phase (Pre-construction, Construction, Close-out)
+  "trade",           // 2. Trade/CSI Division (Electrical, Plumbing, HVAC)
+  "location",        // 3. Location/Area (Site, Building A, Parking)
+  "building",        // 4. Building/Structure identifier
+  "level",           // 5. Level/Floor (L1, L2, Basement)
+  "zone",            // 6. Zone within floor (Zone A, Zone B)
+  "system",          // 7. Building System (Mechanical, Electrical, Fire)
+  "subsystem",       // 8. Subsystem (Lighting, Power, HVAC Controls)
+  "element_type",    // 9. Element Type (Wall, Door, Window, Fixture)
+  "material",        // 10. Material Type (Concrete, Steel, Wood)
+  "work_package",    // 11. Work Package identifier
+  "cost_code",       // 12. Cost Accounting Code
+  "responsibility",  // 13. Responsible Party/Department
+] as const;
+export type WbsDimensionType = typeof wbsDimensionTypes[number];
+
+// Master WBS Codes table - stores all possible code values for each dimension
+export const wbsMasterCodes = pgTable("wbs_master_codes", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  dimensionType: text("dimension_type").notNull(), // One of the 13 dimensions
+  code: text("code").notNull(), // Short code (e.g., "01", "A1", "ELEC")
+  name: text("name").notNull(), // Full name (e.g., "Electrical", "Phase 1")
+  description: text("description"),
+  parentCodeId: varchar("parent_code_id", { length: 36 }), // For hierarchical codes
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true),
+  metadata: jsonb("metadata").default({}), // Additional properties
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Document Meta Tags - links documents to WBS dimension codes
+export const documentMetaTags = pgTable("document_meta_tags", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  documentId: varchar("document_id", { length: 36 }).notNull().references(() => documents.id),
+  dimensionType: text("dimension_type").notNull(), // One of the 13 dimensions
+  wbsCodeId: varchar("wbs_code_id", { length: 36 }).references(() => wbsMasterCodes.id), // Link to master code
+  customValue: text("custom_value"), // For free-form values if no master code
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Insert schemas for new tables
+export const insertWbsMasterCodeSchema = createInsertSchema(wbsMasterCodes).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDocumentMetaTagSchema = createInsertSchema(documentMetaTags).omit({ id: true, createdAt: true });
+
 export type InsertTenant = z.infer<typeof insertTenantSchema>;
 export type InsertTenantUser = z.infer<typeof insertTenantUserSchema>;
 export type InsertProject = z.infer<typeof insertProjectSchema>;
@@ -235,6 +283,8 @@ export type InsertUserGroup = z.infer<typeof insertUserGroupSchema>;
 export type InsertUserGroupMember = z.infer<typeof insertUserGroupMemberSchema>;
 export type InsertGroupPermission = z.infer<typeof insertGroupPermissionSchema>;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type InsertWbsMasterCode = z.infer<typeof insertWbsMasterCodeSchema>;
+export type InsertDocumentMetaTag = z.infer<typeof insertDocumentMetaTagSchema>;
 
 export type Tenant = typeof tenants.$inferSelect;
 export type TenantUser = typeof tenantUsers.$inferSelect;
@@ -247,6 +297,25 @@ export type UserGroup = typeof userGroups.$inferSelect;
 export type UserGroupMember = typeof userGroupMembers.$inferSelect;
 export type GroupPermission = typeof groupPermissions.$inferSelect;
 export type Document = typeof documents.$inferSelect;
+export type WbsMasterCode = typeof wbsMasterCodes.$inferSelect;
+export type DocumentMetaTag = typeof documentMetaTags.$inferSelect;
+
+// 13 WBS Dimension definitions with metadata
+export const wbsDimensionDefinitions = [
+  { key: "phase", label: "Project Phase", icon: "Calendar", description: "Lifecycle phase of the project" },
+  { key: "trade", label: "Trade/CSI Division", icon: "Hammer", description: "Construction trade or CSI division" },
+  { key: "location", label: "Location/Area", icon: "MapPin", description: "Physical location or area" },
+  { key: "building", label: "Building/Structure", icon: "Building2", description: "Building or structure identifier" },
+  { key: "level", label: "Level/Floor", icon: "Layers", description: "Floor or level designation" },
+  { key: "zone", label: "Zone", icon: "Grid3x3", description: "Zone within a floor or area" },
+  { key: "system", label: "Building System", icon: "Cog", description: "Building system category" },
+  { key: "subsystem", label: "Subsystem", icon: "Settings2", description: "Subsystem breakdown" },
+  { key: "element_type", label: "Element Type", icon: "Box", description: "Type of construction element" },
+  { key: "material", label: "Material", icon: "Layers3", description: "Material type or specification" },
+  { key: "work_package", label: "Work Package", icon: "Package", description: "Work package identifier" },
+  { key: "cost_code", label: "Cost Code", icon: "DollarSign", description: "Cost accounting code" },
+  { key: "responsibility", label: "Responsibility", icon: "Users", description: "Responsible party or department" },
+] as const;
 
 export interface TenantConfig {
   branding: {
