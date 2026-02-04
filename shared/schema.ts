@@ -181,6 +181,37 @@ export const groupPermissions = pgTable("group_permissions", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
+export const documentStatuses = ["draft", "pending_review", "approved", "archived", "encrypted"] as const;
+export type DocumentStatus = typeof documentStatuses[number];
+
+export const encryptionModes = ["high_security", "balanced", "performance", "adaptive"] as const;
+export type EncryptionMode = typeof encryptionModes[number];
+
+export const documents = pgTable("documents", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").default("general"),
+  status: text("status").notNull().default("draft"),
+  originalFilename: text("original_filename"),
+  mimeType: text("mime_type"),
+  originalSizeBytes: integer("original_size_bytes"),
+  compressedSizeBytes: integer("compressed_size_bytes"),
+  isEncrypted: boolean("is_encrypted").default(false),
+  encryptionMode: text("encryption_mode"),
+  encryptedContent: text("encrypted_content"),
+  plainContent: text("plain_content"),
+  checksum: text("checksum"),
+  kongTimestamp: text("kong_timestamp"),
+  savingsPercent: decimal("savings_percent", { precision: 5, scale: 2 }),
+  uploadedBy: varchar("uploaded_by", { length: 36 }).references(() => tenantUsers.id),
+  metadata: jsonb("metadata").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertTenantUserSchema = createInsertSchema(tenantUsers).omit({ id: true, createdAt: true, lastLoginAt: true });
 export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true, updatedAt: true });
@@ -191,6 +222,7 @@ export const insertWbsTemplateSchema = createInsertSchema(wbsTemplates).omit({ i
 export const insertUserGroupSchema = createInsertSchema(userGroups).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserGroupMemberSchema = createInsertSchema(userGroupMembers).omit({ id: true, createdAt: true });
 export const insertGroupPermissionSchema = createInsertSchema(groupPermissions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertDocumentSchema = createInsertSchema(documents).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertTenant = z.infer<typeof insertTenantSchema>;
 export type InsertTenantUser = z.infer<typeof insertTenantUserSchema>;
@@ -202,6 +234,7 @@ export type InsertWbsTemplate = z.infer<typeof insertWbsTemplateSchema>;
 export type InsertUserGroup = z.infer<typeof insertUserGroupSchema>;
 export type InsertUserGroupMember = z.infer<typeof insertUserGroupMemberSchema>;
 export type InsertGroupPermission = z.infer<typeof insertGroupPermissionSchema>;
+export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 
 export type Tenant = typeof tenants.$inferSelect;
 export type TenantUser = typeof tenantUsers.$inferSelect;
@@ -213,6 +246,7 @@ export type WbsTemplate = typeof wbsTemplates.$inferSelect;
 export type UserGroup = typeof userGroups.$inferSelect;
 export type UserGroupMember = typeof userGroupMembers.$inferSelect;
 export type GroupPermission = typeof groupPermissions.$inferSelect;
+export type Document = typeof documents.$inferSelect;
 
 export interface TenantConfig {
   branding: {

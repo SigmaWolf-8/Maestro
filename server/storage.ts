@@ -11,6 +11,7 @@ import {
   userGroups,
   userGroupMembers,
   groupPermissions,
+  documents,
   type Tenant,
   type TenantUser,
   type Project,
@@ -20,6 +21,7 @@ import {
   type UserGroup,
   type UserGroupMember,
   type GroupPermission,
+  type Document,
   type InsertTenant,
   type InsertTenantUser,
   type InsertProject,
@@ -29,6 +31,7 @@ import {
   type InsertUserGroup,
   type InsertUserGroupMember,
   type InsertGroupPermission,
+  type InsertDocument,
   type DashboardStats,
 } from "@shared/schema";
 
@@ -87,6 +90,14 @@ export interface IStorage {
   setGroupPermission(permission: InsertGroupPermission): Promise<GroupPermission>;
   updateGroupPermission(id: string, updates: Partial<GroupPermission>): Promise<GroupPermission | undefined>;
   deleteGroupPermission(id: string): Promise<boolean>;
+  
+  // Documents
+  getDocuments(tenantId: string): Promise<Document[]>;
+  getDocument(id: string): Promise<Document | undefined>;
+  getDocumentsByProject(projectId: string): Promise<Document[]>;
+  createDocument(doc: InsertDocument): Promise<Document>;
+  updateDocument(id: string, updates: Partial<Document>): Promise<Document | undefined>;
+  deleteDocument(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -530,6 +541,67 @@ export class DatabaseStorage implements IStorage {
   async deleteGroupPermission(id: string): Promise<boolean> {
     await db.delete(groupPermissions).where(eq(groupPermissions.id, id));
     return true;
+  }
+
+  // Documents
+  async getDocuments(tenantId: string): Promise<Document[]> {
+    return db.select().from(documents)
+      .where(eq(documents.tenantId, tenantId))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async getDocument(id: string): Promise<Document | undefined> {
+    const [doc] = await db.select().from(documents).where(eq(documents.id, id));
+    return doc || undefined;
+  }
+
+  async getDocumentsByProject(projectId: string): Promise<Document[]> {
+    return db.select().from(documents)
+      .where(eq(documents.projectId, projectId))
+      .orderBy(desc(documents.createdAt));
+  }
+
+  async createDocument(doc: InsertDocument): Promise<Document> {
+    const id = randomUUID();
+    const now = new Date();
+    const [newDoc] = await db.insert(documents).values({
+      id,
+      tenantId: doc.tenantId,
+      projectId: doc.projectId || null,
+      name: doc.name,
+      description: doc.description || null,
+      category: doc.category || "general",
+      status: doc.status || "draft",
+      originalFilename: doc.originalFilename || null,
+      mimeType: doc.mimeType || null,
+      originalSizeBytes: doc.originalSizeBytes || null,
+      compressedSizeBytes: doc.compressedSizeBytes || null,
+      isEncrypted: doc.isEncrypted ?? false,
+      encryptionMode: doc.encryptionMode || null,
+      encryptedContent: doc.encryptedContent || null,
+      plainContent: doc.plainContent || null,
+      checksum: doc.checksum || null,
+      kongTimestamp: doc.kongTimestamp || null,
+      savingsPercent: doc.savingsPercent || null,
+      uploadedBy: doc.uploadedBy || null,
+      metadata: doc.metadata || {},
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return newDoc;
+  }
+
+  async updateDocument(id: string, updates: Partial<Document>): Promise<Document | undefined> {
+    const [updated] = await db.update(documents)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(documents.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteDocument(id: string): Promise<boolean> {
+    const result = await db.delete(documents).where(eq(documents.id, id)).returning();
+    return result.length > 0;
   }
 }
 

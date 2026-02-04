@@ -19,6 +19,7 @@ import Settings from "@/pages/settings";
 import Profile from "@/pages/profile";
 import UserGroupsPage from "@/pages/user-groups";
 import GroupPermissionsPage from "@/pages/group-permissions";
+import DocumentsPage from "@/pages/documents";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
@@ -78,7 +79,8 @@ function Router() {
       <Route path="/finance/expenses" component={ExpensesPage} />
       <Route path="/finance/reports" component={FinanceReportsPage} />
       
-      <Route path="/documents/files" component={FileManagerPage} />
+      <Route path="/documents" component={DocumentsPage} />
+      <Route path="/documents/files" component={DocumentsPage} />
       <Route path="/documents/plans" component={PlanRoomPage} />
       <Route path="/documents/templates" component={WbsTemplatesPage} />
       <Route path="/documents/reports" component={DocumentReportsPage} />

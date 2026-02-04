@@ -150,6 +150,18 @@ The application includes seeded demo data:
 
 ## Recent Changes
 
+### February 2026 - Kong API Integration for Document Encryption
+- Integrated Kong Proxy backend for document encryption and compression
+- Added documents table with encryption fields (encrypted_content, encryption_mode, checksum, kong_timestamp)
+- Kong service layer (server/kong-service.ts) provides:
+  - Phase-based encryption with 4 modes: high_security, balanced, performance, adaptive
+  - Femtosecond timestamps for audit trails
+  - ~56% average compression on encrypted data
+- Document API endpoints: /api/documents (CRUD), /api/documents/:id/decrypt
+- Kong proxy endpoints: /api/kong/timestamp, /api/kong/stats, /api/kong/docs, /api/kong/phase-config/:mode
+- Graceful fallback: When Kong is unavailable (serverless sleeping), documents are stored unencrypted with content preserved
+- Documents page UI at /documents with encryption toggle, mode selector, and Kong status indicator
+
 ### January 2026 - User Group Security Module
 - Added user group management (/settings/user-groups) for creating/editing/deleting groups
 - Added group membership management (assign users to groups)
