@@ -13,6 +13,21 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 - **Routing:** wouter (client-side)
 - **State Management:** TanStack Query v5
 - **Validation:** Zod
+- **Security Gateway:** Kong Proxy (managed serverless gateway)
+
+### Kong Proxy Backend - Encryption & Security
+Base URL: `https://kong-9e76b3c08eusfq1zu.kongcloud.dev`
+
+| API | Endpoint | Description |
+|-----|----------|-------------|
+| Timing | `/api/timing/timestamp` | Timestamp service |
+| Ternary | `/api/ternary/docs` | Ternary documentation |
+| Phase | `/api/phase/config/balanced` | Phase configuration |
+| Demo | `/api/demo/stats` | Demo statistics |
+| Whitepapers | `/api/whitepapers` | Whitepapers API |
+| Docs | `/api/docs` | Documentation API |
+
+**Note:** Fully managed by Kong - no Render deployment needed. URLs are shareable.
 
 ### Project Structure
 ```
