@@ -65,9 +65,6 @@ export default function Dashboard() {
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight drop-shadow-lg" data-testid="text-dashboard-title">
               Welcome Back
             </h1>
-            <p className="text-white/90 text-lg mt-2 drop-shadow" data-testid="text-dashboard-subtitle">
-              Here's an overview of your construction projects.
-            </p>
           </div>
         </div>
       </div>
