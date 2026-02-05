@@ -76,6 +76,56 @@ const wbsTemplateUpdateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+// Customers & Quotes schemas (from MS Access VBA form)
+const customerCreateSchema = z.object({
+  tenantId: z.string(),
+  jobNum: z.number().int(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  stateProvince: z.string().optional(),
+  zipPostalCode: z.string().optional(),
+  countryRegion: z.string().optional(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  webPage: z.string().optional(),
+  homePhone: z.string().optional(),
+});
+
+const customerFieldUpdateSchema = z.object({
+  tenantId: z.string(),
+  jobNum: z.number().int(),
+  field: z.string(),
+  value: z.any(),
+});
+
+const quoteCreateSchema = z.object({
+  tenantId: z.string(),
+  jobNum: z.number().int(),
+  qNum: z.string().optional(),
+  customer: z.string().optional(),
+  dateOfQuote: z.string().optional(),
+  division: z.string().optional(),
+  model: z.string().optional(),
+  projectAddress: z.string().optional(),
+  lot: z.string().optional(),
+  block: z.string().optional(),
+  plan: z.string().optional(),
+  main: z.union([z.string(), z.number()]).optional(),
+  upper: z.union([z.string(), z.number()]).optional(),
+  low: z.union([z.string(), z.number()]).optional(),
+  gar: z.union([z.string(), z.number()]).optional(),
+  dp: z.union([z.string(), z.number()]).optional(),
+  bp: z.union([z.string(), z.number()]).optional(),
+  dgbp: z.union([z.string(), z.number()]).optional(),
+});
+
+const quoteFieldUpdateSchema = z.object({
+  tenantId: z.string(),
+  jobNum: z.number().int(),
+  field: z.string(),
+  value: z.any(),
+});
+
 function validateBody<T>(schema: z.ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.body);
@@ -472,6 +522,179 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error creating user:", error);
       res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  // ==================== CUSTOMERS API (MS Access VBA Form Recreation) ====================
+  
+  // Get all customers for tenant
+  app.get("/api/customers", async (req, res) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
+      const customers = await storage.getCustomers(tenantId);
+      res.json(customers);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      res.status(500).json({ error: "Failed to fetch customers" });
+    }
+  });
+
+  // Get customer by job number (like VBA JobNum_AfterUpdate)
+  app.get("/api/customers/job/:jobNum", async (req, res) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
+      const jobNum = parseInt(req.params.jobNum, 10);
+      if (isNaN(jobNum)) {
+        return res.status(400).json({ error: "Invalid job number" });
+      }
+      const customer = await storage.getCustomerByJobNum(tenantId, jobNum);
+      const quote = await storage.getQuoteByJobNum(tenantId, jobNum);
+      if (!customer) {
+        return res.status(404).json({ error: "Customer not found" });
+      }
+      res.json({ customer, quote });
+    } catch (error) {
+      console.error("Error fetching customer:", error);
+      res.status(500).json({ error: "Failed to fetch customer" });
+    }
+  });
+
+  // Create customer
+  app.post("/api/customers", validateBody(customerCreateSchema), async (req, res) => {
+    try {
+      const customer = await storage.createCustomer(req.body);
+      res.status(201).json(customer);
+    } catch (error) {
+      console.error("Error creating customer:", error);
+      res.status(500).json({ error: "Failed to create customer" });
+    }
+  });
+
+  // Update single customer field (like VBA AfterUpdate events)
+  app.patch("/api/customers/field", validateBody(customerFieldUpdateSchema), async (req, res) => {
+    try {
+      const { tenantId, jobNum, field, value } = req.body;
+      const updated = await storage.updateCustomerField(tenantId, jobNum, field, value);
+      if (!updated) {
+        return res.status(404).json({ error: "Customer not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating customer field:", error);
+      res.status(500).json({ error: "Failed to update customer field" });
+    }
+  });
+
+  // Update customer by ID
+  app.patch("/api/customers/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateCustomer(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Customer not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating customer:", error);
+      res.status(500).json({ error: "Failed to update customer" });
+    }
+  });
+
+  // Delete customer
+  app.delete("/api/customers/:id", async (req, res) => {
+    try {
+      await storage.deleteCustomer(req.params.id);
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      res.status(500).json({ error: "Failed to delete customer" });
+    }
+  });
+
+  // ==================== QUOTES API (MS Access VBA Form Recreation) ====================
+  
+  // Get all quotes for tenant
+  app.get("/api/quotes", async (req, res) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
+      const quotes = await storage.getQuotes(tenantId);
+      res.json(quotes);
+    } catch (error) {
+      console.error("Error fetching quotes:", error);
+      res.status(500).json({ error: "Failed to fetch quotes" });
+    }
+  });
+
+  // Get quote by job number
+  app.get("/api/quotes/job/:jobNum", async (req, res) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
+      const jobNum = parseInt(req.params.jobNum, 10);
+      if (isNaN(jobNum)) {
+        return res.status(400).json({ error: "Invalid job number" });
+      }
+      const quote = await storage.getQuoteByJobNum(tenantId, jobNum);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      res.json(quote);
+    } catch (error) {
+      console.error("Error fetching quote:", error);
+      res.status(500).json({ error: "Failed to fetch quote" });
+    }
+  });
+
+  // Create quote
+  app.post("/api/quotes", validateBody(quoteCreateSchema), async (req, res) => {
+    try {
+      const quoteData = {
+        ...req.body,
+        dateOfQuote: req.body.dateOfQuote ? new Date(req.body.dateOfQuote) : undefined,
+      };
+      const quote = await storage.createQuote(quoteData);
+      res.status(201).json(quote);
+    } catch (error) {
+      console.error("Error creating quote:", error);
+      res.status(500).json({ error: "Failed to create quote" });
+    }
+  });
+
+  // Update single quote field (like VBA AfterUpdate events)
+  app.patch("/api/quotes/field", validateBody(quoteFieldUpdateSchema), async (req, res) => {
+    try {
+      const { tenantId, jobNum, field, value } = req.body;
+      const updated = await storage.updateQuoteField(tenantId, jobNum, field, value);
+      if (!updated) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating quote field:", error);
+      res.status(500).json({ error: "Failed to update quote field" });
+    }
+  });
+
+  // Update quote by ID
+  app.patch("/api/quotes/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateQuote(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating quote:", error);
+      res.status(500).json({ error: "Failed to update quote" });
+    }
+  });
+
+  // Delete quote
+  app.delete("/api/quotes/:id", async (req, res) => {
+    try {
+      await storage.deleteQuote(req.params.id);
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting quote:", error);
+      res.status(500).json({ error: "Failed to delete quote" });
     }
   });
 

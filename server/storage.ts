@@ -14,6 +14,8 @@ import {
   documents,
   wbsMasterCodes,
   documentMetaTags,
+  customers,
+  quotes,
   type Tenant,
   type TenantUser,
   type Project,
@@ -26,6 +28,8 @@ import {
   type Document,
   type WbsMasterCode,
   type DocumentMetaTag,
+  type Customer,
+  type Quote,
   type InsertTenant,
   type InsertTenantUser,
   type InsertProject,
@@ -38,6 +42,8 @@ import {
   type InsertDocument,
   type InsertWbsMasterCode,
   type InsertDocumentMetaTag,
+  type InsertCustomer,
+  type InsertQuote,
   type DashboardStats,
 } from "@shared/schema";
 
@@ -117,6 +123,24 @@ export interface IStorage {
   setDocumentMetaTags(documentId: string, tags: Omit<InsertDocumentMetaTag, 'documentId'>[]): Promise<DocumentMetaTag[]>;
   deleteDocumentMetaTags(documentId: string): Promise<boolean>;
   getDocumentsWithMetaTags(tenantId: string, filters: Record<string, string[]>): Promise<Document[]>;
+  
+  // Customers (from MS Access form)
+  getCustomers(tenantId: string): Promise<Customer[]>;
+  getCustomer(id: string): Promise<Customer | undefined>;
+  getCustomerByJobNum(tenantId: string, jobNum: number): Promise<Customer | undefined>;
+  createCustomer(customer: InsertCustomer): Promise<Customer>;
+  updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer | undefined>;
+  updateCustomerField(tenantId: string, jobNum: number, field: keyof Customer, value: any): Promise<Customer | undefined>;
+  deleteCustomer(id: string): Promise<boolean>;
+  
+  // Quotes (from MS Access form)
+  getQuotes(tenantId: string): Promise<Quote[]>;
+  getQuote(id: string): Promise<Quote | undefined>;
+  getQuoteByJobNum(tenantId: string, jobNum: number): Promise<Quote | undefined>;
+  createQuote(quote: InsertQuote): Promise<Quote>;
+  updateQuote(id: string, updates: Partial<Quote>): Promise<Quote | undefined>;
+  updateQuoteField(tenantId: string, jobNum: number, field: keyof Quote, value: any): Promise<Quote | undefined>;
+  deleteQuote(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -752,6 +776,98 @@ export class DatabaseStorage implements IStorage {
     }
     
     return matchedDocs;
+  }
+
+  // Customers (from MS Access form)
+  async getCustomers(tenantId: string): Promise<Customer[]> {
+    return db.select().from(customers).where(eq(customers.tenantId, tenantId)).orderBy(customers.jobNum);
+  }
+
+  async getCustomer(id: string): Promise<Customer | undefined> {
+    const [customer] = await db.select().from(customers).where(eq(customers.id, id));
+    return customer || undefined;
+  }
+
+  async getCustomerByJobNum(tenantId: string, jobNum: number): Promise<Customer | undefined> {
+    const [customer] = await db.select().from(customers)
+      .where(and(eq(customers.tenantId, tenantId), eq(customers.jobNum, jobNum)));
+    return customer || undefined;
+  }
+
+  async createCustomer(customer: InsertCustomer): Promise<Customer> {
+    const id = randomUUID();
+    const [created] = await db.insert(customers).values({ ...customer, id }).returning();
+    return created;
+  }
+
+  async updateCustomer(id: string, updates: Partial<Customer>): Promise<Customer | undefined> {
+    const [updated] = await db.update(customers)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(customers.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async updateCustomerField(tenantId: string, jobNum: number, field: keyof Customer, value: any): Promise<Customer | undefined> {
+    const customer = await this.getCustomerByJobNum(tenantId, jobNum);
+    if (!customer) return undefined;
+    
+    const [updated] = await db.update(customers)
+      .set({ [field]: value, updatedAt: new Date() })
+      .where(eq(customers.id, customer.id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteCustomer(id: string): Promise<boolean> {
+    const result = await db.delete(customers).where(eq(customers.id, id));
+    return true;
+  }
+
+  // Quotes (from MS Access form)
+  async getQuotes(tenantId: string): Promise<Quote[]> {
+    return db.select().from(quotes).where(eq(quotes.tenantId, tenantId)).orderBy(quotes.jobNum);
+  }
+
+  async getQuote(id: string): Promise<Quote | undefined> {
+    const [quote] = await db.select().from(quotes).where(eq(quotes.id, id));
+    return quote || undefined;
+  }
+
+  async getQuoteByJobNum(tenantId: string, jobNum: number): Promise<Quote | undefined> {
+    const [quote] = await db.select().from(quotes)
+      .where(and(eq(quotes.tenantId, tenantId), eq(quotes.jobNum, jobNum)));
+    return quote || undefined;
+  }
+
+  async createQuote(quote: InsertQuote): Promise<Quote> {
+    const id = randomUUID();
+    const [created] = await db.insert(quotes).values({ ...quote, id }).returning();
+    return created;
+  }
+
+  async updateQuote(id: string, updates: Partial<Quote>): Promise<Quote | undefined> {
+    const [updated] = await db.update(quotes)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(quotes.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async updateQuoteField(tenantId: string, jobNum: number, field: keyof Quote, value: any): Promise<Quote | undefined> {
+    const quote = await this.getQuoteByJobNum(tenantId, jobNum);
+    if (!quote) return undefined;
+    
+    const [updated] = await db.update(quotes)
+      .set({ [field]: value, updatedAt: new Date() })
+      .where(eq(quotes.id, quote.id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteQuote(id: string): Promise<boolean> {
+    const result = await db.delete(quotes).where(eq(quotes.id, id));
+    return true;
   }
 }
 

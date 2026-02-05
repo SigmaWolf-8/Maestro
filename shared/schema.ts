@@ -386,3 +386,60 @@ export interface WbsTemplateNode {
   estimatedHours?: number;
   children?: WbsTemplateNode[];
 }
+
+// Customers table - matches MS Access Customers table from VBA form
+export const customers = pgTable("customers", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  jobNum: integer("job_num").notNull(),
+  address: text("address"),
+  city: text("city"),
+  stateProvince: text("state_province"),
+  zipPostalCode: text("zip_postal_code"),
+  countryRegion: text("country_region"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  webPage: text("web_page"),
+  homePhone: text("home_phone"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertCustomerSchema = createInsertSchema(customers).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCustomer = z.infer<typeof insertCustomerSchema>;
+export type Customer = typeof customers.$inferSelect;
+
+// Quotes table - matches MS Access Quotes table from VBA form
+export const quotes = pgTable("quotes", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  jobNum: integer("job_num").notNull(),
+  qNum: text("q_num"),
+  customer: text("customer"),
+  dateOfQuote: timestamp("date_of_quote"),
+  division: text("division"),
+  model: text("model"),
+  projectAddress: text("project_address"),
+  lot: text("lot"),
+  block: text("block"),
+  plan: text("plan"),
+  main: decimal("main", { precision: 10, scale: 2 }),
+  upper: decimal("upper", { precision: 10, scale: 2 }),
+  low: decimal("low", { precision: 10, scale: 2 }),
+  gar: decimal("gar", { precision: 10, scale: 2 }),
+  dp: decimal("dp", { precision: 10, scale: 2 }),
+  bp: decimal("bp", { precision: 10, scale: 2 }),
+  dgbp: decimal("dgbp", { precision: 10, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertQuoteSchema = createInsertSchema(quotes).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertQuote = z.infer<typeof insertQuoteSchema>;
+export type Quote = typeof quotes.$inferSelect;
+
+// Combined view type for the Customers Form (joins customer and quote data)
+export interface CustomerWithQuote {
+  customer: Customer;
+  quote: Quote | null;
+}

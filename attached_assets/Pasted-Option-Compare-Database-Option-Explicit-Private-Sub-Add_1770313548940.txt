@@ -1,0 +1,595 @@
+Option Compare Database
+Option Explicit
+Private Sub AddCategory_Click()
+DoCmd.OpenForm "ContactCategoriesFrm"
+End Sub
+Private Sub Address_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Customers Where Job=" & Me.JobNum, dbOpenDynaset, adLockOptimistic)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Address] = Me.[Address]
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub AddressC_AfterUpdate()
+Me.JobNum = Me.AddressC.Column(1)
+JobNum_AfterUpdate
+End Sub
+
+Private Sub Block_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Block] = Me.Block
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+
+End Sub
+Private Sub BP_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![BP] = Me.BP
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+
+Private Sub City_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Customers Where Job=" & Me.JobNum, dbOpenDynaset, adLockOptimistic)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![City] = Me.City
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Country_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Customers Where Job=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Country/Region] = Me.Country
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub DateofQuote_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![DateofQuote] = Me.DateofQuote
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub DGBP_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![DGBP] = Me.DGBP
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+
+Private Sub DisplayNames_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JObNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Customer] = Me.DisplayNames
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Division_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Division] = Me.Division
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub DP_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![DP] = Me.DP
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+
+Private Sub EditFieldValues_Click()
+Me.Address.Enabled = True
+Me.City.Enabled = True
+Me.State_Province.Enabled = True
+Me.ZIP_Postal_Code.Enabled = True
+Me.Country.Enabled = True
+Me.FirstNames.Enabled = True
+Me.LastNames.Enabled = True
+Me.DisplayNames.Enabled = True
+Me.WebPage.Enabled = True
+Me.HomePhone.Enabled = True
+Me.DateofQuote.Enabled = True
+Me.Division.Enabled = True
+Me.Model.Enabled = True
+Me.ProjectAddress.Enabled = True
+Me.Lot.Enabled = True
+Me.Block.Enabled = True
+Me.Plan.Enabled = True
+Me.Main.Enabled = True
+Me.Upper.Enabled = True
+Me.Low.Enabled = True
+Me.Gar.Enabled = True
+Me.DP.Enabled = True
+Me.BP.Enabled = True
+Me.DGBP.Enabled = True
+End Sub
+Private Sub FirstNames_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Customers Where Job=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![First Name] = Me.FirstNames
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Form_Open(Cancel As Integer)
+If Forms.Password.PasswordBox = Pass And AllowEnter(Me.Name) = True Then Me.Visible = True Else Me.Visible = False
+Me.AllowAdditions = AllowAdd(Me.Name)
+Me.AllowEdits = AllowEdit(Me.Name)
+Me.AllowDeletions = AllowDelete(Me.Name)
+
+Me.BorderBox.BackColor = YodaBorderColour
+Me.FormHeader.BackColor = YodaHeadColour
+Me.FormFooter.BackColor = YodaFootColour
+
+
+If PassWhat = "SuperAdmin" Or PassWhat = "Admin" Or PassWhat = "OManager" Then
+    Me.EditFieldValues.Visible = True
+    Me.AllowDeletions = True
+Else
+    Me.EditFieldValues.Visible = False
+    Me.AllowDeletions = False
+End If
+
+Me.JobNum.SetFocus
+End Sub
+Private Sub Gar_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Gar] = Me.Gar
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub HomePhone_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Customers Where Job=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Home Phone] = Me.HomePhone
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub LastNameC_AfterUpdate()
+Me.JobNum = Me.LastNameC.Column(2)
+JobNum_AfterUpdate
+End Sub
+Private Sub FirstNameC_AfterUpdate()
+Me.JobNum = Me.FirstNameC.Column(2)
+JobNum_AfterUpdate
+End Sub
+Private Sub LastNames_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Customers Where Job=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Last Name] = Me.LastNames
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+
+End Sub
+Private Sub Lot_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Lot] = Me.Lot
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Low_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Low] = Me.Low
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Main_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Main] = Me.Main
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Model_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Model] = Me.Model
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Plan_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Plan] = Me.Plan
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+
+Private Sub ProjectAddress_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![ProjectAddress] = Me.ProjectAddress
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub State_Province_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Customers Where Job=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![State/Province] = Me.State_Province
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Public Sub JobNum_AfterUpdate()
+Me.RecordSource = "Select Customers.* FROM Customers WHERE (((Customers.Job)= " & Me.JobNum & "));"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("SELECT Customers.Job, Customers.*, Quotes.* FROM Customers INNER JOIN Quotes ON Customers.Job = Quotes.JobNum WHERE (((Customers.Job)= " & Me.JobNum & "));", dbOpenSnapshot)
+
+If Not rs.EOF Then
+    Me.Address = Nz(rs!Address, "")
+    Me.City = Nz(rs!City, "")
+    Me.State_Province = Nz(rs![State/Province], "")
+    Me.ZIP_Postal_Code = Nz(rs![ZIP/Postal Code], "")
+    Me.Country = Nz(rs![Country/Region], "")
+    Me.FirstNames = Nz(rs![First Name], "")
+    Me.LastNames = Nz(rs![Last Name], "")
+    Me.DisplayNames = Nz(rs![Customer], "")
+    Me.WebPage = Nz(rs![Web Page], "")
+    Me.HomePhone = Nz(rs![Home Phone], "")
+    Me.QNum = Nz(rs![QNum], "")
+    Me.DateofQuote = Nz(rs![DateofQuote], "")
+    Me.Division = Nz(rs![Division], "")
+    Me.Model = Nz(rs![Model], "")
+    Me.ProjectAddress = Nz(rs![ProjectAddress], "")
+    Me.Lot = Nz(rs![Lot], "")
+    Me.Block = Nz(rs![Block], "")
+    Me.Plan = Nz(rs![Plan], "")
+    Me.Main = Nz(rs![Main], "")
+    Me.Upper = Nz(rs![Upper], "")
+    Me.Low = Nz(rs![Low], "")
+    Me.Gar = Nz(rs![Gar], "")
+    Me.DP = Nz(rs![DP], "")
+    Me.BP = Nz(rs![BP], "")
+    Me.DGBP = Nz(rs![DGBP], "")
+Else
+    Me.Address = ""
+    Me.City = ""
+    Me.State_Province = ""
+    Me.ZIP_Postal_Code = ""
+    Me.Country = ""
+    Me.FirstNames = ""
+    Me.LastNames = ""
+    Me.DisplayNames = ""
+    Me.WebPage = ""
+    Me.HomePhone = ""
+    Me.QNum = ""
+    Me.DateofQuote = ""
+    Me.Division = ""
+    Me.Model = ""
+    Me.ProjectAddress = ""
+    Me.Lot = ""
+    Me.Block = ""
+    Me.Plan = ""
+    Me.Main = ""
+    Me.Upper = ""
+    Me.Low = ""
+    Me.Gar = ""
+    Me.DP = ""
+    Me.BP = ""
+    Me.DGBP = ""
+End If
+
+Me.AddressC = ""
+Me.FirstNameC = ""
+Me.LastNameC = ""
+
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Private Sub JobNum_KeyDown(KeyCode As Integer, Shift As Integer)
+If PassWhat = "SuperAdmin" Or PassWhat = "Admin" Then
+
+'Dim ControlDown As Integer, CD As Integer, Warn As Integer, LastChance As Integer
+'    ControlDown = (Shift And acShiftMask) > 0
+'    CD = (Shift And acCtrlMask) > 1
+
+'If CD And KeyCode = vbKeyD Then
+'    Warn = MsgBox("Holding down Ctrl and the letter D at the same time will Delete this Vendor AND ALL CONTACTS WITHIN THIS COMPANY" & vbCrLf & "Do you wish to continue", vbYesNo, "Delete Vendor")
+'    If Warn = vbYes Then
+'        CurrentDb.Execute "Delete * From [SalviVendors] Where [Company]='" & Me.Vendor.Value & "'"
+'        AutoSendEmail AccountantE & ";" & PresidentE, , , "A Vendor has been deleted from 'The Maestro'", "Please delete this vendor from Peachtree- " & Me.Company & " (Vendor ID-)" & Me.Vendor_ID, , , , , , , True
+'        LastChance = MsgBox("Last chance are you sure you wish to also delete ALL CONTACTS WITHIN THIS COMPANY" & vbCrLf & "Do you wish to continue", vbYesNo, "Delete Vendor Contacts")
+'            If LastChance = vbYes Then
+'                CurrentDb.Execute "Delete * From [SalviContacts] Where [Company]='" & Me.Vendor.Value & "'"
+'            End If
+'        Me.Vendor.Value = ""
+'        Me.Requery
+'    End If
+'SendKeys "{ESC}"
+'End If
+
+End If
+End Sub
+Private Sub Upper_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Quotes Where JobNum=" & Me.JobNum, dbOpenDynaset)
+
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Upper] = Me.Upper
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+
+Private Sub WebPage_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Customers Where Job=" & Me.JobNum, dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Web Page] = Me.WebPage
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub ZIP_Postal_Code_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From Customers Where Job=" & Me.JobNum, dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![ZIP/Postal Code] = Me.ZIP_Postal_Code
+    rs.Update
+End If
+Me.Recalc
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
