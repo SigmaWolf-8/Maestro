@@ -181,13 +181,13 @@ export default function CustomersForm() {
   const quote = selectedData?.quote;
 
   return (
-    <div className="flex flex-col gap-6 p-6" data-testid="page-customers">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 p-4" data-testid="page-customers">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-customers-title">
+          <h1 className="text-xl font-semibold tracking-tight" data-testid="text-customers-title">
             Customers
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             View and manage customer and quote information.
           </p>
         </div>
@@ -195,6 +195,7 @@ export default function CustomersForm() {
           {(!allCustomers || allCustomers.length === 0) && (
             <Button
               variant="secondary"
+              size="sm"
               onClick={() => seedData.mutate()}
               disabled={seedData.isPending}
               data-testid="button-seed-data"
@@ -205,30 +206,30 @@ export default function CustomersForm() {
           )}
           <Button
             variant={editMode ? "default" : "outline"}
+            size="sm"
             onClick={() => setEditMode(!editMode)}
             data-testid="button-edit-mode"
           >
             <Edit className="mr-2 h-4 w-4" />
             {editMode ? "Editing" : "Edit Fields"}
           </Button>
-          <Button onClick={() => setShowCreateDialog(true)} data-testid="button-add-customer">
+          <Button size="sm" onClick={() => setShowCreateDialog(true)} data-testid="button-add-customer">
             <Plus className="mr-2 h-4 w-4" />
             New Customer
           </Button>
         </div>
       </div>
 
-      {/* Compact Job Number Search/Select */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               id="search"
               placeholder="Search by job #, name, or address..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-9 h-9"
               data-testid="input-customer-search"
             />
           </div>
@@ -238,7 +239,7 @@ export default function CustomersForm() {
             value={selectedJobNum?.toString() || ""}
             onValueChange={(val) => setSelectedJobNum(parseInt(val, 10))}
           >
-            <SelectTrigger id="jobNum" data-testid="select-job-number">
+            <SelectTrigger id="jobNum" className="h-9" data-testid="select-job-number">
               <SelectValue placeholder="Select a job number..." />
             </SelectTrigger>
             <SelectContent>
@@ -258,30 +259,30 @@ export default function CustomersForm() {
         </div>
       </div>
 
-      {/* Customer Information Card - Like VBA form Customer fields */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <User className="h-5 w-5" />
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <User className="h-4 w-4" />
               Customer Information
-              {editMode && <Badge variant="secondary">Editing</Badge>}
+              {editMode && <Badge variant="secondary" className="text-xs">Editing</Badge>}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="px-4 pb-4 space-y-3">
             {dataLoading && selectedJobNum ? (
-              <div className="space-y-3">
-                {[...Array(8)].map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
+              <div className="space-y-2">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
                 ))}
               </div>
             ) : customer ? (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="firstName" className="text-xs">First Name</Label>
                     <Input
                       id="firstName"
+                      className="h-8"
                       defaultValue={customer.firstName || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "firstName", e.target.value)}
@@ -289,33 +290,35 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="lastName" className="text-xs">Last Name</Label>
                     <Input
                       id="lastName"
+                      className="h-8"
                       defaultValue={customer.lastName || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "lastName", e.target.value)}
                       data-testid="input-last-name"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    defaultValue={customer.address || ""}
-                    disabled={!editMode}
-                    onBlur={(e) => handleFieldBlur("customer", "address", e.target.value)}
-                    data-testid="input-address"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="city">City</Label>
+                    <Label htmlFor="address" className="text-xs">Address</Label>
+                    <Input
+                      id="address"
+                      className="h-8"
+                      defaultValue={customer.address || ""}
+                      disabled={!editMode}
+                      onBlur={(e) => handleFieldBlur("customer", "address", e.target.value)}
+                      data-testid="input-address"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-3">
+                  <div>
+                    <Label htmlFor="city" className="text-xs">City</Label>
                     <Input
                       id="city"
+                      className="h-8"
                       defaultValue={customer.city || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "city", e.target.value)}
@@ -323,22 +326,21 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="stateProvince">State/Province</Label>
+                    <Label htmlFor="stateProvince" className="text-xs">State/Province</Label>
                     <Input
                       id="stateProvince"
+                      className="h-8"
                       defaultValue={customer.stateProvince || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "stateProvince", e.target.value)}
                       data-testid="input-state"
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="zipPostalCode">ZIP/Postal Code</Label>
+                    <Label htmlFor="zipPostalCode" className="text-xs">ZIP/Postal</Label>
                     <Input
                       id="zipPostalCode"
+                      className="h-8"
                       defaultValue={customer.zipPostalCode || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "zipPostalCode", e.target.value)}
@@ -346,9 +348,10 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="countryRegion">Country/Region</Label>
+                    <Label htmlFor="countryRegion" className="text-xs">Country</Label>
                     <Input
                       id="countryRegion"
+                      className="h-8"
                       defaultValue={customer.countryRegion || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "countryRegion", e.target.value)}
@@ -357,13 +360,14 @@ export default function CustomersForm() {
                   </div>
                 </div>
 
-                <Separator />
+                <Separator className="my-2" />
 
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <Label htmlFor="homePhone">Home Phone</Label>
+                    <Label htmlFor="homePhone" className="text-xs">Home Phone</Label>
                     <Input
                       id="homePhone"
+                      className="h-8"
                       defaultValue={customer.homePhone || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "homePhone", e.target.value)}
@@ -371,9 +375,10 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="workPhone">Work Phone</Label>
+                    <Label htmlFor="workPhone" className="text-xs">Work Phone</Label>
                     <Input
                       id="workPhone"
+                      className="h-8"
                       defaultValue={customer.workPhone || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "workPhone", e.target.value)}
@@ -381,9 +386,10 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="mobilePhone">Mobile Phone</Label>
+                    <Label htmlFor="mobilePhone" className="text-xs">Mobile</Label>
                     <Input
                       id="mobilePhone"
+                      className="h-8"
                       defaultValue={customer.mobilePhone || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "mobilePhone", e.target.value)}
@@ -391,9 +397,10 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="mobilePhone2">Mobile Phone 2</Label>
+                    <Label htmlFor="mobilePhone2" className="text-xs">Mobile 2</Label>
                     <Input
                       id="mobilePhone2"
+                      className="h-8"
                       defaultValue={customer.mobilePhone2 || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "mobilePhone2", e.target.value)}
@@ -402,12 +409,13 @@ export default function CustomersForm() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label htmlFor="email1">Email 1</Label>
+                    <Label htmlFor="email1" className="text-xs">Email 1</Label>
                     <Input
                       id="email1"
                       type="email"
+                      className="h-8"
                       defaultValue={customer.email1 || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "email1", e.target.value)}
@@ -415,10 +423,11 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="email2">Email 2</Label>
+                    <Label htmlFor="email2" className="text-xs">Email 2</Label>
                     <Input
                       id="email2"
                       type="email"
+                      className="h-8"
                       defaultValue={customer.email2 || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "email2", e.target.value)}
@@ -426,9 +435,10 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="webPage">Web Page</Label>
+                    <Label htmlFor="webPage" className="text-xs">Web Page</Label>
                     <Input
                       id="webPage"
+                      className="h-8"
                       defaultValue={customer.webPage || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "webPage", e.target.value)}
@@ -438,37 +448,37 @@ export default function CustomersForm() {
                 </div>
               </>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <User className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>Select a job number to view customer details</p>
+              <div className="text-center py-6 text-muted-foreground">
+                <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Select a job number to view customer details</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Quote Information Card - Like VBA form Quote fields */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <FileText className="h-5 w-5" />
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4" />
               Quote Information
-              {quote?.qNum && <Badge variant="outline">Q#{quote.qNum}</Badge>}
+              {quote?.qNum && <Badge variant="outline" className="text-xs">Q#{quote.qNum}</Badge>}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="px-4 pb-4 space-y-3">
             {dataLoading && selectedJobNum ? (
-              <div className="space-y-3">
-                {[...Array(10)].map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
+              <div className="space-y-2">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
                 ))}
               </div>
             ) : quote ? (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <Label htmlFor="qNum">Quote Number</Label>
+                    <Label htmlFor="qNum" className="text-xs">Quote #</Label>
                     <Input
                       id="qNum"
+                      className="h-8"
                       defaultValue={quote.qNum || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "qNum", e.target.value)}
@@ -476,23 +486,22 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="dateOfQuote">Date of Quote</Label>
+                    <Label htmlFor="dateOfQuote" className="text-xs">Date</Label>
                     <Input
                       id="dateOfQuote"
                       type="date"
+                      className="h-8"
                       defaultValue={quote.dateOfQuote ? new Date(quote.dateOfQuote).toISOString().split('T')[0] : ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "dateOfQuote", e.target.value)}
                       data-testid="input-date-of-quote"
                     />
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="customer">Display Name</Label>
+                    <Label htmlFor="customer" className="text-xs">Display Name</Label>
                     <Input
                       id="customer"
+                      className="h-8"
                       defaultValue={quote.customer || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "customer", e.target.value)}
@@ -500,9 +509,10 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="division">Division</Label>
+                    <Label htmlFor="division" className="text-xs">Division</Label>
                     <Input
                       id="division"
+                      className="h-8"
                       defaultValue={quote.division || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "division", e.target.value)}
@@ -511,11 +521,12 @@ export default function CustomersForm() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <Label htmlFor="model">Model</Label>
+                    <Label htmlFor="model" className="text-xs">Model</Label>
                     <Input
                       id="model"
+                      className="h-8"
                       defaultValue={quote.model || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "model", e.target.value)}
@@ -523,22 +534,10 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="projectAddress">Project Address</Label>
-                    <Input
-                      id="projectAddress"
-                      defaultValue={quote.projectAddress || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("quote", "projectAddress", e.target.value)}
-                      data-testid="input-project-address"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="lot">Lot</Label>
+                    <Label htmlFor="lot" className="text-xs">Lot</Label>
                     <Input
                       id="lot"
+                      className="h-8"
                       defaultValue={quote.lot || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "lot", e.target.value)}
@@ -546,9 +545,10 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="block">Block</Label>
+                    <Label htmlFor="block" className="text-xs">Block</Label>
                     <Input
                       id="block"
+                      className="h-8"
                       defaultValue={quote.block || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "block", e.target.value)}
@@ -556,9 +556,10 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="plan">Plan</Label>
+                    <Label htmlFor="plan" className="text-xs">Plan</Label>
                     <Input
                       id="plan"
+                      className="h-8"
                       defaultValue={quote.plan || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "plan", e.target.value)}
@@ -567,17 +568,28 @@ export default function CustomersForm() {
                   </div>
                 </div>
 
-                <Separator />
-
-                <div className="text-sm font-medium text-muted-foreground mb-2">
-                  Square Footage
+                <div>
+                  <Label htmlFor="projectAddress" className="text-xs">Project Address</Label>
+                  <Input
+                    id="projectAddress"
+                    className="h-8"
+                    defaultValue={quote.projectAddress || ""}
+                    disabled={!editMode}
+                    onBlur={(e) => handleFieldBlur("quote", "projectAddress", e.target.value)}
+                    data-testid="input-project-address"
+                  />
                 </div>
-                <div className="grid grid-cols-4 gap-4">
+
+                <Separator className="my-2" />
+
+                <div className="text-xs font-medium text-muted-foreground">Square Footage</div>
+                <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <Label htmlFor="main">Main</Label>
+                    <Label htmlFor="main" className="text-xs">Main</Label>
                     <Input
                       id="main"
                       type="number"
+                      className="h-8"
                       defaultValue={quote.main || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "main", e.target.value)}
@@ -585,10 +597,11 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="upper">Upper</Label>
+                    <Label htmlFor="upper" className="text-xs">Upper</Label>
                     <Input
                       id="upper"
                       type="number"
+                      className="h-8"
                       defaultValue={quote.upper || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "upper", e.target.value)}
@@ -596,10 +609,11 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="low">Lower</Label>
+                    <Label htmlFor="low" className="text-xs">Lower</Label>
                     <Input
                       id="low"
                       type="number"
+                      className="h-8"
                       defaultValue={quote.low || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "low", e.target.value)}
@@ -607,10 +621,11 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="gar">Garage</Label>
+                    <Label htmlFor="gar" className="text-xs">Garage</Label>
                     <Input
                       id="gar"
                       type="number"
+                      className="h-8"
                       defaultValue={quote.gar || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "gar", e.target.value)}
@@ -619,15 +634,14 @@ export default function CustomersForm() {
                   </div>
                 </div>
 
-                <div className="text-sm font-medium text-muted-foreground mb-2">
-                  Building Permits
-                </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="text-xs font-medium text-muted-foreground">Building Permits</div>
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label htmlFor="dp">DP</Label>
+                    <Label htmlFor="dp" className="text-xs">DP</Label>
                     <Input
                       id="dp"
                       type="number"
+                      className="h-8"
                       defaultValue={quote.dp || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "dp", e.target.value)}
@@ -635,10 +649,11 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="bp">BP</Label>
+                    <Label htmlFor="bp" className="text-xs">BP</Label>
                     <Input
                       id="bp"
                       type="number"
+                      className="h-8"
                       defaultValue={quote.bp || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "bp", e.target.value)}
@@ -646,10 +661,11 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="dgbp">DGBP</Label>
+                    <Label htmlFor="dgbp" className="text-xs">DGBP</Label>
                     <Input
                       id="dgbp"
                       type="number"
+                      className="h-8"
                       defaultValue={quote.dgbp || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("quote", "dgbp", e.target.value)}
@@ -659,14 +675,14 @@ export default function CustomersForm() {
                 </div>
               </>
             ) : selectedJobNum && !dataLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No quote found for this customer</p>
+              <div className="text-center py-6 text-muted-foreground">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No quote found for this customer</p>
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>Select a job number to view quote details</p>
+              <div className="text-center py-6 text-muted-foreground">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Select a job number to view quote details</p>
               </div>
             )}
           </CardContent>

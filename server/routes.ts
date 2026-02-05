@@ -173,10 +173,10 @@ const vendorContactCreateSchema = z.object({
 const vendorContactUpdateSchema = vendorContactCreateSchema.partial().omit({ tenantId: true, vendorId: true });
 
 const emailSendSchema = z.object({
-  to: z.string().email(),
-  subject: z.string().min(1),
+  to: z.string().min(1, "Recipient email is required").email("Please enter a valid email address"),
+  subject: z.string().min(1, "Subject is required"),
   body: z.string(),
-  cc: z.string().optional(),
+  cc: z.string().email().optional().or(z.literal("")),
 });
 
 function validateBody<T>(schema: z.ZodSchema<T>) {
