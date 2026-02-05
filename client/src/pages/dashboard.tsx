@@ -61,10 +61,16 @@ export default function Dashboard() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
         <div className="absolute inset-0 flex items-start p-6">
-          <div className="text-white">
+          <div className="text-white flex gap-4">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg" data-testid="text-dashboard-title">
               Welcome
             </h1>
+            <div className="flex flex-col text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg leading-none">
+              <span>B</span>
+              <span>a</span>
+              <span>c</span>
+              <span>k</span>
+            </div>
           </div>
         </div>
       </div>
