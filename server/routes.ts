@@ -892,7 +892,7 @@ export async function registerRoutes(
             lastName: "Contact",
             jobTitle: "Account Manager",
             businessPhone: "(403) 555-0100",
-            emailAddress: `contact@${v.company.toLowerCase().replace(/\s+/g, '')}.com`,
+            emailAddress: `contact@${v.company.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
             isPrimary: true,
           });
         }

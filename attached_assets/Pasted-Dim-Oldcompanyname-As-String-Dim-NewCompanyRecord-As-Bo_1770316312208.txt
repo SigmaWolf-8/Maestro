@@ -1,0 +1,72 @@
+Dim Oldcompanyname As String
+Dim NewCompanyRecord As Boolean
+Private Sub AddCategory_Click()
+DoCmd.OpenForm "ContactCategoriesFrm"
+End Sub
+Private Sub Code_Click()
+CurrentDb.Execute "INSERT INTO SalviContacts (Code, [Last Name], [First Name], [Full Name], [E-mail Address], Company, [Job Title], [Business Phone], [Home Phone], [Mobile Phone], [Fax Number], Address, City, [State/Province], [ZIP/Postal Code], [Country/Region], [Web Page], Notes, Category) SELECT SalviContacts.Code, SalviContacts.[Last Name], SalviContacts.[First Name], SalviContacts.[Full Name], SalviContacts.[E-mail Address], SalviContacts.Company, SalviContacts.[Job Title], SalviContacts.[Business Phone], SalviContacts.[Home Phone], SalviContacts.[Mobile Phone], SalviContacts.[Fax Number], SalviContacts.Address, SalviContacts.City, SalviContacts.[State/Province], SalviContacts.[ZIP/Postal Code], SalviContacts.[Country/Region], SalviContacts.[Web Page], SalviContacts.Notes, SalviContacts.Category FROM SalviContacts WHERE (((SalviContacts.Code)=" & [Forms]![Navform]![NavigationSubform]![CodeID] & "));"
+
+DoCmd.Beep
+MsgBox "Contact Successfully copied.  Please revise the current record information to elimate duplicate records"
+End Sub
+Private Sub Company_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset, InsertNewVendor As Integer, UpdateVendor As Integer
+Set Yoda = CurrentDb
+
+
+'Me.Requery
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Company & "'", dbOpenDynaset)
+
+If rs.EOF Then
+    If NewRecord = True Then
+        InsertNewVendor = MsgBox("This Company does not exist in The Core database." & vbCrLf & "Would you like to add it?", vbYesNo, "Salvi Vendor Management")
+        If InsertNewVendor = vbYes Then
+            rs.AddNew
+            rs!Company = Me.Company
+            rs![Vendor ID] = Me.Company
+            rs.Update
+        End If
+    Else
+        UpdateVendor = MsgBox("Would you like to change this company spelling for all other listings under " & vbCrLf & Oldcompanyname, vbYesNo, "Salvi Vendor Management")
+        If UpdateVendor = vbYes Then
+            CurrentDb.Execute "UPDATE SalviVendors SET SalviVendors.Company = '" & Me.Company.Value & "' Where SalviVendors.Company='" & Oldcompanyname & "'"
+            CurrentDb.Execute "UPDATE SalviContacts SET SalviContacts.Company = '" & Me.Company.Value & "' Where SalviContacts.Company='" & Oldcompanyname & "'"
+        End If
+    End If
+End If
+
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Private Sub Company_Dirty(Cancel As Integer)
+Oldcompanyname = Nz(Me.Company.Value, "")
+End Sub
+Private Sub Form_BeforeInsert(Cancel As Integer)
+NewCompanyRecord = True
+End Sub
+Private Sub Form_Open(Cancel As Integer)
+If Forms.Password.PasswordBox = Pass And AllowEnter(Me.Name) = True Then Me.Visible = True Else Me.Visible = False
+Me.AllowAdditions = AllowAdd(Me.Name)
+Me.AllowEdits = AllowEdit(Me.Name)
+Me.AllowDeletions = AllowDelete(Me.Name)
+
+Me.BorderBox.BackColor = YodaBorderColour
+Me.FormHeader.BackColor = YodaHeadColour
+Me.FormFooter.BackColor = YodaFootColour
+
+End Sub
+
+Private Sub Sortby_Click()
+If Me.Sortby.Value = 1 Then
+    Me.cboGoToContact.RowSource = "SELECT [ContactID], [Contact Name], [Company],[Category], [E-mail Address] FROM [Contacts Extended] WHERE [ContactID]<>Nz(Form![ID],0) ORDER BY [Contact Name]; "
+End If
+If Me.Sortby.Value = 2 Then
+    Me.cboGoToContact.RowSource = "SELECT [ContactID], [Company],[Contact Name],[Category], [E-mail Address] FROM [Contacts Extended] WHERE ((([Contacts Extended].[ContactID])<>Nz([Form]![ID],0)) AND (([Contacts Extended].[Company]) Is Not Null)) ORDER BY [Company],[Contact Name]; "
+End If
+If Me.Sortby.Value = 3 Then
+    Me.cboGoToContact.RowSource = "SELECT [ContactID], [Category],[Contact Name], [Company], [E-mail Address] FROM [Contacts Extended] WHERE ((([Contacts Extended].[ContactID])<>Nz([Form]![ID],0)) AND (([Contacts Extended].[Category]) Is Not Null)) ORDER BY [Category],[Contact Name]; "
+End If
+
+End Sub

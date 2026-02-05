@@ -16,13 +16,13 @@
 
   --background: 0 0% 98%;
 
-  --foreground: 0 0% 10%;
+  --foreground: 0 0% 5%;
 
   --border: 0 0% 88%;
 
   --card: 0 0% 100%;
 
-  --card-foreground: 0 0% 10%;
+  --card-foreground: 0 0% 5%;
 
   --card-border: 0 0% 90%;
 
@@ -58,7 +58,7 @@
 
   --muted: 0 0% 95%;
 
-  --muted-foreground: 0 0% 45%;
+  --muted-foreground: 0 0% 35%;
 
   --accent: 0 0% 55%;
 

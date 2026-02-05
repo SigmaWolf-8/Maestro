@@ -16,6 +16,8 @@ import {
   Truck,
   FileText,
   Send,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,6 +55,7 @@ export default function VendorsForm() {
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [emailData, setEmailData] = useState({ to: "", subject: "", body: "" });
+  const [currentContactIndex, setCurrentContactIndex] = useState(0);
 
   const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -159,13 +162,25 @@ export default function VendorsForm() {
   });
 
   const vendor = vendorData?.vendor;
-  const primaryContact = vendorData?.primaryContact;
   const contacts = vendorData?.contacts || [];
+  
+  // Reset contact index when vendor changes or if index is out of bounds
+  const safeContactIndex = contacts.length > 0 ? Math.min(currentContactIndex, contacts.length - 1) : 0;
+  const currentContact = contacts[safeContactIndex] || null;
+  const hasMultipleContacts = contacts.length > 1;
+
+  const navigateContact = (direction: 'prev' | 'next') => {
+    if (direction === 'prev' && safeContactIndex > 0) {
+      setCurrentContactIndex(safeContactIndex - 1);
+    } else if (direction === 'next' && safeContactIndex < contacts.length - 1) {
+      setCurrentContactIndex(safeContactIndex + 1);
+    }
+  };
 
   const openEmailDialog = () => {
-    if (primaryContact?.emailAddress) {
+    if (currentContact?.emailAddress) {
       setEmailData({
-        to: primaryContact.emailAddress,
+        to: currentContact.emailAddress,
         subject: "",
         body: "",
       });
@@ -175,9 +190,11 @@ export default function VendorsForm() {
 
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="page-vendors">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Vendors & Pricing</h1>
+          <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-vendors-title">
+            Vendors & Pricing
+          </h1>
           <p className="text-muted-foreground">
             Manage vendor information, contacts, and communications.
           </p>
@@ -209,56 +226,48 @@ export default function VendorsForm() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Vendor Selection
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="vendorSearch">Search Vendors</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="vendorSearch"
-                  placeholder="Search by company name, ID, or city..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                  data-testid="input-vendor-search"
-                />
-              </div>
-            </div>
-            <div className="w-80">
-              <Label htmlFor="vendorSelect">Select Vendor</Label>
-              <Select
-                value={selectedVendorId || ""}
-                onValueChange={(value) => setSelectedVendorId(value)}
-              >
-                <SelectTrigger id="vendorSelect" data-testid="select-vendor">
-                  <SelectValue placeholder="Choose a vendor..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendorsLoading ? (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
-                  ) : filteredVendors?.length === 0 ? (
-                    <SelectItem value="none" disabled>No vendors found</SelectItem>
-                  ) : (
-                    filteredVendors?.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>
-                        {v.vendorId ? `${v.vendorId} - ` : ""}{v.company}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Compact Vendor Search/Select */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="vendorSearch"
+              placeholder="Search by company name, ID, or city..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+              data-testid="input-vendor-search"
+            />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="w-80">
+          <Select
+            value={selectedVendorId || ""}
+            onValueChange={(value) => {
+              setSelectedVendorId(value);
+              setCurrentContactIndex(0);
+            }}
+          >
+            <SelectTrigger id="vendorSelect" data-testid="select-vendor">
+              <SelectValue placeholder="Choose a vendor..." />
+            </SelectTrigger>
+            <SelectContent>
+              {vendorsLoading ? (
+                <SelectItem value="loading" disabled>Loading...</SelectItem>
+              ) : filteredVendors?.length === 0 ? (
+                <SelectItem value="none" disabled>No vendors found</SelectItem>
+              ) : (
+                filteredVendors?.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.vendorId ? `${v.vendorId} - ` : ""}{v.company}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {selectedVendorId && (
         <>
@@ -451,32 +460,57 @@ export default function VendorsForm() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5" />
-                    Primary Contact
-                    {primaryContact && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="ml-auto"
-                        onClick={openEmailDialog}
-                        data-testid="button-send-email"
-                      >
-                        <Send className="mr-2 h-4 w-4" />
-                        Send Email
-                      </Button>
-                    )}
+                    <span>Contact {hasMultipleContacts && `(${safeContactIndex + 1} of ${contacts.length})`}</span>
+                    {currentContact?.isPrimary && <Badge variant="secondary">Primary</Badge>}
+                    <div className="ml-auto flex items-center gap-2">
+                      {hasMultipleContacts && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => navigateContact('prev')}
+                            disabled={safeContactIndex === 0}
+                            data-testid="button-prev-contact"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => navigateContact('next')}
+                            disabled={safeContactIndex === contacts.length - 1}
+                            data-testid="button-next-contact"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {currentContact && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={openEmailDialog}
+                          data-testid="button-send-email"
+                        >
+                          <Send className="mr-2 h-4 w-4" />
+                          Send Email
+                        </Button>
+                      )}
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {primaryContact ? (
+                  {currentContact ? (
                     <>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="contactFirstName">First Name</Label>
                           <Input
                             id="contactFirstName"
-                            defaultValue={primaryContact.firstName || ""}
+                            key={`firstName-${currentContact.id}`}
+                            defaultValue={currentContact.firstName || ""}
                             disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(primaryContact.id, "firstName", e.target.value)}
+                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "firstName", e.target.value)}
                             data-testid="input-contact-first-name"
                           />
                         </div>
@@ -484,9 +518,10 @@ export default function VendorsForm() {
                           <Label htmlFor="contactLastName">Last Name</Label>
                           <Input
                             id="contactLastName"
-                            defaultValue={primaryContact.lastName || ""}
+                            key={`lastName-${currentContact.id}`}
+                            defaultValue={currentContact.lastName || ""}
                             disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(primaryContact.id, "lastName", e.target.value)}
+                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "lastName", e.target.value)}
                             data-testid="input-contact-last-name"
                           />
                         </div>
@@ -496,9 +531,10 @@ export default function VendorsForm() {
                         <Label htmlFor="contactJobTitle">Job Title</Label>
                         <Input
                           id="contactJobTitle"
-                          defaultValue={primaryContact.jobTitle || ""}
+                          key={`jobTitle-${currentContact.id}`}
+                          defaultValue={currentContact.jobTitle || ""}
                           disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(primaryContact.id, "jobTitle", e.target.value)}
+                          onBlur={(e) => handleContactFieldBlur(currentContact.id, "jobTitle", e.target.value)}
                           data-testid="input-contact-job-title"
                         />
                       </div>
@@ -510,9 +546,10 @@ export default function VendorsForm() {
                           <Label htmlFor="contactBusinessPhone">Business Phone</Label>
                           <Input
                             id="contactBusinessPhone"
-                            defaultValue={primaryContact.businessPhone || ""}
+                            key={`businessPhone-${currentContact.id}`}
+                            defaultValue={currentContact.businessPhone || ""}
                             disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(primaryContact.id, "businessPhone", e.target.value)}
+                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "businessPhone", e.target.value)}
                             data-testid="input-contact-business-phone"
                           />
                         </div>
@@ -520,9 +557,10 @@ export default function VendorsForm() {
                           <Label htmlFor="contactMobilePhone">Mobile Phone</Label>
                           <Input
                             id="contactMobilePhone"
-                            defaultValue={primaryContact.mobilePhone || ""}
+                            key={`mobilePhone-${currentContact.id}`}
+                            defaultValue={currentContact.mobilePhone || ""}
                             disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(primaryContact.id, "mobilePhone", e.target.value)}
+                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "mobilePhone", e.target.value)}
                             data-testid="input-contact-mobile-phone"
                           />
                         </div>
@@ -533,9 +571,10 @@ export default function VendorsForm() {
                         <Input
                           id="contactEmail"
                           type="email"
-                          defaultValue={primaryContact.emailAddress || ""}
+                          key={`email-${currentContact.id}`}
+                          defaultValue={currentContact.emailAddress || ""}
                           disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(primaryContact.id, "emailAddress", e.target.value)}
+                          onBlur={(e) => handleContactFieldBlur(currentContact.id, "emailAddress", e.target.value)}
                           data-testid="input-contact-email"
                         />
                       </div>

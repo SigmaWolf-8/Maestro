@@ -218,53 +218,45 @@ export default function CustomersForm() {
         </div>
       </div>
 
-      {/* Job Number Search/Select - Like VBA JobNum combo box */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Find Customer by Job Number
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <Label htmlFor="search">Search</Label>
-              <Input
-                id="search"
-                placeholder="Search by job #, name, or address..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                data-testid="input-customer-search"
-              />
-            </div>
-            <div className="flex-1">
-              <Label htmlFor="jobNum">Job Number</Label>
-              <Select
-                value={selectedJobNum?.toString() || ""}
-                onValueChange={(val) => setSelectedJobNum(parseInt(val, 10))}
-              >
-                <SelectTrigger id="jobNum" data-testid="select-job-number">
-                  <SelectValue placeholder="Select a job number..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {customersLoading ? (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
-                  ) : filteredCustomers?.length === 0 ? (
-                    <SelectItem value="none" disabled>No customers found</SelectItem>
-                  ) : (
-                    filteredCustomers?.map((c) => (
-                      <SelectItem key={c.id} value={c.jobNum.toString()}>
-                        {c.jobNum} - {c.firstName} {c.lastName} {c.address ? `(${c.address})` : ""}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+      {/* Compact Job Number Search/Select */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="search"
+              placeholder="Search by job #, name, or address..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+              data-testid="input-customer-search"
+            />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="w-80">
+          <Select
+            value={selectedJobNum?.toString() || ""}
+            onValueChange={(val) => setSelectedJobNum(parseInt(val, 10))}
+          >
+            <SelectTrigger id="jobNum" data-testid="select-job-number">
+              <SelectValue placeholder="Select a job number..." />
+            </SelectTrigger>
+            <SelectContent>
+              {customersLoading ? (
+                <SelectItem value="loading" disabled>Loading...</SelectItem>
+              ) : filteredCustomers?.length === 0 ? (
+                <SelectItem value="none" disabled>No customers found</SelectItem>
+              ) : (
+                filteredCustomers?.map((c) => (
+                  <SelectItem key={c.id} value={c.jobNum.toString()}>
+                    {c.jobNum} - {c.firstName} {c.lastName} {c.address ? `(${c.address})` : ""}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Customer Information Card - Like VBA form Customer fields */}
       <div className="grid gap-6 lg:grid-cols-2">
