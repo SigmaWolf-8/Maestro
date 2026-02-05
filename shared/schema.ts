@@ -331,6 +331,7 @@ export interface TenantConfig {
     fontStyle?: string;
     logoUrl: string | null;
     faviconUrl: string | null;
+    companyUrl?: string;
   };
   modules: {
     hrSync: boolean;

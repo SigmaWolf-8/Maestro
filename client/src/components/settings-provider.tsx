@@ -10,6 +10,7 @@ export interface TenantBranding {
   fontStyle: "modern" | "classic" | "elegant" | "script" | "gotham" | "roboto" | "lato" | "opensans" | "merriweather" | "raleway";
   logoUrl: string | null;
   faviconUrl: string | null;
+  companyUrl?: string;
 }
 
 export interface WbsDimensionConfig {

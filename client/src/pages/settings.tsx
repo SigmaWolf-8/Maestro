@@ -138,6 +138,7 @@ export default function Settings() {
   const [headerColor, setHeaderColor] = useState(branding?.headerColor || "0 0% 100%");
   const [companyName, setCompanyName] = useState(activeTenant?.companyName || "");
   const [contactEmail, setContactEmail] = useState(activeTenant?.contactEmail || "");
+  const [companyUrl, setCompanyUrl] = useState(activeTenant?.config?.branding?.companyUrl || "");
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyEmail, setNewCompanyEmail] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -155,6 +156,7 @@ export default function Settings() {
     if (activeTenant) {
       setCompanyName(activeTenant.companyName);
       setContactEmail(activeTenant.contactEmail);
+      setCompanyUrl(activeTenant.config?.branding?.companyUrl || "");
     }
   }, [activeTenant]);
 
@@ -253,6 +255,11 @@ export default function Settings() {
       return;
     }
     updateTenantDetails({ companyName: companyName.trim(), contactEmail: contactEmail.trim() });
+    if (companyUrl.trim()) {
+      updateTenantBranding({ companyUrl: companyUrl.trim() });
+    } else {
+      updateTenantBranding({ companyUrl: undefined });
+    }
     toast({
       title: "Company Updated",
       description: "Company details have been saved.",
@@ -399,6 +406,20 @@ export default function Settings() {
                 placeholder="admin@company.com"
                 data-testid="input-contact-email"
               />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="companyUrl">Company URL</Label>
+              <Input
+                id="companyUrl"
+                type="url"
+                value={companyUrl}
+                onChange={(e) => setCompanyUrl(e.target.value)}
+                placeholder="https://www.yourcompany.com"
+                data-testid="input-company-url"
+              />
+              <p className="text-xs text-muted-foreground">
+                Click the company logo in the sidebar to open this URL in a fullscreen viewer
+              </p>
             </div>
             <Button onClick={handleSaveCompanyDetails} data-testid="button-save-company">
               <Save className="h-4 w-4 mr-2" />

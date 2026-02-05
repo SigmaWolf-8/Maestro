@@ -63,6 +63,7 @@ import {
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { UserRole, NavigationItem } from "@shared/schema";
+import { WebViewer } from "@/components/web-viewer";
 
 const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -197,6 +198,7 @@ export function AppSidebar({
   const { state } = useSidebar();
   const { activeTenant, tenants, setActiveTenant } = useSettings();
   const { user: authUser } = useAuth();
+  const [showWebViewer, setShowWebViewer] = useState(false);
   
   const displayFirstName = authUser?.firstName || currentUser?.profile?.firstName || "User";
   const displayLastName = authUser?.lastName || currentUser?.profile?.lastName || "";
@@ -235,20 +237,47 @@ export function AppSidebar({
       <SidebarHeader className="p-2 pt-3">
         <div className="flex flex-col items-center">
           {activeTenant?.config?.branding?.logoUrl ? (
-            <div className="flex w-full h-[92px] items-center justify-center">
+            <button
+              onClick={() => {
+                const companyUrl = activeTenant?.config?.branding?.companyUrl;
+                if (companyUrl) {
+                  setShowWebViewer(true);
+                }
+              }}
+              className={`flex w-full h-[92px] items-center justify-center ${activeTenant?.config?.branding?.companyUrl ? 'cursor-pointer hover-elevate' : 'cursor-default'}`}
+              title={activeTenant?.config?.branding?.companyUrl ? "Click to open company website" : undefined}
+              data-testid="button-logo-web-viewer"
+            >
               <img
                 src={activeTenant.config.branding.logoUrl}
                 alt="Logo"
                 className="max-w-full max-h-full object-contain"
               />
-            </div>
+            </button>
           ) : (
-            <div className="flex w-full h-[92px] items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg">
+            <button
+              onClick={() => {
+                const companyUrl = activeTenant?.config?.branding?.companyUrl;
+                if (companyUrl) {
+                  setShowWebViewer(true);
+                }
+              }}
+              className={`flex w-full h-[92px] items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg ${activeTenant?.config?.branding?.companyUrl ? 'cursor-pointer hover-elevate' : 'cursor-default'}`}
+              title={activeTenant?.config?.branding?.companyUrl ? "Click to open company website" : undefined}
+              data-testid="button-logo-web-viewer"
+            >
               <Building2 className="h-14 w-14" />
-            </div>
+            </button>
           )}
         </div>
       </SidebarHeader>
+
+      {showWebViewer && activeTenant?.config?.branding?.companyUrl && (
+        <WebViewer
+          initialUrl={activeTenant.config.branding.companyUrl}
+          onClose={() => setShowWebViewer(false)}
+        />
+      )}
 
       <SidebarContent>
         <SidebarGroup>
