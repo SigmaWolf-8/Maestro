@@ -25,7 +25,8 @@ The project is organized into `client/` (React frontend), `server/` (Express bac
 - **Navigation:** Implements a 3/5 choice UX pattern in the sidebar with role-based filtering and multi-tenant capabilities.
 - **Multi-Company Support:** Allows for multiple tenants with individual branding (themes, fonts, logos) and a company switcher.
 - **Settings & Customization:** Extensive per-company branding options, including logo upload, typography, and color themes, persisted to the backend.
-- **Legacy Form Recreations:** Includes recreation of MS Access VBA forms for Vendors & Pricing and Customers, featuring auto-save on field blur and detailed data entry.
+- **Legacy Form Recreations:** Includes recreation of MS Access VBA forms for Vendors & Pricing and Customers, featuring auto-save on field blur, detailed data entry, and condensed layouts.
+- **Contacts Directory:** Unified searchable/filterable table of all customers, vendor contacts, and employees with category filtering, sorting, and pagination.
 - **File Manager:** Sophisticated document management system with drag-and-drop uploads, 13-dimensional WBS filtering/meta-tagging, and a large document viewer.
 - **User Group Security:** Provides granular, form-level access control with user group management and a permissions matrix (View, Create, Edit, Delete).
 

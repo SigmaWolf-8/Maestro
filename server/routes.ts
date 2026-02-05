@@ -979,6 +979,116 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== CONTACTS DIRECTORY API ====================
+  
+  // Get unified contacts directory (customers, vendors, employees combined)
+  app.get("/api/contacts/directory", async (req, res) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const search = (req.query.search as string) || "";
+      const sortBy = (req.query.sortBy as string) || "name";
+      const category = (req.query.category as string) || "all";
+      
+      // Get all contacts from different sources
+      const [customers, vendorContacts, teamMembers] = await Promise.all([
+        storage.getCustomers(tenantId),
+        storage.getAllVendorContacts(tenantId),
+        storage.getTeamMembers(tenantId),
+      ]);
+      
+      // Transform customers into unified contact format
+      const customerContacts = customers.map(c => ({
+        id: `customer-${c.id}`,
+        category: "Customer" as const,
+        sortId: c.jobNum,
+        fullName: [c.firstName, c.lastName].filter(Boolean).join(" ") || `Customer ${c.jobNum}`,
+        company: `Job #${c.jobNum}`,
+        email: c.email1 || c.email2 || "",
+        phone: c.mobilePhone || c.workPhone || c.homePhone || "",
+        jobTitle: "",
+        city: c.city || "",
+        sourceId: c.id,
+      }));
+      
+      // Transform vendor contacts into unified format
+      const vendorContactsList = vendorContacts.map(vc => ({
+        id: `vendor-${vc.contact.id}`,
+        category: "Vendor" as const,
+        sortId: 0,
+        fullName: [vc.contact.firstName, vc.contact.lastName].filter(Boolean).join(" ") || "Contact",
+        company: vc.vendorName,
+        email: vc.contact.emailAddress || "",
+        phone: vc.contact.businessPhone || vc.contact.mobilePhone || "",
+        jobTitle: vc.contact.jobTitle || "",
+        city: "",
+        sourceId: vc.contact.id,
+      }));
+      
+      // Transform team members into unified format
+      const employeeContacts = teamMembers.map(tm => {
+        const profile = tm.profile as { firstName?: string; lastName?: string; jobTitle?: string } || {};
+        return {
+          id: `employee-${tm.id}`,
+          category: "Employee" as const,
+          sortId: 0,
+          fullName: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || tm.email,
+          company: "Internal",
+          email: tm.email,
+          phone: "",
+          jobTitle: profile.jobTitle || tm.role,
+          city: "",
+          sourceId: tm.id,
+        };
+      });
+      
+      // Combine all contacts
+      let allContacts = [...customerContacts, ...vendorContactsList, ...employeeContacts];
+      
+      // Filter by category
+      if (category !== "all") {
+        allContacts = allContacts.filter(c => c.category.toLowerCase() === category.toLowerCase());
+      }
+      
+      // Filter by search
+      if (search) {
+        const searchLower = search.toLowerCase();
+        allContacts = allContacts.filter(c => 
+          c.fullName.toLowerCase().includes(searchLower) ||
+          c.company.toLowerCase().includes(searchLower) ||
+          c.email.toLowerCase().includes(searchLower) ||
+          c.phone.includes(search)
+        );
+      }
+      
+      // Sort
+      allContacts.sort((a, b) => {
+        switch (sortBy) {
+          case "company":
+            return a.company.localeCompare(b.company);
+          case "category":
+            return a.category.localeCompare(b.category);
+          default: // name
+            return a.fullName.localeCompare(b.fullName);
+        }
+      });
+      
+      const total = allContacts.length;
+      const paginatedContacts = allContacts.slice(offset, offset + limit);
+      
+      res.json({
+        contacts: paginatedContacts,
+        total,
+        limit,
+        offset,
+      });
+    } catch (error) {
+      console.error("Error fetching contacts directory:", error);
+      res.status(500).json({ error: "Failed to fetch contacts directory" });
+    }
+  });
+
   app.get("/api/tenant", async (req, res) => {
     try {
       const tenant = await storage.getTenantBySubdomain("acme");

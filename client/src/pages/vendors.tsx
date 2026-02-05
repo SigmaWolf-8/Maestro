@@ -189,14 +189,14 @@ export default function VendorsForm() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6" data-testid="page-vendors">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 p-4" data-testid="page-vendors">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-vendors-title">
+          <h1 className="text-xl font-semibold tracking-tight" data-testid="text-vendors-title">
             Vendors & Pricing
           </h1>
-          <p className="text-muted-foreground">
-            Manage vendor information, contacts, and communications.
+          <p className="text-sm text-muted-foreground">
+            Manage vendor information and contacts.
           </p>
         </div>
         <div className="flex gap-2">
@@ -227,21 +227,21 @@ export default function VendorsForm() {
       </div>
 
       {/* Compact Vendor Search/Select */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex-1">
           <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               id="vendorSearch"
-              placeholder="Search by company name, ID, or city..."
+              placeholder="Search vendors..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-9 h-9"
               data-testid="input-vendor-search"
             />
           </div>
         </div>
-        <div className="w-80">
+        <div className="w-72">
           <Select
             value={selectedVendorId || ""}
             onValueChange={(value) => {
@@ -278,151 +278,152 @@ export default function VendorsForm() {
               </CardContent>
             </Card>
           ) : vendor ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Building2 className="h-4 w-4" />
                     Company Information
-                    <div className="ml-auto flex gap-2">
-                      {vendor.matVendor && <Badge variant="secondary">Material Vendor</Badge>}
-                      {vendor.subtrade && <Badge variant="outline">Subtrade</Badge>}
+                    <div className="ml-auto flex gap-1">
+                      {vendor.matVendor && <Badge variant="secondary" className="text-xs">Material</Badge>}
+                      {vendor.subtrade && <Badge variant="outline" className="text-xs">Subtrade</Badge>}
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                <CardContent className="space-y-2 px-4 pb-3 pt-0">
+                  <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <Label htmlFor="vendorId">Vendor ID</Label>
+                      <Label htmlFor="vendorId" className="text-xs">Vendor ID</Label>
                       <Input
                         id="vendorId"
                         defaultValue={vendor.vendorId || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("vendorId", e.target.value)}
+                        className="h-8"
                         data-testid="input-vendor-id"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="company">Company Name</Label>
+                    <div className="col-span-2">
+                      <Label htmlFor="company" className="text-xs">Company Name</Label>
                       <Input
                         id="company"
                         defaultValue={vendor.company}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("company", e.target.value)}
+                        className="h-8"
                         data-testid="input-company"
                       />
                     </div>
                   </div>
 
-                  <Separator />
-
                   <div>
-                    <Label htmlFor="address">Address</Label>
+                    <Label htmlFor="address" className="text-xs">Address</Label>
                     <Input
                       id="address"
                       defaultValue={vendor.address || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("address", e.target.value)}
+                      className="h-8"
                       data-testid="input-address"
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-4 gap-2">
                     <div>
-                      <Label htmlFor="city">City</Label>
+                      <Label htmlFor="city" className="text-xs">City</Label>
                       <Input
                         id="city"
                         defaultValue={vendor.city || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("city", e.target.value)}
+                        className="h-8"
                         data-testid="input-city"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="stateProvince">State/Province</Label>
+                      <Label htmlFor="stateProvince" className="text-xs">Province</Label>
                       <Input
                         id="stateProvince"
                         defaultValue={vendor.stateProvince || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("stateProvince", e.target.value)}
+                        className="h-8"
                         data-testid="input-state"
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="zipPostalCode">ZIP/Postal Code</Label>
+                      <Label htmlFor="zipPostalCode" className="text-xs">Postal Code</Label>
                       <Input
                         id="zipPostalCode"
                         defaultValue={vendor.zipPostalCode || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("zipPostalCode", e.target.value)}
+                        className="h-8"
                         data-testid="input-zip"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="countryRegion">Country/Region</Label>
+                      <Label htmlFor="countryRegion" className="text-xs">Country</Label>
                       <Input
                         id="countryRegion"
                         defaultValue={vendor.countryRegion || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("countryRegion", e.target.value)}
+                        className="h-8"
                         data-testid="input-country"
                       />
                     </div>
                   </div>
 
-                  <Separator />
-
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-4 gap-2">
                     <div>
-                      <Label htmlFor="apTerms">AP Terms</Label>
+                      <Label htmlFor="apTerms" className="text-xs">AP Terms</Label>
                       <Input
                         id="apTerms"
                         defaultValue={vendor.apTerms || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("apTerms", e.target.value)}
+                        className="h-8"
                         data-testid="input-ap-terms"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="arTerms">AR Terms</Label>
+                      <Label htmlFor="arTerms" className="text-xs">AR Terms</Label>
                       <Input
                         id="arTerms"
                         defaultValue={vendor.arTerms || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("arTerms", e.target.value)}
+                        className="h-8"
                         data-testid="input-ar-terms"
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="gstNum">GST Number</Label>
+                      <Label htmlFor="gstNum" className="text-xs">GST #</Label>
                       <Input
                         id="gstNum"
                         defaultValue={vendor.gstNum || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("gstNum", e.target.value)}
+                        className="h-8"
                         data-testid="input-gst-num"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="wcbNum">WCB Number</Label>
+                      <Label htmlFor="wcbNum" className="text-xs">WCB #</Label>
                       <Input
                         id="wcbNum"
                         defaultValue={vendor.wcbNum || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("wcbNum", e.target.value)}
+                        className="h-8"
                         data-testid="input-wcb-num"
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-4 pt-1">
+                    <div className="flex items-center gap-1.5">
                       <Checkbox
                         id="matVendor"
                         checked={vendor.matVendor || false}
@@ -430,9 +431,9 @@ export default function VendorsForm() {
                         onCheckedChange={(checked) => handleFieldBlur("matVendor", checked)}
                         data-testid="checkbox-mat-vendor"
                       />
-                      <Label htmlFor="matVendor">Material Vendor</Label>
+                      <Label htmlFor="matVendor" className="text-xs">Material Vendor</Label>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <Checkbox
                         id="subtrade"
                         checked={vendor.subtrade || false}
@@ -440,9 +441,9 @@ export default function VendorsForm() {
                         onCheckedChange={(checked) => handleFieldBlur("subtrade", checked)}
                         data-testid="checkbox-subtrade"
                       />
-                      <Label htmlFor="subtrade">Subtrade</Label>
+                      <Label htmlFor="subtrade" className="text-xs">Subtrade</Label>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <Checkbox
                         id="includeInPayroll"
                         checked={vendor.includeInPayroll || false}
@@ -450,24 +451,24 @@ export default function VendorsForm() {
                         onCheckedChange={(checked) => handleFieldBlur("includeInPayroll", checked)}
                         data-testid="checkbox-payroll"
                       />
-                      <Label htmlFor="includeInPayroll">Include in Payroll</Label>
+                      <Label htmlFor="includeInPayroll" className="text-xs">Payroll</Label>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    <span>Contact {hasMultipleContacts && `(${safeContactIndex + 1} of ${contacts.length})`}</span>
-                    {currentContact?.isPrimary && <Badge variant="secondary">Primary</Badge>}
-                    <div className="ml-auto flex items-center gap-2">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <User className="h-4 w-4" />
+                    <span>Contact {hasMultipleContacts && `(${safeContactIndex + 1}/${contacts.length})`}</span>
+                    {currentContact?.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
+                    <div className="ml-auto flex items-center gap-1">
                       {hasMultipleContacts && (
                         <>
                           <Button
                             variant="outline"
-                            size="icon"
+                            size="sm"
                             onClick={() => navigateContact('prev')}
                             disabled={safeContactIndex === 0}
                             data-testid="button-prev-contact"
@@ -476,7 +477,7 @@ export default function VendorsForm() {
                           </Button>
                           <Button
                             variant="outline"
-                            size="icon"
+                            size="sm"
                             onClick={() => navigateContact('next')}
                             disabled={safeContactIndex === contacts.length - 1}
                             data-testid="button-next-contact"
@@ -489,102 +490,105 @@ export default function VendorsForm() {
                         <Button
                           variant="outline"
                           size="sm"
+                          className="h-7 text-xs"
                           onClick={openEmailDialog}
                           data-testid="button-send-email"
                         >
-                          <Send className="mr-2 h-4 w-4" />
-                          Send Email
+                          <Send className="mr-1 h-3 w-3" />
+                          Email
                         </Button>
                       )}
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-2 px-4 pb-3 pt-0">
                   {currentContact ? (
                     <>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <Label htmlFor="contactFirstName">First Name</Label>
+                          <Label htmlFor="contactFirstName" className="text-xs">First Name</Label>
                           <Input
                             id="contactFirstName"
                             key={`firstName-${currentContact.id}`}
                             defaultValue={currentContact.firstName || ""}
                             disabled={!editMode}
                             onBlur={(e) => handleContactFieldBlur(currentContact.id, "firstName", e.target.value)}
+                            className="h-8"
                             data-testid="input-contact-first-name"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="contactLastName">Last Name</Label>
+                          <Label htmlFor="contactLastName" className="text-xs">Last Name</Label>
                           <Input
                             id="contactLastName"
                             key={`lastName-${currentContact.id}`}
                             defaultValue={currentContact.lastName || ""}
                             disabled={!editMode}
                             onBlur={(e) => handleContactFieldBlur(currentContact.id, "lastName", e.target.value)}
+                            className="h-8"
                             data-testid="input-contact-last-name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="contactJobTitle" className="text-xs">Job Title</Label>
+                          <Input
+                            id="contactJobTitle"
+                            key={`jobTitle-${currentContact.id}`}
+                            defaultValue={currentContact.jobTitle || ""}
+                            disabled={!editMode}
+                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "jobTitle", e.target.value)}
+                            className="h-8"
+                            data-testid="input-contact-job-title"
                           />
                         </div>
                       </div>
 
-                      <div>
-                        <Label htmlFor="contactJobTitle">Job Title</Label>
-                        <Input
-                          id="contactJobTitle"
-                          key={`jobTitle-${currentContact.id}`}
-                          defaultValue={currentContact.jobTitle || ""}
-                          disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(currentContact.id, "jobTitle", e.target.value)}
-                          data-testid="input-contact-job-title"
-                        />
-                      </div>
-
-                      <Separator />
-
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <Label htmlFor="contactBusinessPhone">Business Phone</Label>
+                          <Label htmlFor="contactBusinessPhone" className="text-xs">Business Phone</Label>
                           <Input
                             id="contactBusinessPhone"
                             key={`businessPhone-${currentContact.id}`}
                             defaultValue={currentContact.businessPhone || ""}
                             disabled={!editMode}
                             onBlur={(e) => handleContactFieldBlur(currentContact.id, "businessPhone", e.target.value)}
+                            className="h-8"
                             data-testid="input-contact-business-phone"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="contactMobilePhone">Mobile Phone</Label>
+                          <Label htmlFor="contactMobilePhone" className="text-xs">Mobile Phone</Label>
                           <Input
                             id="contactMobilePhone"
                             key={`mobilePhone-${currentContact.id}`}
                             defaultValue={currentContact.mobilePhone || ""}
                             disabled={!editMode}
                             onBlur={(e) => handleContactFieldBlur(currentContact.id, "mobilePhone", e.target.value)}
+                            className="h-8"
                             data-testid="input-contact-mobile-phone"
                           />
                         </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="contactEmail">Email Address</Label>
-                        <Input
-                          id="contactEmail"
-                          type="email"
-                          key={`email-${currentContact.id}`}
-                          defaultValue={currentContact.emailAddress || ""}
-                          disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(currentContact.id, "emailAddress", e.target.value)}
-                          data-testid="input-contact-email"
-                        />
+                        <div>
+                          <Label htmlFor="contactEmail" className="text-xs">Email</Label>
+                          <Input
+                            id="contactEmail"
+                            type="email"
+                            key={`email-${currentContact.id}`}
+                            defaultValue={currentContact.emailAddress || ""}
+                            disabled={!editMode}
+                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "emailAddress", e.target.value)}
+                            className="h-8"
+                            data-testid="input-contact-email"
+                          />
+                        </div>
                       </div>
                     </>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No primary contact assigned</p>
-                      <Button variant="outline" className="mt-4" disabled={!editMode}>
-                        <Plus className="mr-2 h-4 w-4" />
+                    <div className="text-center py-4 text-muted-foreground">
+                      <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No contact assigned</p>
+                      <Button variant="outline" size="sm" className="mt-2" disabled={!editMode}>
+                        <Plus className="mr-1 h-3 w-3" />
                         Add Contact
                       </Button>
                     </div>
@@ -593,16 +597,16 @@ export default function VendorsForm() {
               </Card>
 
               <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Star className="h-5 w-5" />
-                    Vendor Ratings
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Star className="h-4 w-4" />
+                    Ratings (1-5)
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-5 gap-4">
+                <CardContent className="px-4 pb-3 pt-0">
+                  <div className="grid grid-cols-5 gap-2">
                     <div>
-                      <Label htmlFor="rateReliability">Reliability (1-5)</Label>
+                      <Label htmlFor="rateReliability" className="text-xs">Reliability</Label>
                       <Input
                         id="rateReliability"
                         type="number"
@@ -611,11 +615,12 @@ export default function VendorsForm() {
                         defaultValue={vendor.rateReliability || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("rateReliability", parseInt(e.target.value) || null)}
+                        className="h-8"
                         data-testid="input-rate-reliability"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="rateQuality">Quality (1-5)</Label>
+                      <Label htmlFor="rateQuality" className="text-xs">Quality</Label>
                       <Input
                         id="rateQuality"
                         type="number"
@@ -624,11 +629,12 @@ export default function VendorsForm() {
                         defaultValue={vendor.rateQuality || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("rateQuality", parseInt(e.target.value) || null)}
+                        className="h-8"
                         data-testid="input-rate-quality"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="rateSpeed">Speed (1-5)</Label>
+                      <Label htmlFor="rateSpeed" className="text-xs">Speed</Label>
                       <Input
                         id="rateSpeed"
                         type="number"
@@ -637,11 +643,12 @@ export default function VendorsForm() {
                         defaultValue={vendor.rateSpeed || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("rateSpeed", parseInt(e.target.value) || null)}
+                        className="h-8"
                         data-testid="input-rate-speed"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="ratePricing">Pricing (1-5)</Label>
+                      <Label htmlFor="ratePricing" className="text-xs">Pricing</Label>
                       <Input
                         id="ratePricing"
                         type="number"
@@ -650,11 +657,12 @@ export default function VendorsForm() {
                         defaultValue={vendor.ratePricing || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("ratePricing", parseInt(e.target.value) || null)}
+                        className="h-8"
                         data-testid="input-rate-pricing"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="rateCongeniality">Congeniality (1-5)</Label>
+                      <Label htmlFor="rateCongeniality" className="text-xs">Congeniality</Label>
                       <Input
                         id="rateCongeniality"
                         type="number"
@@ -663,6 +671,7 @@ export default function VendorsForm() {
                         defaultValue={vendor.rateCongeniality || ""}
                         disabled={!editMode}
                         onBlur={(e) => handleFieldBlur("rateCongeniality", parseInt(e.target.value) || null)}
+                        className="h-8"
                         data-testid="input-rate-congeniality"
                       />
                     </div>

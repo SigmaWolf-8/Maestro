@@ -159,6 +159,7 @@ export interface IStorage {
   
   // Vendor Contacts (from MS Access SalviContacts form)
   getVendorContacts(vendorId: string): Promise<VendorContact[]>;
+  getAllVendorContacts(tenantId: string): Promise<{ contact: VendorContact; vendorName: string }[]>;
   getVendorContact(id: string): Promise<VendorContact | undefined>;
   getPrimaryVendorContact(vendorId: string): Promise<VendorContact | undefined>;
   createVendorContact(contact: InsertVendorContact): Promise<VendorContact>;
@@ -936,6 +937,18 @@ export class DatabaseStorage implements IStorage {
   // Vendor Contacts implementation
   async getVendorContacts(vendorId: string): Promise<VendorContact[]> {
     return db.select().from(vendorContacts).where(eq(vendorContacts.vendorId, vendorId));
+  }
+
+  async getAllVendorContacts(tenantId: string): Promise<{ contact: VendorContact; vendorName: string }[]> {
+    const results = await db
+      .select({
+        contact: vendorContacts,
+        vendorName: vendors.company,
+      })
+      .from(vendorContacts)
+      .innerJoin(vendors, eq(vendorContacts.vendorId, vendors.id))
+      .where(eq(vendorContacts.tenantId, tenantId));
+    return results;
   }
 
   async getVendorContact(id: string): Promise<VendorContact | undefined> {

@@ -29,6 +29,7 @@ import DocumentsPage from "@/pages/documents";
 import FileManagerPage from "@/pages/file-manager";
 import CustomersPage from "@/pages/customers";
 import VendorsPage from "@/pages/vendors";
+import ContactsDirectoryPage from "@/pages/contacts-directory";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
@@ -38,7 +39,6 @@ import {
   PhotosPage,
   EmployeesPage,
   SubcontractorsPage,
-  ContactsDirectoryPage,
   EstimatingPage,
   PurchaseOrdersPage,
   InvoicingPage,
