@@ -148,23 +148,33 @@ export default function VendorsForm() {
     },
     onError: (error: any) => {
       let errorMessage = "Failed to send email";
+      let errorTitle = "Error";
       try {
         const message = error.message || "";
         if (message.includes("{")) {
           const jsonPart = message.substring(message.indexOf("{"));
           const parsed = JSON.parse(jsonPart);
-          if (parsed.details?.to) {
+          if (parsed.message) {
+            errorMessage = parsed.message;
+          } else if (parsed.details?.to) {
             errorMessage = parsed.details.to[0] || "Invalid email address";
           } else if (parsed.error) {
             errorMessage = parsed.error;
           }
+          if (parsed.error === "Microsoft 365 not connected") {
+            errorTitle = "Microsoft 365 Required";
+            errorMessage = "Please connect your Microsoft 365 account in Settings to send emails";
+          }
+        } else if (message.includes("401")) {
+          errorTitle = "Microsoft 365 Required";
+          errorMessage = "Please connect your Microsoft 365 account in Settings to send emails";
         } else {
           errorMessage = message;
         }
       } catch {
         errorMessage = error.message || "Failed to send email";
       }
-      toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      toast({ title: errorTitle, description: errorMessage, variant: "destructive" });
     },
   });
 

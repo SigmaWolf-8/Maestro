@@ -959,23 +959,40 @@ export async function registerRoutes(
 
   // ==================== EMAIL API (AutoSendEmail from VBA) ====================
 
-  // Send email to vendor
+  // Send email to vendor via Microsoft 365
   app.post("/api/email/send", validateBody(emailSendSchema), async (req, res) => {
     try {
       const { to, subject, body, cc } = req.body;
       
-      // For now, just log the email - in production this would integrate with email service
-      console.log("Email request:", { to, subject, body, cc });
+      // Check if user has Microsoft 365 session
+      const session = req.session as any;
+      const accessToken = session?.microsoft?.accessToken;
       
-      // TODO: Integrate with Microsoft Graph API or other email service
-      res.json({ 
-        success: true, 
-        message: "Email functionality placeholder - integrate with email service",
-        emailData: { to, subject, body, cc }
-      });
-    } catch (error) {
+      if (!accessToken) {
+        return res.status(401).json({ 
+          error: "Microsoft 365 not connected", 
+          message: "Please connect your Microsoft 365 account in Settings to send emails"
+        });
+      }
+      
+      console.log("Sending email via Microsoft 365:", { to, subject });
+      
+      const result = await microsoftGraph.sendEmail(accessToken, { to, subject, body, cc });
+      
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: "Email sent successfully via Microsoft 365"
+        });
+      } else {
+        res.status(500).json({ 
+          error: "Failed to send email", 
+          message: result.error 
+        });
+      }
+    } catch (error: any) {
       console.error("Error sending email:", error);
-      res.status(500).json({ error: "Failed to send email" });
+      res.status(500).json({ error: "Failed to send email", message: error.message });
     }
   });
 

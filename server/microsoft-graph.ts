@@ -133,7 +133,8 @@ export function getAuthUrl(state: string, credentials: MicrosoftCredentials): st
     "profile",
     "offline_access",
     "Files.ReadWrite",
-    "Files.ReadWrite.All"
+    "Files.ReadWrite.All",
+    "Mail.Send"
   ].join(" ");
   
   const params = new URLSearchParams({
@@ -399,4 +400,52 @@ export async function downloadFromOneDrive(
     mimeType: file.file?.mimeType || 'application/octet-stream',
     lastModified: file.lastModifiedDateTime
   };
+}
+
+export interface EmailMessage {
+  to: string;
+  subject: string;
+  body: string;
+  cc?: string;
+}
+
+export async function sendEmail(accessToken: string, email: EmailMessage): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  try {
+    const client = getGraphClient(accessToken);
+    
+    const message = {
+      message: {
+        subject: email.subject,
+        body: {
+          contentType: "Text",
+          content: email.body
+        },
+        toRecipients: [
+          {
+            emailAddress: {
+              address: email.to
+            }
+          }
+        ],
+        ccRecipients: email.cc ? [
+          {
+            emailAddress: {
+              address: email.cc
+            }
+          }
+        ] : []
+      },
+      saveToSentItems: true
+    };
+    
+    await client.api("/me/sendMail").post(message);
+    
+    return { success: true };
+  } catch (error: any) {
+    console.error("Microsoft Graph sendMail error:", error);
+    return { 
+      success: false, 
+      error: error.message || "Failed to send email via Microsoft 365" 
+    };
+  }
 }
