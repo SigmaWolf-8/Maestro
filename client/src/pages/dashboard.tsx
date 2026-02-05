@@ -63,9 +63,15 @@ export default function Dashboard() {
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="page-dashboard">
       <div 
-        className="relative overflow-hidden rounded-lg h-48 md:h-64 border-4 border-slate-400 dark:border-slate-600"
+        className="relative overflow-hidden rounded-lg h-48 md:h-64 border-4 border-slate-300 dark:border-slate-700"
         style={{
-          boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.4), inset -4px -4px 8px rgba(255,255,255,0.2), 4px 4px 12px rgba(0,0,0,0.3)'
+          boxShadow: `
+            inset 6px 6px 12px rgba(0,0,0,0.5),
+            inset -6px -6px 12px rgba(255,255,255,0.15),
+            inset 2px 2px 4px rgba(0,0,0,0.3),
+            6px 6px 16px rgba(0,0,0,0.4),
+            -3px -3px 8px rgba(255,255,255,0.1)
+          `
         }}
       >
         <img 
