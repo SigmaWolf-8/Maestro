@@ -75,6 +75,110 @@ interface DocumentWithTags extends Document {
   metaTags?: DocumentMetaTag[];
 }
 
+// Helper to get file extension
+function getFileExtension(filename: string): string {
+  const parts = filename.split('.');
+  return parts.length > 1 ? parts[parts.length - 1].toLowerCase() : '';
+}
+
+// Helper to determine if file is binary format
+function isBinaryFormat(filename: string): boolean {
+  const ext = getFileExtension(filename);
+  const binaryFormats = ['docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt', 'pdf', 'zip', 'rar', '7z', 'tar', 'gz', 'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp', 'mp3', 'mp4', 'wav', 'avi', 'mov', 'exe', 'dll'];
+  return binaryFormats.includes(ext);
+}
+
+// Helper to get friendly file type name
+function getFileTypeName(filename: string): string {
+  const ext = getFileExtension(filename);
+  const typeNames: Record<string, string> = {
+    docx: 'Microsoft Word Document',
+    doc: 'Microsoft Word Document (Legacy)',
+    xlsx: 'Microsoft Excel Spreadsheet',
+    xls: 'Microsoft Excel Spreadsheet (Legacy)',
+    pptx: 'Microsoft PowerPoint Presentation',
+    ppt: 'Microsoft PowerPoint Presentation (Legacy)',
+    pdf: 'PDF Document',
+    zip: 'ZIP Archive',
+    png: 'PNG Image',
+    jpg: 'JPEG Image',
+    jpeg: 'JPEG Image',
+    gif: 'GIF Image',
+    txt: 'Text File',
+    csv: 'CSV Data File',
+    json: 'JSON Data File',
+    xml: 'XML Document',
+    html: 'HTML Document',
+    md: 'Markdown Document',
+  };
+  return typeNames[ext] || `${ext.toUpperCase()} File`;
+}
+
+// Document Content Viewer Component - handles different file types
+function DocumentContentViewer({ document, content }: { document: DocumentWithTags; content: string | null }) {
+  const isBinary = isBinaryFormat(document.name);
+  const fileType = getFileTypeName(document.name);
+  const ext = getFileExtension(document.name);
+  
+  // For binary formats, show informative message instead of raw content
+  if (isBinary) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <FileText className="h-20 w-20 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">{fileType}</h3>
+          <p className="text-muted-foreground mb-4">
+            This is a binary file format that cannot be displayed as text in the browser.
+          </p>
+          <div className="bg-muted/50 rounded-lg p-4 mb-4">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <span className="text-muted-foreground">File Name:</span>
+              <span className="font-medium">{document.name}</span>
+              <span className="text-muted-foreground">File Type:</span>
+              <span className="font-medium">.{ext}</span>
+              <span className="text-muted-foreground">Size:</span>
+              <span className="font-medium">
+                {document.originalSizeBytes 
+                  ? `${(document.originalSizeBytes / 1024).toFixed(1)} KB`
+                  : 'Unknown'}
+              </span>
+              <span className="text-muted-foreground">Status:</span>
+              <span className="font-medium flex items-center gap-1">
+                <FileCheck className="h-3 w-3 text-green-500" />
+                Authenticated & Accessible
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            To view this file, download it and open with the appropriate application.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  // For text-based formats, display the content
+  if (!content) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">No Content Available</h3>
+          <p className="text-muted-foreground">
+            This document has no viewable content.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <pre className="whitespace-pre-wrap font-mono text-sm bg-muted/50 p-4 rounded-lg min-h-full">
+      {content}
+    </pre>
+  );
+}
+
 export default function FileManagerPage() {
   const { activeTenant } = useSettings();
   const { toast } = useToast();
@@ -743,9 +847,10 @@ export default function FileManagerPage() {
                       </div>
                     </div>
                   ) : (
-                    <pre className="whitespace-pre-wrap font-mono text-sm bg-muted/50 p-4 rounded-lg min-h-full">
-                      {decryptedContent || selectedDocument.plainContent || "No content available"}
-                    </pre>
+                    <DocumentContentViewer 
+                      document={selectedDocument}
+                      content={decryptedContent || selectedDocument.plainContent}
+                    />
                   )}
                 </CardContent>
               </>
