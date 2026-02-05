@@ -81,12 +81,13 @@ export default function Dashboard() {
           data-testid="img-hero"
         />
         <div 
-          className="absolute inset-0 mix-blend-color"
+          className="absolute inset-0"
           style={{ 
             backgroundColor: 'hsl(var(--sidebar))',
             maskImage: 'linear-gradient(to bottom, transparent 52%, rgba(0,0,0,0.3) 62%, rgba(0,0,0,0.7) 72%, black 85%)',
             WebkitMaskImage: 'linear-gradient(to bottom, transparent 52%, rgba(0,0,0,0.3) 62%, rgba(0,0,0,0.7) 72%, black 85%)',
-            opacity: 0.9
+            mixBlendMode: 'color',
+            opacity: 1
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-l from-black/60 via-black/30 to-transparent" />
