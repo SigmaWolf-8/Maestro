@@ -28,6 +28,7 @@ import GroupPermissionsPage from "@/pages/group-permissions";
 import DocumentsPage from "@/pages/documents";
 import FileManagerPage from "@/pages/file-manager";
 import CustomersPage from "@/pages/customers";
+import VendorsPage from "@/pages/vendors";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
@@ -35,7 +36,6 @@ import {
   SchedulePage,
   SpecificationsPage,
   PhotosPage,
-  VendorsPage,
   EmployeesPage,
   SubcontractorsPage,
   ContactsDirectoryPage,

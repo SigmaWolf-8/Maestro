@@ -736,6 +736,196 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== VENDORS API (MS Access SalviVendors Form Recreation) ====================
+
+  // Get all vendors for tenant
+  app.get("/api/vendors", async (req, res) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
+      const vendorList = await storage.getVendors(tenantId);
+      res.json(vendorList);
+    } catch (error) {
+      console.error("Error fetching vendors:", error);
+      res.status(500).json({ error: "Failed to fetch vendors" });
+    }
+  });
+
+  // Get vendor by ID with contacts
+  app.get("/api/vendors/:id", async (req, res) => {
+    try {
+      const vendor = await storage.getVendor(req.params.id);
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor not found" });
+      }
+      const contacts = await storage.getVendorContacts(req.params.id);
+      const primaryContact = contacts.find(c => c.isPrimary) || null;
+      res.json({ vendor, contacts, primaryContact });
+    } catch (error) {
+      console.error("Error fetching vendor:", error);
+      res.status(500).json({ error: "Failed to fetch vendor" });
+    }
+  });
+
+  // Create vendor
+  app.post("/api/vendors", async (req, res) => {
+    try {
+      const vendor = await storage.createVendor(req.body);
+      res.status(201).json(vendor);
+    } catch (error) {
+      console.error("Error creating vendor:", error);
+      res.status(500).json({ error: "Failed to create vendor" });
+    }
+  });
+
+  // Update vendor
+  app.patch("/api/vendors/:id", async (req, res) => {
+    try {
+      const vendor = await storage.updateVendor(req.params.id, req.body);
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor not found" });
+      }
+      res.json(vendor);
+    } catch (error) {
+      console.error("Error updating vendor:", error);
+      res.status(500).json({ error: "Failed to update vendor" });
+    }
+  });
+
+  // Update vendor field (for auto-save)
+  app.patch("/api/vendors/:id/field", async (req, res) => {
+    try {
+      const { field, value } = req.body;
+      const vendor = await storage.updateVendorField(req.params.id, field, value);
+      if (!vendor) {
+        return res.status(404).json({ error: "Vendor not found" });
+      }
+      res.json(vendor);
+    } catch (error) {
+      console.error("Error updating vendor field:", error);
+      res.status(500).json({ error: "Failed to update vendor field" });
+    }
+  });
+
+  // Delete vendor
+  app.delete("/api/vendors/:id", async (req, res) => {
+    try {
+      await storage.deleteVendor(req.params.id);
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting vendor:", error);
+      res.status(500).json({ error: "Failed to delete vendor" });
+    }
+  });
+
+  // Seed sample vendors
+  app.post("/api/vendors/seed", async (req, res) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
+      
+      const sampleVendors = [
+        { tenantId, company: "ABC Supply Co.", vendorId: "V001", address: "100 Industrial Blvd", city: "Calgary", stateProvince: "AB", zipPostalCode: "T2E 1K5", countryRegion: "Canada", matVendor: true, subtrade: false, apTerms: "Net 30" },
+        { tenantId, company: "Elite Electrical Ltd.", vendorId: "V002", address: "250 Trade Way", city: "Edmonton", stateProvince: "AB", zipPostalCode: "T5J 2L8", countryRegion: "Canada", matVendor: false, subtrade: true, apTerms: "Net 15", wcbNum: "WCB-12345" },
+        { tenantId, company: "Premium Plumbing Services", vendorId: "V003", address: "75 Service Rd", city: "Red Deer", stateProvince: "AB", zipPostalCode: "T4N 3X2", countryRegion: "Canada", matVendor: false, subtrade: true, apTerms: "Net 30", gstNum: "GST-98765" },
+      ];
+      
+      for (const v of sampleVendors) {
+        const existing = await storage.getVendorByCompany(tenantId, v.company);
+        if (!existing) {
+          const vendor = await storage.createVendor(v);
+          await storage.createVendorContact({
+            tenantId,
+            vendorId: vendor.id,
+            firstName: "Primary",
+            lastName: "Contact",
+            jobTitle: "Account Manager",
+            businessPhone: "(403) 555-0100",
+            emailAddress: `contact@${v.company.toLowerCase().replace(/\s+/g, '')}.com`,
+            isPrimary: true,
+          });
+        }
+      }
+      
+      res.json({ success: true, message: "Sample vendors seeded" });
+    } catch (error) {
+      console.error("Error seeding vendors:", error);
+      res.status(500).json({ error: "Failed to seed vendors" });
+    }
+  });
+
+  // ==================== VENDOR CONTACTS API ====================
+
+  // Get contacts for a vendor
+  app.get("/api/vendors/:vendorId/contacts", async (req, res) => {
+    try {
+      const contacts = await storage.getVendorContacts(req.params.vendorId);
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching vendor contacts:", error);
+      res.status(500).json({ error: "Failed to fetch vendor contacts" });
+    }
+  });
+
+  // Create vendor contact
+  app.post("/api/vendors/:vendorId/contacts", async (req, res) => {
+    try {
+      const contact = await storage.createVendorContact({
+        ...req.body,
+        vendorId: req.params.vendorId,
+      });
+      res.status(201).json(contact);
+    } catch (error) {
+      console.error("Error creating vendor contact:", error);
+      res.status(500).json({ error: "Failed to create vendor contact" });
+    }
+  });
+
+  // Update vendor contact
+  app.patch("/api/vendor-contacts/:id", async (req, res) => {
+    try {
+      const contact = await storage.updateVendorContact(req.params.id, req.body);
+      if (!contact) {
+        return res.status(404).json({ error: "Contact not found" });
+      }
+      res.json(contact);
+    } catch (error) {
+      console.error("Error updating vendor contact:", error);
+      res.status(500).json({ error: "Failed to update vendor contact" });
+    }
+  });
+
+  // Delete vendor contact
+  app.delete("/api/vendor-contacts/:id", async (req, res) => {
+    try {
+      await storage.deleteVendorContact(req.params.id);
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting vendor contact:", error);
+      res.status(500).json({ error: "Failed to delete vendor contact" });
+    }
+  });
+
+  // ==================== EMAIL API (AutoSendEmail from VBA) ====================
+
+  // Send email to vendor
+  app.post("/api/email/send", async (req, res) => {
+    try {
+      const { to, subject, body, cc } = req.body;
+      
+      // For now, just log the email - in production this would integrate with email service
+      console.log("Email request:", { to, subject, body, cc });
+      
+      // TODO: Integrate with Microsoft Graph API or other email service
+      res.json({ 
+        success: true, 
+        message: "Email functionality placeholder - integrate with email service",
+        emailData: { to, subject, body, cc }
+      });
+    } catch (error) {
+      console.error("Error sending email:", error);
+      res.status(500).json({ error: "Failed to send email" });
+    }
+  });
+
   app.get("/api/tenant", async (req, res) => {
     try {
       const tenant = await storage.getTenantBySubdomain("acme");

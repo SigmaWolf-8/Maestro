@@ -16,6 +16,8 @@ import {
   documentMetaTags,
   customers,
   quotes,
+  vendors,
+  vendorContacts,
   type Tenant,
   type TenantUser,
   type Project,
@@ -30,6 +32,8 @@ import {
   type DocumentMetaTag,
   type Customer,
   type Quote,
+  type Vendor,
+  type VendorContact,
   type InsertTenant,
   type InsertTenantUser,
   type InsertProject,
@@ -44,6 +48,8 @@ import {
   type InsertDocumentMetaTag,
   type InsertCustomer,
   type InsertQuote,
+  type InsertVendor,
+  type InsertVendorContact,
   type DashboardStats,
 } from "@shared/schema";
 
@@ -141,6 +147,23 @@ export interface IStorage {
   updateQuote(id: string, updates: Partial<Quote>): Promise<Quote | undefined>;
   updateQuoteField(tenantId: string, jobNum: number, field: keyof Quote, value: any): Promise<Quote | undefined>;
   deleteQuote(id: string): Promise<boolean>;
+  
+  // Vendors (from MS Access SalviVendors form)
+  getVendors(tenantId: string): Promise<Vendor[]>;
+  getVendor(id: string): Promise<Vendor | undefined>;
+  getVendorByCompany(tenantId: string, company: string): Promise<Vendor | undefined>;
+  createVendor(vendor: InsertVendor): Promise<Vendor>;
+  updateVendor(id: string, updates: Partial<Vendor>): Promise<Vendor | undefined>;
+  updateVendorField(id: string, field: keyof Vendor, value: any): Promise<Vendor | undefined>;
+  deleteVendor(id: string): Promise<boolean>;
+  
+  // Vendor Contacts (from MS Access SalviContacts form)
+  getVendorContacts(vendorId: string): Promise<VendorContact[]>;
+  getVendorContact(id: string): Promise<VendorContact | undefined>;
+  getPrimaryVendorContact(vendorId: string): Promise<VendorContact | undefined>;
+  createVendorContact(contact: InsertVendorContact): Promise<VendorContact>;
+  updateVendorContact(id: string, updates: Partial<VendorContact>): Promise<VendorContact | undefined>;
+  deleteVendorContact(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -867,6 +890,79 @@ export class DatabaseStorage implements IStorage {
 
   async deleteQuote(id: string): Promise<boolean> {
     const result = await db.delete(quotes).where(eq(quotes.id, id));
+    return true;
+  }
+
+  // Vendors implementation
+  async getVendors(tenantId: string): Promise<Vendor[]> {
+    return db.select().from(vendors).where(eq(vendors.tenantId, tenantId)).orderBy(vendors.company);
+  }
+
+  async getVendor(id: string): Promise<Vendor | undefined> {
+    const [vendor] = await db.select().from(vendors).where(eq(vendors.id, id));
+    return vendor || undefined;
+  }
+
+  async getVendorByCompany(tenantId: string, company: string): Promise<Vendor | undefined> {
+    const [vendor] = await db.select().from(vendors).where(
+      and(eq(vendors.tenantId, tenantId), eq(vendors.company, company))
+    );
+    return vendor || undefined;
+  }
+
+  async createVendor(vendor: InsertVendor): Promise<Vendor> {
+    const id = randomUUID();
+    const [created] = await db.insert(vendors).values({ ...vendor, id }).returning();
+    return created;
+  }
+
+  async updateVendor(id: string, updates: Partial<Vendor>): Promise<Vendor | undefined> {
+    const [updated] = await db.update(vendors).set({ ...updates, updatedAt: new Date() }).where(eq(vendors.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async updateVendorField(id: string, field: keyof Vendor, value: any): Promise<Vendor | undefined> {
+    const updateData: any = { [field]: value, updatedAt: new Date() };
+    const [updated] = await db.update(vendors).set(updateData).where(eq(vendors.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteVendor(id: string): Promise<boolean> {
+    await db.delete(vendorContacts).where(eq(vendorContacts.vendorId, id));
+    await db.delete(vendors).where(eq(vendors.id, id));
+    return true;
+  }
+
+  // Vendor Contacts implementation
+  async getVendorContacts(vendorId: string): Promise<VendorContact[]> {
+    return db.select().from(vendorContacts).where(eq(vendorContacts.vendorId, vendorId));
+  }
+
+  async getVendorContact(id: string): Promise<VendorContact | undefined> {
+    const [contact] = await db.select().from(vendorContacts).where(eq(vendorContacts.id, id));
+    return contact || undefined;
+  }
+
+  async getPrimaryVendorContact(vendorId: string): Promise<VendorContact | undefined> {
+    const [contact] = await db.select().from(vendorContacts).where(
+      and(eq(vendorContacts.vendorId, vendorId), eq(vendorContacts.isPrimary, true))
+    );
+    return contact || undefined;
+  }
+
+  async createVendorContact(contact: InsertVendorContact): Promise<VendorContact> {
+    const id = randomUUID();
+    const [created] = await db.insert(vendorContacts).values({ ...contact, id }).returning();
+    return created;
+  }
+
+  async updateVendorContact(id: string, updates: Partial<VendorContact>): Promise<VendorContact | undefined> {
+    const [updated] = await db.update(vendorContacts).set({ ...updates, updatedAt: new Date() }).where(eq(vendorContacts.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteVendorContact(id: string): Promise<boolean> {
+    await db.delete(vendorContacts).where(eq(vendorContacts.id, id));
     return true;
   }
 }

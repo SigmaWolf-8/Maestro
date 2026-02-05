@@ -448,3 +448,65 @@ export interface CustomerWithQuote {
   customer: Customer;
   quote: Quote | null;
 }
+
+// Vendors table - matches MS Access SalviVendors table from VBA form
+export const vendors = pgTable("vendors", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  vendorId: text("vendor_id"),
+  company: text("company").notNull(),
+  address: text("address"),
+  city: text("city"),
+  stateProvince: text("state_province"),
+  zipPostalCode: text("zip_postal_code"),
+  countryRegion: text("country_region"),
+  insurance: text("insurance"),
+  insuranceProofDate: timestamp("insurance_proof_date"),
+  wcbNum: text("wcb_num"),
+  wcbExemption: boolean("wcb_exemption").default(false),
+  gstNum: text("gst_num"),
+  apTerms: text("ap_terms"),
+  arTerms: text("ar_terms"),
+  includeInPayroll: boolean("include_in_payroll").default(false),
+  matVendor: boolean("mat_vendor").default(false),
+  subtrade: boolean("subtrade").default(false),
+  rateReliability: integer("rate_reliability"),
+  rateQuality: integer("rate_quality"),
+  rateSpeed: integer("rate_speed"),
+  ratePricing: integer("rate_pricing"),
+  rateCongeniality: integer("rate_congeniality"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
+export type Vendor = typeof vendors.$inferSelect;
+
+// Vendor Contacts table - matches MS Access SalviContacts table from VBA form
+export const vendorContacts = pgTable("vendor_contacts", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  vendorId: varchar("vendor_id", { length: 36 }).notNull().references(() => vendors.id),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  jobTitle: text("job_title"),
+  businessPhone: text("business_phone"),
+  mobilePhone: text("mobile_phone"),
+  faxNumber: text("fax_number"),
+  emailAddress: text("email_address"),
+  isPrimary: boolean("is_primary").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertVendorContactSchema = createInsertSchema(vendorContacts).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertVendorContact = z.infer<typeof insertVendorContactSchema>;
+export type VendorContact = typeof vendorContacts.$inferSelect;
+
+// Combined view type for Vendors Form
+export interface VendorWithContacts {
+  vendor: Vendor;
+  contacts: VendorContact[];
+  primaryContact: VendorContact | null;
+}
