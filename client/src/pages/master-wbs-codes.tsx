@@ -110,18 +110,19 @@ export default function MasterWbsCodes() {
   const [editingCode, setEditingCode] = useState<WbsMasterCode | null>(null);
   const [expandedDimensions, setExpandedDimensions] = useState<Set<string>>(new Set(["phase"]));
   const [selectedDimension, setSelectedDimension] = useState<string>("phase");
-  const [dimensionLabels, setDimensionLabels] = useState<Record<string, { label: string; description: string; sortOrder: number }>>({});
+  const [dimensionLabels, setDimensionLabels] = useState<Record<string, { code: string; label: string; description: string; sortOrder: number }>>({});
   const { toast } = useToast();
   const { activeTenant } = useSettings();
 
   // Initialize dimension labels from tenant config or defaults
   useEffect(() => {
     const customDimensions = activeTenant?.config?.wbsDimensions;
-    const labels: Record<string, { label: string; description: string; sortOrder: number }> = {};
+    const labels: Record<string, { code: string; label: string; description: string; sortOrder: number }> = {};
     
     wbsDimensionDefinitions.forEach((dim, index) => {
       const customDim = customDimensions?.find((d: any) => d.key === dim.key);
       labels[dim.key] = {
+        code: customDim?.code || dim.key.toUpperCase(),
         label: customDim?.label || dim.label,
         description: customDim?.description || dim.description,
         sortOrder: customDim?.sortOrder ?? index,
@@ -248,14 +249,16 @@ export default function MasterWbsCodes() {
   const handleSaveDimensionSettings = () => {
     const customDimensions = wbsDimensionDefinitions.map((dim, index) => ({
       key: dim.key,
+      code: dimensionLabels[dim.key]?.code || dim.key.toUpperCase(),
       label: dimensionLabels[dim.key]?.label || dim.label,
       description: dimensionLabels[dim.key]?.description || dim.description,
       sortOrder: dimensionLabels[dim.key]?.sortOrder ?? index,
+      required: true,
     }));
     saveDimensionSettingsMutation.mutate(customDimensions);
   };
 
-  const updateDimensionLabel = (key: string, field: "label" | "description" | "sortOrder", value: string | number) => {
+  const updateDimensionLabel = (key: string, field: "code" | "label" | "description" | "sortOrder", value: string | number) => {
     setDimensionLabels((prev) => ({
       ...prev,
       [key]: {
@@ -272,6 +275,11 @@ export default function MasterWbsCodes() {
       const orderB = dimensionLabels[b.key]?.sortOrder ?? wbsDimensionDefinitions.findIndex(d => d.key === b.key);
       return orderA - orderB;
     });
+  };
+  
+  // Get dimension code (custom or default)
+  const getDimensionCode = (key: string): string => {
+    return dimensionLabels[key]?.code || key.toUpperCase();
   };
 
   const openCreateDialog = (dimensionType: string) => {
@@ -401,13 +409,18 @@ export default function MasterWbsCodes() {
                     }`}
                     data-testid={`button-dimension-${dim.key}`}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       {dimensionIcons[dim.key]}
-                      <span className="text-sm font-medium">{getDimensionLabel(dim.key)}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-medium truncate">{getDimensionLabel(dim.key)}</span>
+                        <span className={`text-xs ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                          {getDimensionCode(dim.key)}
+                        </span>
+                      </div>
                     </div>
                     <Badge
                       variant={isSelected ? "secondary" : "outline"}
-                      className="text-xs"
+                      className="text-xs ml-2 flex-shrink-0"
                     >
                       {count}
                     </Badge>
@@ -647,15 +660,27 @@ export default function MasterWbsCodes() {
               Customize the names and descriptions of the 13 WBS dimensions for your organization.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
             {wbsDimensionDefinitions.map((dim, defaultIndex) => (
               <div key={dim.key} className="grid grid-cols-12 gap-3 items-start p-3 rounded-lg border">
                 <div className="col-span-1 flex items-center justify-center pt-2">
                   {dimensionIcons[dim.key]}
                 </div>
                 <div className="col-span-11 space-y-2">
-                  <div className="grid grid-cols-6 gap-3">
-                    <div className="col-span-3">
+                  <div className="grid grid-cols-12 gap-3">
+                    <div className="col-span-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Code
+                      </label>
+                      <Input
+                        value={dimensionLabels[dim.key]?.code || dim.key.toUpperCase()}
+                        onChange={(e) => updateDimensionLabel(dim.key, "code", e.target.value.toUpperCase())}
+                        placeholder={dim.key.toUpperCase()}
+                        maxLength={10}
+                        data-testid={`input-dimension-code-${dim.key}`}
+                      />
+                    </div>
+                    <div className="col-span-4">
                       <label className="text-sm font-medium text-muted-foreground">
                         Display Name
                       </label>
@@ -666,7 +691,7 @@ export default function MasterWbsCodes() {
                         data-testid={`input-dimension-label-${dim.key}`}
                       />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-4">
                       <label className="text-sm font-medium text-muted-foreground">
                         Description
                       </label>
@@ -677,9 +702,9 @@ export default function MasterWbsCodes() {
                         data-testid={`input-dimension-desc-${dim.key}`}
                       />
                     </div>
-                    <div className="col-span-1">
+                    <div className="col-span-2">
                       <label className="text-sm font-medium text-muted-foreground">
-                        Sort
+                        Sort #
                       </label>
                       <Input
                         type="number"
@@ -692,7 +717,7 @@ export default function MasterWbsCodes() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Key: <code className="bg-muted px-1 rounded">{dim.key}</code>
+                    Internal Key: <code className="bg-muted px-1 rounded">{dim.key}</code>
                   </p>
                 </div>
               </div>

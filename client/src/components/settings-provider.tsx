@@ -12,6 +12,15 @@ export interface TenantBranding {
   faviconUrl: string | null;
 }
 
+export interface WbsDimensionConfig {
+  key: string;
+  code: string;
+  label: string;
+  description: string;
+  sortOrder: number;
+  required: boolean;
+}
+
 export interface Tenant {
   id: string;
   subdomain: string;
@@ -20,7 +29,7 @@ export interface Tenant {
   config: {
     branding: TenantBranding;
     modules: Record<string, boolean>;
-    wbsDimensions: Array<{ key: string; label: string; required: boolean }>;
+    wbsDimensions: WbsDimensionConfig[];
   };
   storageMode: string;
   onboardingComplete: boolean;
