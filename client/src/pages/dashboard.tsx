@@ -84,13 +84,13 @@ export default function Dashboard() {
               </div>
             </div>
             <div 
-              className="bg-black/50 backdrop-blur-sm border border-white/20 rounded p-2 text-center"
+              className="bg-black/50 backdrop-blur-sm border border-white/20 rounded p-2.5 text-center"
               data-testid="clock-widget"
             >
-              <div className="text-sm font-mono font-bold tracking-wider">
+              <div className="text-base font-mono font-bold tracking-wider">
                 {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
               </div>
-              <div className="text-[10px] text-white/80">
+              <div className="text-[11px] text-white/80">
                 {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
               </div>
             </div>
