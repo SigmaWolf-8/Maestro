@@ -401,6 +401,11 @@ export const customers = pgTable("customers", {
   lastName: text("last_name"),
   webPage: text("web_page"),
   homePhone: text("home_phone"),
+  workPhone: text("work_phone"),
+  faxPhone: text("fax_phone"),
+  mobilePhone: text("mobile_phone"),
+  email1: text("email1"),
+  email2: text("email2"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });

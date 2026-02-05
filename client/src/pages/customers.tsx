@@ -367,7 +367,7 @@ export default function CustomersForm() {
 
                 <Separator />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div>
                     <Label htmlFor="homePhone">Home Phone</Label>
                     <Input
@@ -375,7 +375,62 @@ export default function CustomersForm() {
                       defaultValue={customer.homePhone || ""}
                       disabled={!editMode}
                       onBlur={(e) => handleFieldBlur("customer", "homePhone", e.target.value)}
-                      data-testid="input-phone"
+                      data-testid="input-home-phone"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="workPhone">Work Phone</Label>
+                    <Input
+                      id="workPhone"
+                      defaultValue={customer.workPhone || ""}
+                      disabled={!editMode}
+                      onBlur={(e) => handleFieldBlur("customer", "workPhone", e.target.value)}
+                      data-testid="input-work-phone"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="mobilePhone">Mobile Phone</Label>
+                    <Input
+                      id="mobilePhone"
+                      defaultValue={customer.mobilePhone || ""}
+                      disabled={!editMode}
+                      onBlur={(e) => handleFieldBlur("customer", "mobilePhone", e.target.value)}
+                      data-testid="input-mobile-phone"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="faxPhone">Fax</Label>
+                    <Input
+                      id="faxPhone"
+                      defaultValue={customer.faxPhone || ""}
+                      disabled={!editMode}
+                      onBlur={(e) => handleFieldBlur("customer", "faxPhone", e.target.value)}
+                      data-testid="input-fax-phone"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="email1">Email 1</Label>
+                    <Input
+                      id="email1"
+                      type="email"
+                      defaultValue={customer.email1 || ""}
+                      disabled={!editMode}
+                      onBlur={(e) => handleFieldBlur("customer", "email1", e.target.value)}
+                      data-testid="input-email1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email2">Email 2</Label>
+                    <Input
+                      id="email2"
+                      type="email"
+                      defaultValue={customer.email2 || ""}
+                      disabled={!editMode}
+                      onBlur={(e) => handleFieldBlur("customer", "email2", e.target.value)}
+                      data-testid="input-email2"
                     />
                   </div>
                   <div>
