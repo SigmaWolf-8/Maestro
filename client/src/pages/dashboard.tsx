@@ -8,11 +8,8 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  Hammer,
-  HardHat,
-  Building2,
-  Ruler,
 } from "lucide-react";
+import heroImage from "@/assets/images/hero-executive-home.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -55,26 +52,23 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="page-dashboard">
-      <div className="relative overflow-hidden rounded-lg border border-border bg-gradient-to-br from-primary/5 via-transparent to-accent/5 p-6">
-        <div className="absolute top-0 right-0 opacity-10">
-          <div className="flex gap-4 -rotate-12 translate-x-8 -translate-y-4">
-            <Hammer className="h-24 w-24" />
-            <HardHat className="h-20 w-20 mt-8" />
-            <Building2 className="h-28 w-28 -mt-4" />
-          </div>
-        </div>
-        <div className="relative z-10 flex flex-col gap-1">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <Ruler className="h-5 w-5 text-primary" />
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-dashboard-title">
-              Dashboard
+      <div className="relative overflow-hidden rounded-lg h-48 md:h-64">
+        <img 
+          src={heroImage} 
+          alt="Modern Executive Home Interior" 
+          className="w-full h-full object-cover"
+          data-testid="img-hero"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+        <div className="absolute inset-0 flex items-center p-8">
+          <div className="text-white">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight drop-shadow-lg" data-testid="text-dashboard-title">
+              Welcome Back
             </h1>
+            <p className="text-white/90 text-lg mt-2 drop-shadow" data-testid="text-dashboard-subtitle">
+              Here's an overview of your construction projects.
+            </p>
           </div>
-          <p className="text-muted-foreground" data-testid="text-dashboard-subtitle">
-            Welcome back. Here's an overview of your construction projects.
-          </p>
         </div>
       </div>
 
