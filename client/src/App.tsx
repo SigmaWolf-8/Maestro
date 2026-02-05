@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -8,6 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SettingsProvider, useSettings } from "@/components/settings-provider";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Button } from "@/components/ui/button";
 import { CorporateFooter } from "@/components/corporate-footer";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
@@ -123,10 +125,46 @@ function HeaderBranding() {
   );
 }
 
+function ZoomControl() {
+  const [zoom, setZoom] = useState(() => {
+    const saved = localStorage.getItem('maestro-zoom');
+    return saved ? parseInt(saved) : 100;
+  });
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${zoom}%`;
+    localStorage.setItem('maestro-zoom', zoom.toString());
+  }, [zoom]);
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        size="icon"
+        variant="ghost"
+        onClick={() => setZoom(Math.max(70, zoom - 10))}
+        data-testid="button-zoom-out"
+        className="h-7 w-7"
+      >
+        <span className="text-xs font-medium">−</span>
+      </Button>
+      <span className="text-xs w-10 text-center" data-testid="text-zoom-level">{zoom}%</span>
+      <Button
+        size="icon"
+        variant="ghost"
+        onClick={() => setZoom(Math.min(150, zoom + 10))}
+        data-testid="button-zoom-in"
+        className="h-7 w-7"
+      >
+        <span className="text-xs font-medium">+</span>
+      </Button>
+    </div>
+  );
+}
+
 function AppLayout() {
   const sidebarStyle = {
-    "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "3.5rem",
+    "--sidebar-width": "12rem",
+    "--sidebar-width-icon": "3rem",
   } as React.CSSProperties;
 
   return (
@@ -139,7 +177,10 @@ function AppLayout() {
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <HeaderBranding />
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-3">
+              <ZoomControl />
+              <ThemeToggle />
+            </div>
           </header>
           <main className="flex-1 overflow-auto flex flex-col">
             <div className="flex-1">

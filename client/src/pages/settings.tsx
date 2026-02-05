@@ -304,7 +304,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6" data-testid="page-settings">
+    <div className="p-4 max-w-4xl mx-auto space-y-4" data-testid="page-settings">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
@@ -367,7 +367,7 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -378,8 +378,8 @@ export default function Settings() {
               Edit company name and contact information
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
               <Label htmlFor="companyName">Company Name</Label>
               <Input
                 id="companyName"
@@ -389,7 +389,7 @@ export default function Settings() {
                 data-testid="input-company-name"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="contactEmail">Contact Email</Label>
               <Input
                 id="contactEmail"
@@ -417,8 +417,8 @@ export default function Settings() {
               Upload a custom logo for {activeTenant.companyName}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
               <Label>Logo</Label>
               <div className="flex items-center gap-4">
                 {branding?.logoUrl ? (
@@ -481,8 +481,8 @@ export default function Settings() {
               Choose your preferred font style
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
               <Label htmlFor="fontStyle">Font Style</Label>
               <Select
                 value={branding?.fontStyle || "elegant"}

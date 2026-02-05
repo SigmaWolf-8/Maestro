@@ -1042,6 +1042,7 @@ export async function registerRoutes(
         code: z.string().min(1).max(50).optional(),
         name: z.string().min(1).max(200).optional(),
         description: z.string().max(500).nullable().optional(),
+        parentCodeId: z.string().uuid().nullable().optional(),
         sortOrder: z.number().int().optional(),
         isActive: z.boolean().optional(),
         metadata: z.record(z.any()).optional(),
