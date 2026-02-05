@@ -1241,12 +1241,14 @@ export async function seedDatabase() {
 
 export async function seedNavigationForTenant(tenantId: string) {
   const navDashboardId = randomUUID();
-  const navProjectsId = randomUUID();
   const navPeopleId = randomUUID();
+  const navProjectsId = randomUUID();
   const navFinanceId = randomUUID();
+  const navSalesId = randomUUID();
+  const navMarketingId = randomUUID();
   const navDocumentsId = randomUUID();
 
-  // Top-level navigation items (5 sections)
+  // Top-level navigation items (7 sections)
   await db.insert(navigationItems).values([
     {
       id: navDashboardId,
@@ -1266,13 +1268,13 @@ export async function seedNavigationForTenant(tenantId: string) {
       updatedAt: new Date(),
     },
     {
-      id: navProjectsId,
+      id: navPeopleId,
       tenantId,
       parentId: null,
       itemOrder: 20,
       itemType: "menu",
-      title: "Projects",
-      iconName: "FolderKanban",
+      title: "People",
+      iconName: "Users",
       path: null,
       component: null,
       uiSlot: "sidebar",
@@ -1283,13 +1285,13 @@ export async function seedNavigationForTenant(tenantId: string) {
       updatedAt: new Date(),
     },
     {
-      id: navPeopleId,
+      id: navProjectsId,
       tenantId,
       parentId: null,
       itemOrder: 30,
       itemType: "menu",
-      title: "People",
-      iconName: "Users",
+      title: "Projects",
+      iconName: "FolderKanban",
       path: null,
       component: null,
       uiSlot: "sidebar",
@@ -1317,10 +1319,44 @@ export async function seedNavigationForTenant(tenantId: string) {
       updatedAt: new Date(),
     },
     {
-      id: navDocumentsId,
+      id: navSalesId,
       tenantId,
       parentId: null,
       itemOrder: 50,
+      itemType: "menu",
+      title: "Sales",
+      iconName: "TrendingUp",
+      path: null,
+      component: null,
+      uiSlot: "sidebar",
+      maxChildrenDisplay: 5,
+      isCollapsible: true,
+      minRoleRequired: "viewer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: navMarketingId,
+      tenantId,
+      parentId: null,
+      itemOrder: 60,
+      itemType: "menu",
+      title: "Marketing",
+      iconName: "Megaphone",
+      path: null,
+      component: null,
+      uiSlot: "sidebar",
+      maxChildrenDisplay: 5,
+      isCollapsible: true,
+      minRoleRequired: "viewer",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    },
+    {
+      id: navDocumentsId,
+      tenantId,
+      parentId: null,
+      itemOrder: 70,
       itemType: "menu",
       title: "Documents",
       iconName: "FolderArchive",
