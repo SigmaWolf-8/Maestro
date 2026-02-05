@@ -821,6 +821,12 @@ export async function registerRoutes(
       
       const data = schema.parse(req.body);
       
+      // Sanitize content - remove null bytes that PostgreSQL can't handle in UTF8 text columns
+      // This is necessary for binary files like PDFs that get parsed as text
+      if (data.content) {
+        data.content = data.content.replace(/\0/g, '');
+      }
+      
       let encryptedContent: string | null = null;
       let originalSize = 0;
       let compressedSize = 0;
