@@ -1,0 +1,950 @@
+Option Compare Database
+Option Explicit
+Private Sub AddCategory_Click()
+DoCmd.OpenForm "ContactCategoriesFrm"
+End Sub
+Private Sub Address_AfterUpdate()
+'CurrentDb.Execute "Update SalviVendors set Address='" & Me.Address & "' Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Address] = Me.[Address]
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub AP_Terms_AfterUpdate()
+'CurrentDb.Execute "Update SalviVendors set [AP Terms]='" & Me.[AP Terms] & "' Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![AP Terms] = Me.[AP Terms]
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub AR_Terms_AfterUpdate()
+'CurrentDb.Execute "Update SalviVendors set [AR Terms]='" & Me.[AR Terms] & "' Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![AR Terms] = Me.[AR Terms]
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub ChangeName_Click()
+Dim NewNameInput As String, que As Integer
+NewNameInput = Nz(Inputbox("Enter a new name for the vendor.", "Salvi People", Me.Vendor), "")
+
+If NewNameInput <> "" Then
+    Screen.MousePointer = 11
+    que = MsgBox("Are you sure that you would like to change this vendor name?" & vbCrLf & "Doing so, will change PO's, Quotes, Invoices, Price Master...", vbYesNo)
+    If que = vbYes Then
+        CurrentDb.Execute "UPDATE SalviVendors SET SalviVendors.Company ='" & NewNameInput & "' WHERE (((SalviVendors.Company)='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE SalviContacts SET SalviContacts.Company ='" & NewNameInput & "' WHERE (((SalviContacts.Company)='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE INVap SET INVap.Vendor ='" & NewNameInput & "' WHERE (((INVap.Vendor)='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE PM SET PM.Vendor ='" & NewNameInput & "' WHERE (((PM.Vendor)='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE PM SET PM.Vendor ='" & NewNameInput & "' WHERE (((PM.Vendor)='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE PMCompile SET PMCompile.Vendor ='" & NewNameInput & "' WHERE (((PMCompile.Vendor)='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE PMCompile SET PMCompile.SubVendor ='" & NewNameInput & "' WHERE (((PMCompile.SubVendor)='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE PONumbers SET PONumbers.[Supplier/Trade] ='" & NewNameInput & "' WHERE (((PONumbers.[Supplier/Trade])='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE PORelations SET PORelations.[Supplier/Trade] ='" & NewNameInput & "' WHERE (((PORelations.[Supplier/Trade])='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE Quotes SET Quotes.Customer ='" & NewNameInput & "' WHERE (((Quotes.Customer)='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE INVNumbers SET INVNumbers.[Supplier/Trade] ='" & NewNameInput & "' WHERE (((INVNumbers.[Supplier/Trade])='" & Me.Vendor & "'));"
+        CurrentDb.Execute "UPDATE INVRelations SET INVRelations.[Supplier/Trade] ='" & NewNameInput & "' WHERE (((INVRelations.[Supplier/Trade])='" & Me.Vendor & "'));"
+            Me.Vendor.Value = NewNameInput
+            Me.Vendor.RowSource = Me.Vendor.RowSource
+    End If
+    Screen.MousePointer = 1
+End If
+
+DoCmd.Beep
+
+End Sub
+Private Sub City_AfterUpdate()
+'CurrentDb.Execute "Update SalviVendors set City='" & Me.City & "' Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![City] = Me.City
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Command60_Click()
+Dim Location As String
+Dim FSO As Object, FileLoc As String
+Set FSO = CreateObject("scripting.filesystemobject")
+
+FileLoc = SharepointFilesUpload & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) & "_PM_CostReport.pdf"
+If FSO.FileExists(FileLoc) = False Then
+        FileLoc = SharepointFilesUpload & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) - 1 & "_PM_CostReport.pdf"
+        If FSO.FileExists(FileLoc) = False Then
+            FileLoc = SharepointFilesUpload & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) - 2 & "_PM_CostReport.pdf"
+            If FSO.FileExists(FileLoc) = False Then
+                FileLoc = SharepointFilesUpload & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) - 3 & "_PM_CostReport.pdf"
+                If FSO.FileExists(FileLoc) = False Then
+                    FileLoc = SharepointFilesUpload & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) - 4 & "_PM_CostReport.pdf"
+                    'Location = SharepointFilesLocation & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & ""
+                    If FSO.FileExists(FileLoc) = False Then
+                        Location = SharepointFilesLocation & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & ""
+                    Else
+                        Location = SharepointFilesLocation & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) - 4 & "_PM_CostReport.pdf"
+                    End If
+                Else
+                    Location = SharepointFilesLocation & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) - 3 & "_PM_CostReport.pdf"
+                End If
+            Else
+                Location = SharepointFilesLocation & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) - 2 & "_PM_CostReport.pdf"
+            End If
+        Else
+            Location = SharepointFilesLocation & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) - 1 & "_PM_CostReport.pdf"
+        End If
+Else
+    Location = SharepointFilesLocation & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & "/" & Year(Date) & "_PM_CostReport.pdf"
+End If
+'Location = SharepointFilesLocation & "/Sales and Pricing/Vendor Price Quotes/" & Me.Vendor & ""
+Shell "C:\Program Files\Internet Explorer\iexplore.exe -nomerge " & Location & "", vbNormalFocus
+End Sub
+Private Sub Country_Region_AfterUpdate()
+'CurrentDb.Execute "Update SalviVendors set [Country/Region]='" & Me.Country_Region & "' Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Country/Region] = Me.Country_Region
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub EditFieldValues_Click()
+Me.Address.Enabled = True
+Me.City.Enabled = True
+Me.State_Province.Enabled = True
+Me.ZIP_Postal_Code.Enabled = True
+Me.Country_Region.Enabled = True
+Me.Insurance.Enabled = True
+Me.InsuranceProofDate.Enabled = True
+Me.WCBNum.Enabled = True
+Me.WCBExemption.Enabled = True
+Me.GSTNum.Enabled = True
+Me.AP_Terms.Enabled = True
+Me.AR_Terms.Enabled = True
+Me.IncludeInPayroll.Enabled = True
+Me.RateCO.Enabled = True
+Me.RatePR.Enabled = True
+Me.RateQU.Enabled = True
+Me.RateRE.Enabled = True
+Me.RateSP.Enabled = True
+End Sub
+Private Sub ExpProEst_Click()
+'On Error GoTo Err
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rscontact As DAO.Recordset, Newver As Double, Oldver As Double, DataID As Single
+Set Yoda = CurrentDb
+Set rscontact = Yoda.OpenRecordset("Select * from SalviContacts where Company='" & Me.Vendor & "' and Primary=True", dbOpenSnapshot)
+
+Me.Recalc
+
+If Me.MatVendor = False And Me.Subtrade = False Then MsgBox "The selected vendor must be classified as a supplier or subtrade first.", vbOKOnly, "Classification Required"
+
+If Not rscontact.EOF Then
+Set rs = Yoda.OpenRecordset("Select * From dbo_DatabaseType", dbOpenSnapshot)
+If Not rs.EOF Then DataID = rs!DatabaseID
+
+
+Screen.MousePointer = 11
+'Push To ProEst Materials Table
+If Me.MatVendor = True Then
+    
+    Set rs = Yoda.OpenRecordset("Select * From dbo_Vendor where Company='" & Me.Vendor & "'", dbOpenDynaset, dbSeeChanges)
+    If Not rs.EOF Then rs.MoveFirst
+    If rs.EOF = True Then
+        rs.AddNew
+        rs!DatabaseID = DataID
+        rs!Code = Me.Vendor_ID
+        rs!ContactPerson = rscontact![First Name] & " " & rscontact![Last Name]
+        rs!Company = Me.Vendor
+        rs!Address = Me.Address
+        rs!City = Me.City
+        rs!State = Me.[State/Province]
+        rs!Zip = Me.ZIP_Postal_Code
+        rs!Phone = rscontact![Business Phone]
+        rs!Mobile = rscontact![Mobile Phone]
+        rs!Fax = rscontact![Fax Number]
+        rs!Email = rscontact![E-mail Address]
+        rs!Notes = rscontact![Job Title] & vbCrLf & "Reliability-" & Me.RateRE & "/5" & "  Quality-" & Me.RateQU & "/5" & "  Speed-" & Me.RateSP & "/5" & "  Pricing-" & Me.RatePR & "/5" & "  Congeniality-" & Me.RateCO & "/5"
+        rs!CreatedBy = 1
+        rs!Createdon = Now
+        rs!editedby = 1
+        rs.Update
+        rs.Close
+    Else
+        rs.Edit
+        rs!DatabaseID = DataID
+        rs!Code = Me.Vendor_ID
+        rs!ContactPerson = rscontact![First Name] & " " & rscontact![Last Name]
+        rs!Company = Me.Vendor
+        rs!Address = Me.Address
+        rs!City = Me.City
+        rs!State = Me.[State/Province]
+        rs!Zip = Me.ZIP_Postal_Code
+        rs!Phone = rscontact![Business Phone]
+        rs!Mobile = rscontact![Mobile Phone]
+        rs!Fax = rscontact![Fax Number]
+        rs!Email = rscontact![E-mail Address]
+        rs!Notes = rscontact![Job Title] & vbCrLf & "Reliability-" & Me.RateRE & "/5" & "  Quality-" & Me.RateQU & "/5" & "  Speed-" & Me.RateSP & "/5" & "  Pricing-" & Me.RatePR & "/5" & "  Congeniality-" & Me.RateCO & "/5"
+        rs!editedby = 1
+        rs!Editedon = Now
+        rs.Update
+        rs.Close
+    End If
+    Set rs = Nothing
+End If
+
+'Push To ProEst SubTrade Table
+If Me.Subtrade = True Then
+   
+    Set rs = Yoda.OpenRecordset("Select * From dbo_SubContractor where Company='" & Me.Vendor & "'", dbOpenDynaset, dbSeeChanges)
+    If Not rs.EOF Then rs.MoveFirst
+    If rs.EOF = True Then
+        rs.AddNew
+        rs!DatabaseID = DataID
+        rs!Code = Me.Vendor_ID
+        rs!ContactPerson = rscontact![First Name] & " " & rscontact![Last Name]
+        rs!Company = Me.Vendor
+        rs!Address = Me.Address
+        rs!City = Me.City
+        rs!State = Me.[State/Province]
+        rs!Zip = Me.ZIP_Postal_Code
+        rs!Phone = Nz(rscontact![Business Phone], rscontact![Mobile Phone])
+        rs!Mobile = rscontact![Mobile Phone]
+        rs!Fax = rscontact![Fax Number]
+        rs!Email = rscontact![E-mail Address]
+        rs!License = "WCB_" & Me.WCBNum & " GST_" & Me.GSTNum
+        rs!Notes = rscontact![Job Title] & vbCrLf & "Reliability-" & Me.RateRE & "/5" & "  Quality-" & Me.RateQU & "/5" & "  Speed-" & Me.RateSP & "/5" & "  Pricing-" & Me.RatePR & "/5" & "  Congeniality-" & Me.RateCO & "/5"
+        rs!Rank = (VRatings * 2)
+        rs!TradeID = 27
+        rs!CreatedBy = 1
+        rs!Createdon = Now
+        rs!editedby = 1
+        rs.Update
+        rs.Close
+    Else
+        rs.Edit
+        rs!DatabaseID = DataID
+        rs!Code = Me.Vendor_ID
+        rs!ContactPerson = rscontact![First Name] & " " & rscontact![Last Name]
+        rs!Company = Me.Vendor
+        rs!Address = Me.Address
+        rs!City = Me.City
+        rs!State = Me.[State/Province]
+        rs!Zip = Me.ZIP_Postal_Code
+        rs!Phone = Nz(rscontact![Business Phone], rscontact![Mobile Phone])
+        rs!Mobile = rscontact![Mobile Phone]
+        rs!Fax = rscontact![Fax Number]
+        rs!Email = rscontact![E-mail Address]
+        rs!License = "WCB_" & Me.WCBNum & " GST_" & Me.GSTNum
+        rs!Notes = rscontact![Job Title] & vbCrLf & "Reliability-" & Me.RateRE & "/5" & "  Quality-" & Me.RateQU & "/5" & "  Speed-" & Me.RateSP & "/5" & "  Pricing-" & Me.RatePR & "/5" & "  Congeniality-" & Me.RateCO & "/5"
+        rs!Rank = (VRatings * 2)
+        rs!TradeID = 27
+        rs!editedby = 1
+        rs!Editedon = Now
+        rs.Update
+        rs.Close
+    End If
+    Set rs = Nothing
+End If
+Else
+    MsgBox "No Primary Contact has been selected." & vbCrLf & "Please select a primary contact first", vbOKOnly, "The Maestro Vendor Management"
+End If
+
+
+
+Screen.MousePointer = 1
+DoCmd.Beep
+rscontact.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rscontact = Nothing
+
+'Err:
+'If Err.Number = 3021 Then
+'    MsgBox "No Primary Contact has been selected." & vbCrLf & "Please select a primary contact first", vbOKOnly, "The Maestro Vendor Management"
+'Else
+'    MsgBox Err.Number & vbCrLf & Err.Description
+'End If
+End Sub
+
+Private Sub FilterCategory_AfterUpdate()
+    Me.FilterCategory.Visible = True
+    Me.Vendor.RowSource = "SELECT DISTINCT SalviVendors.Company, SalviContacts.Category, SalviContacts.Category1,SalviContacts.Category2,SalviContacts.Category3 FROM SalviVendors INNER JOIN SalviContacts ON SalviVendors.Company = SalviContacts.Company WHERE [SalviVendors].Company Is Not Null AND SalviContacts.Category='" & Me.FilterCategory.Value & "' OR SalviContacts.Category1='" & Me.FilterCategory.Value & "' Or SalviContacts.Category2='" & Me.FilterCategory.Value & "' Or SalviContacts.Category3='" & Me.FilterCategory.Value & "';"
+    Me.Vendor.SetFocus
+    Me.Vendor.Dropdown
+    Me.VendorLabel.Caption = "Select Vendor-Filtered for Category '" & Me.FilterCategory.Value & "'"
+    Me.FilterCategory.Visible = False
+End Sub
+
+Private Sub Form_BeforeInsert(Cancel As Integer)
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+
+
+    Set Yoda = CurrentDb
+    Set rs = Yoda.OpenRecordset("Select * From SalviContacts Order by ContactID", dbOpenSnapshot)
+
+    If Not rs.EOF Then
+        rs.MoveLast
+        Me.ContactID.Value = rs!ContactID + 1
+    End If
+
+If Me.Vendor = "Salvi Homes" Then
+        Set rs = Yoda.OpenRecordset("Select * From Employees", dbOpenDynaset)
+            If Not rs.EOF Then
+                rs.AddNew
+                rs!ContactID = Me.ContactID.Value
+                rs.Update
+            End If
+End If
+
+    rs.Close
+    Yoda.Close
+    Set Yoda = Nothing
+    Set rs = Nothing
+
+End Sub
+Private Sub Form_Open(Cancel As Integer)
+If Forms.Password.PasswordBox = Pass And AllowEnter(Me.Name) = True Then Me.Visible = True Else Me.Visible = False
+Me.AllowAdditions = AllowAdd(Me.Name)
+Me.AllowEdits = AllowEdit(Me.Name)
+Me.AllowDeletions = AllowDelete(Me.Name)
+
+Me.BorderBox.BackColor = YodaBorderColour
+Me.FormHeader.BackColor = YodaHeadColour
+Me.FormFooter.BackColor = YodaFootColour
+
+
+If PassWhat = "SuperAdmin" Or PassWhat = "Admin" Or PassWhat = "OManager" Then
+    Me.EditFieldValues.Visible = True
+    Me.AllowDeletions = True
+Else
+    Me.EditFieldValues.Visible = False
+    Me.AllowDeletions = False
+End If
+
+Me.Vendor.SetFocus
+End Sub
+Private Sub Group_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset, que As Integer
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from SalviContacts where Company='" & Me.Vendor & "'", dbOpenSnapshot)
+
+If Not rs.EOF Then
+    rs.MoveLast
+    If rs.RecordCount > 1 Then que = MsgBox("Would you like to set '" & Me.Group & "'" & vbCrLf & "as Category 1 for all " & Me.Vendor & " contacts", vbYesNo)
+        If que = vbYes Then
+            CurrentDb.Execute "Update SalviContacts Set Category='" & Me.Group & "' Where Company='" & Me.Vendor & "'"
+        End If
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Me.Requery
+End Sub
+Private Sub Group1_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset, que As Integer
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from SalviContacts where Company='" & Me.Vendor & "'", dbOpenSnapshot)
+
+If Not rs.EOF Then
+    rs.MoveLast
+    If rs.RecordCount > 1 Then que = MsgBox("Would you like to set '" & Me.Group1 & "'" & vbCrLf & "as Category 1 for all " & Me.Vendor & " contacts", vbYesNo)
+        If que = vbYes Then
+            CurrentDb.Execute "Update SalviContacts Set Category1='" & Me.Group1 & "' Where Company='" & Me.Vendor & "'"
+        End If
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Me.Requery
+End Sub
+Private Sub Group2_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset, que As Integer
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from SalviContacts where Company='" & Me.Vendor & "'", dbOpenSnapshot)
+
+If Not rs.EOF Then
+    rs.MoveLast
+    If rs.RecordCount > 1 Then que = MsgBox("Would you like to set '" & Me.Group2 & "'" & vbCrLf & "as Category 2 for all " & Me.Vendor & " contacts", vbYesNo)
+        If que = vbYes Then
+            CurrentDb.Execute "Update SalviContacts Set Category2='" & Me.Group2 & "' Where Company='" & Me.Vendor & "'"
+        End If
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Me.Requery
+End Sub
+Private Sub Group3_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset, que As Integer
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from SalviContacts where Company='" & Me.Vendor & "'", dbOpenSnapshot)
+
+If Not rs.EOF Then
+    rs.MoveLast
+    If rs.RecordCount > 1 Then que = MsgBox("Would you like to set '" & Me.Group3 & "'" & vbCrLf & "as Category 3 for all " & Me.Vendor & " contacts", vbYesNo)
+        If que = vbYes Then
+            CurrentDb.Execute "Update SalviContacts Set Category3='" & Me.Group3 & "' Where Company='" & Me.Vendor & "'"
+        End If
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Me.Requery
+End Sub
+
+Private Sub GSTNum_AfterUpdate()
+'CurrentDb.Execute "Update SalviVendors set [GSTNum]='" & Me.GSTNum & "' Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![GSTNum] = Me.GSTNum
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub IncludeInPayroll_AfterUpdate()
+'CurrentDb.Execute "Update SalviVendors set [IncludeInPayroll]='" & Me.IncludeInPayroll & "' Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![IncludeInPayroll] = Me.IncludeInPayroll
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Insurance_AfterUpdate()
+If Me.InsuranceProofDate = "" Then
+    Me.InsuranceProofDate = Date
+    Me.InsuranceProofDate_AfterUpdate
+End If
+
+'CurrentDb.Execute "Update YodaVendors set [Insurance]=" & Me.Insurance & " Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Insurance] = Me.Insurance
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Public Sub InsuranceProofDate_AfterUpdate()
+'CurrentDb.Execute "Update SalviVendors set [InsuranceProofdate]=#" & Me.InsuranceProofDate & "# Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![InsuranceProofDate] = Me.InsuranceProofDate
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+
+Private Sub MatVendor_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![MatVendor] = Me.[MatVendor]
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+
+End Sub
+Private Sub Primary_AfterUpdate()
+Me.Recalc
+End Sub
+
+Private Sub RateCO_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![RateCO] = Me.RateCO
+    rs.Update
+End If
+
+SetRatings
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub RatePR_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![RatePR] = Me.RatePR
+    rs.Update
+End If
+
+SetRatings
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub RateQU_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![RateQU] = Me.RateQU
+    rs.Update
+End If
+
+SetRatings
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub RateRE_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![RateRE] = Me.RateRE
+    rs.Update
+End If
+
+SetRatings
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub RateSP_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![RateSP] = Me.RateSP
+    rs.Update
+End If
+
+SetRatings
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub State_Province_AfterUpdate()
+'CurrentDb.Execute "Update SalviVendors set [State/Province]='" & Me.State_Province & "' Where company='" & Me.Vendor & "'"
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![State/Province] = Me.State_Province
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Subtrade_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Subtrade] = Me.Subtrade
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+
+End Sub
+
+Private Sub Toggle33_Click()
+If Me.Toggle33 = True Then
+    Me.Toggle33.Value = True
+    Me.FilterCategory.Visible = True
+    Me.FilterCategory.SetFocus
+    Me.FilterCategory.Dropdown
+Else
+    Me.Toggle33.Value = False
+    Me.FilterCategory.Visible = False
+    Me.Vendor.RowSource = "SELECT DISTINCT [SalviVendors].Company FROM SalviVendors WHERE ((([SalviVendors].Company) Is Not Null));"
+    Me.VendorLabel.Caption = "Select Vendor"
+End If
+End Sub
+Private Sub Vendor_AfterUpdate()
+Me.RecordSource = Me.RecordSource
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenSnapshot)
+Dim Vendore As String, NewID As Integer
+
+If Not rs.EOF Then
+    Me.Address = Nz(rs!Address, "")
+    Me.City = Nz(rs!City, "")
+    Me.State_Province = Nz(rs![State/Province], "")
+    Me.ZIP_Postal_Code = Nz(rs![ZIP/Postal Code], "")
+    Me.Country_Region = Nz(rs![Country/Region], "")
+    Me.WCBNum = Nz(rs!WCBNum, "")
+    Me.WCBExemption = Nz(rs!WCBExemption, "")
+    Me.GSTNum = Nz(rs!GSTNum, "")
+    Me.Insurance = Nz(rs!Insurance, "")
+    Me.InsuranceProofDate = Nz(rs!InsuranceProofDate, "")
+    Me.AP_Terms = Nz(rs![AP Terms], "")
+    Me.IncludeInPayroll = Nz(rs![IncludeInPayroll], "")
+    Me.AR_Terms = Nz(rs![AR Terms], "")
+    Me.Vendor_ID = Nz(rs![Vendor ID], "")
+    Me.MatVendor = Nz(rs![MatVendor], "")
+    Me.Subtrade = Nz(rs![Subtrade], "")
+    Me.RateRE = Nz(rs![RateRE], "")
+    Me.RateQU = Nz(rs![RateQU], "")
+    Me.RateSP = Nz(rs![RateSP], "")
+    Me.RatePR = Nz(rs![RatePR], "")
+    Me.RateCO = Nz(rs![RateCO], "")
+    SetRatings
+Else
+    Dim EnterNewVendor As Integer
+    EnterNewVendor = MsgBox("This Vendor does not exist yet." & vbCrLf & "Would you like to add this company to the database?", vbYesNo, "Salvi Vendor Management")
+    
+    If EnterNewVendor = vbYes Then
+        Set Yoda = CurrentDb
+        Set Yoda = CurrentDb
+        Set rs = Yoda.OpenRecordset("Select * From SalviVendors Order by [Vendor ID]", dbOpenSnapshot)
+        rs.MoveLast
+        If Not rs.EOF Then NewID = rs![Vendor ID] + 20
+        Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Company & "'", dbOpenDynaset)
+            rs.AddNew
+            rs!Company = Me.Company
+            rs![Vendor ID] = NewID
+            rs.Update
+            MsgBox "Vendor Successfully added." & vbCrLf & "Enter a contact name below.", vbOKOnly, "Salvi Vendor Management"
+            Me.Vendor.RowSource = Me.Vendor.RowSource
+            'Temporarily Remed out until contacts are imported
+            AutoSendEmail AccountantE & ";" & PresidentE, , , "A New Vendor has been added to Salvi", "Please add this vendor into Peachtree- " & Me.Company & " (Vendor ID-" & NewID & ")", , , , , , , True
+                Me.Address = ""
+                Me.City = ""
+                Me.State_Province = ""
+                Me.ZIP_Postal_Code = ""
+                Me.Country_Region = ""
+                Me.WCBNum = ""
+                Me.WCBExemption = False
+                Me.GSTNum = ""
+                Me.Insurance = ""
+                Me.InsuranceProofDate = ""
+                Me.AP_Terms = ""
+                Me.AR_Terms = ""
+                Me.Vendor_ID = ""
+        'Create new file folder
+        VendorLocation (Me.Vendor)
+    Else
+    Me.Vendor = ""
+    Me.Requery
+    End If
+End If
+
+Vendore = Nz(Me.Vendor, "0")
+If Vendore = "0" Then Me.ChangeName.Visible = False Else Me.ChangeName.Visible = True
+
+Me.OrderBy = "Primary;[First Name]"
+Me.OrderByOn = True
+
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Private Sub Vendor_ID_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![Vendor ID] = Me.[Vendor ID]
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Vendor_KeyDown(KeyCode As Integer, Shift As Integer)
+If PassWhat = "SuperAdmin" Or PassWhat = "Admin" Then
+
+Dim ControlDown As Integer, CD As Integer, Warn As Integer, LastChance As Integer
+    ControlDown = (Shift And acShiftMask) > 0
+    CD = (Shift And acCtrlMask) > 1
+
+If CD And KeyCode = vbKeyD Then
+    Warn = MsgBox("Holding down Ctrl and the letter D at the same time will Delete this Vendor AND ALL CONTACTS WITHIN THIS COMPANY" & vbCrLf & "Do you wish to continue", vbYesNo, "Delete Vendor")
+    If Warn = vbYes Then
+        CurrentDb.Execute "Delete * From [SalviVendors] Where [Company]='" & Me.Vendor.Value & "'"
+        AutoSendEmail AccountantE & ";" & PresidentE, , , "A Vendor has been deleted from 'The Maestro'", "Please delete this vendor from Peachtree- " & Me.Company & " (Vendor ID-)" & Me.Vendor_ID, , , , , , , True
+        LastChance = MsgBox("Last chance are you sure you wish to also delete ALL CONTACTS WITHIN THIS COMPANY" & vbCrLf & "Do you wish to continue", vbYesNo, "Delete Vendor Contacts")
+            If LastChance = vbYes Then
+                CurrentDb.Execute "Delete * From [SalviContacts] Where [Company]='" & Me.Vendor.Value & "'"
+            End If
+        Me.Vendor.Value = ""
+        Me.Requery
+    End If
+SendKeys "{ESC}"
+End If
+
+End If
+End Sub
+Private Sub WCBExemption_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs!WCBExemption = Me.WCBExemption
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub WCBNum_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs!WCBNum = Me.WCBNum
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub ZIP_Postal_Code_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From SalviVendors Where Company='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs![ZIP/Postal Code] = Me.ZIP_Postal_Code
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Public Sub SetRatings()
+Dim Counter As Integer, Rater As Variant
+Dim reliability As Variant, Quality As Variant, Speed As Variant, Pricing As Variant, Congeniality As Variant
+
+reliability = Nz(Me.RateRE, 0)
+If reliability <> "" Then reliability = 1 Else reliability = 0
+
+Quality = Nz(Me.RateQU, 0)
+If Quality <> "" Then Quality = 1 Else Quality = 0
+
+Speed = Nz(Me.RateSP, 0)
+If Speed <> "" Then Speed = 1 Else Speed = 0
+
+Pricing = Nz(Me.RatePR, 0)
+If Pricing <> "" Then Pricing = 1 Else Pricing = 0
+
+Congeniality = Nz(Me.RateCO, 0)
+If Congeniality <> "" Then Congeniality = 1 Else Congeniality = 0
+
+Counter = reliability + Quality + Speed + Pricing + Congeniality
+
+reliability = Nz(Me.RateRE, 0)
+    If reliability = "" Then reliability = 0
+Quality = Nz(Me.RateQU, 0)
+    If Quality = "" Then Quality = 0
+Speed = Nz(Me.RateSP, 0)
+    If Speed = "" Then Speed = 0
+Pricing = Nz(Me.RatePR, 0)
+    If Pricing = "" Then Pricing = 0
+Congeniality = Nz(Me.RateCO, 0)
+    If Congeniality = "" Then Congeniality = 0
+
+Rater = (reliability + Quality + Speed + Pricing + Congeniality)
+
+Debug.Print "Reliability-" & reliability
+Debug.Print "Quality-" & Quality
+Debug.Print "Speed-" & Speed
+Debug.Print "Pricing-" & Pricing
+Debug.Print "Congeniality-" & Congeniality
+Debug.Print "Total Rating-" & Rater
+
+'MsgBox Counter
+
+
+If Counter > 0 Then
+    If Rater <> "" Then Rater = Round((Rater / Counter), 1) Else Rater = 0
+End If
+
+If Rater < 3 Then Me.Rating = Rater & " Rating (Below Threshold)" Else Me.Rating = Rater & " Rating"
+If Rater = 0 Then Me.Rating = "No Rating"
+End Sub
+Private Function VRatings() As Single
+Dim Counter As Integer, Rater As Variant
+Dim reliability As Variant, Quality As Variant, Speed As Variant, Pricing As Variant, Congeniality As Variant
+
+reliability = Nz(Me.RateRE, 0)
+If reliability <> "" Then reliability = 1 Else reliability = 0
+
+Quality = Nz(Me.RateQU, 0)
+If Quality <> "" Then Quality = 1 Else Quality = 0
+
+Speed = Nz(Me.RateSP, 0)
+If Speed <> "" Then Speed = 1 Else Speed = 0
+
+Pricing = Nz(Me.RatePR, 0)
+If Pricing <> "" Then Pricing = 1 Else Pricing = 0
+
+Congeniality = Nz(Me.RateCO, 0)
+If Congeniality <> "" Then Congeniality = 1 Else Congeniality = 0
+
+Counter = reliability + Quality + Speed + Pricing + Congeniality
+
+reliability = Nz(Me.RateRE, 0)
+    If reliability = "" Then reliability = 0
+Quality = Nz(Me.RateQU, 0)
+    If Quality = "" Then Quality = 0
+Speed = Nz(Me.RateSP, 0)
+    If Speed = "" Then Speed = 0
+Pricing = Nz(Me.RatePR, 0)
+    If Pricing = "" Then Pricing = 0
+Congeniality = Nz(Me.RateCO, 0)
+    If Congeniality = "" Then Congeniality = 0
+
+Rater = (reliability + Quality + Speed + Pricing + Congeniality)
+
+Debug.Print "Reliability-" & reliability
+Debug.Print "Quality-" & Quality
+Debug.Print "Speed-" & Speed
+Debug.Print "Pricing-" & Pricing
+Debug.Print "Congeniality-" & Congeniality
+Debug.Print "Total Rating-" & Rater
+
+'MsgBox Counter
+
+
+If Counter > 0 Then
+    If Rater <> "" Then Rater = Round((Rater / Counter), 1) Else Rater = 0
+End If
+
+VRatings = Rater
+Debug.Print VRatings
+End Function
+

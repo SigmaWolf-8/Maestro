@@ -402,7 +402,7 @@ export const customers = pgTable("customers", {
   webPage: text("web_page"),
   homePhone: text("home_phone"),
   workPhone: text("work_phone"),
-  faxPhone: text("fax_phone"),
+  mobilePhone2: text("mobile_phone_2"),
   mobilePhone: text("mobile_phone"),
   email1: text("email1"),
   email2: text("email2"),

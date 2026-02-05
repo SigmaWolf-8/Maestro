@@ -399,13 +399,13 @@ export default function CustomersForm() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="faxPhone">Fax</Label>
+                    <Label htmlFor="mobilePhone2">Mobile Phone 2</Label>
                     <Input
-                      id="faxPhone"
-                      defaultValue={customer.faxPhone || ""}
+                      id="mobilePhone2"
+                      defaultValue={customer.mobilePhone2 || ""}
                       disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "faxPhone", e.target.value)}
-                      data-testid="input-fax-phone"
+                      onBlur={(e) => handleFieldBlur("customer", "mobilePhone2", e.target.value)}
+                      data-testid="input-mobile-phone-2"
                     />
                   </div>
                 </div>
