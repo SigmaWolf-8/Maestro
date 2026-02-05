@@ -62,7 +62,12 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col gap-6 p-6" data-testid="page-dashboard">
-      <div className="relative overflow-hidden rounded-lg h-48 md:h-64">
+      <div 
+        className="relative overflow-hidden rounded-lg h-48 md:h-64 border-4 border-slate-400 dark:border-slate-600"
+        style={{
+          boxShadow: 'inset 4px 4px 8px rgba(0,0,0,0.4), inset -4px -4px 8px rgba(255,255,255,0.2), 4px 4px 12px rgba(0,0,0,0.3)'
+        }}
+      >
         <img 
           src={heroImage} 
           alt="Modern Executive Home Interior" 
