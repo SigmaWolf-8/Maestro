@@ -19,10 +19,10 @@ export function TabBar() {
         return (
           <div
             key={tab.id}
-            className={`group flex items-center gap-1 px-3 py-1 rounded-md text-sm cursor-pointer transition-colors min-w-0 max-w-[180px] ${
+            className={`group flex items-center gap-1 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-all min-w-0 max-w-[180px] ${
               isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "bg-primary text-primary-foreground shadow-[inset_2px_2px_4px_rgba(0,0,0,0.3),inset_-1px_-1px_2px_rgba(255,255,255,0.1)]"
+                : "bg-muted text-muted-foreground hover:text-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.2),-1px_-1px_2px_rgba(255,255,255,0.7)] dark:shadow-[2px_2px_4px_rgba(0,0,0,0.4),-1px_-1px_2px_rgba(255,255,255,0.05)]"
             }`}
             onClick={() => setActiveTab(tab.id)}
             data-testid={`tab-${tab.id}`}
