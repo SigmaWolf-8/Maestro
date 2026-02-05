@@ -312,23 +312,17 @@ export default function MasterWbsCodes() {
     setIsDialogOpen(true);
   };
   
-  // Get available parent codes (codes from other dimensions that can be parents)
+  // Get available parent codes - allows linking to any code across dimensions
+  // Excludes the code being edited to prevent self-referencing
   const getAvailableParentCodes = (currentDimensionType: string): WbsMasterCode[] => {
     if (!codes) return [];
-    // Allow codes from any dimension to be parents (except the same code being edited)
     return codes.filter(c => c.id !== editingCode?.id);
   };
   
-  // Get parent code info by ID
+  // Get parent code info by ID for display purposes
   const getParentCode = (parentCodeId: string | null | undefined): WbsMasterCode | undefined => {
     if (!parentCodeId || !codes) return undefined;
     return codes.find(c => c.id === parentCodeId);
-  };
-  
-  // Get child codes for a given parent
-  const getChildCodes = (parentId: string): WbsMasterCode[] => {
-    if (!codes) return [];
-    return codes.filter(c => c.parentCodeId === parentId);
   };
 
   const onSubmit = (data: CodeFormData) => {
@@ -490,7 +484,7 @@ export default function MasterWbsCodes() {
               <TableBody>
                 {getCodesForDimension(selectedDimension).length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       No codes defined for this dimension. Click "Add Code" to create one.
                     </TableCell>
                   </TableRow>
@@ -679,8 +673,8 @@ export default function MasterWbsCodes() {
                   <FormItem>
                     <FormLabel>Parent Code (Optional)</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
-                      value={field.value || ""}
+                      onValueChange={(value) => field.onChange(value === "__none__" ? "" : value)}
+                      value={field.value || "__none__"}
                     >
                       <FormControl>
                         <SelectTrigger data-testid="select-parent-code">
@@ -688,7 +682,7 @@ export default function MasterWbsCodes() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No Parent</SelectItem>
+                        <SelectItem value="__none__">No Parent</SelectItem>
                         {getAvailableParentCodes(form.getValues("dimensionType")).map((parentCode) => (
                           <SelectItem key={parentCode.id} value={parentCode.id}>
                             <span className="flex items-center gap-2">
