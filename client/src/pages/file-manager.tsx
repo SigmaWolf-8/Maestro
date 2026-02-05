@@ -116,22 +116,145 @@ function getFileTypeName(filename: string): string {
 
 // Document Content Viewer Component - handles different file types
 function DocumentContentViewer({ document, content }: { document: DocumentWithTags; content: string | null }) {
-  const isBinary = isBinaryFormat(document.name);
-  const fileType = getFileTypeName(document.name);
-  const ext = getFileExtension(document.name);
+  const [renderedHtml, setRenderedHtml] = useState<string | null>(null);
+  const [isRendering, setIsRendering] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
-  // For binary formats, show informative message instead of raw content
-  if (isBinary) {
+  const ext = getFileExtension(document.name);
+  const fileType = getFileTypeName(document.name);
+  const isDocx = ext === 'docx' || ext === 'doc';
+  const isPdf = ext === 'pdf';
+  const isImage = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext);
+  const isOfficeFormat = ['docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt'].includes(ext);
+  
+  useEffect(() => {
+    if (!content || !isDocx) return;
+    
+    const renderDocx = async () => {
+      setIsRendering(true);
+      setRenderError(null);
+      
+      try {
+        const mammoth = await import('mammoth');
+        
+        let arrayBuffer: ArrayBuffer;
+        
+        // Check if content is base64 encoded (data URL format)
+        if (content.startsWith('data:')) {
+          // Extract base64 data from data URL
+          const base64Data = content.split(',')[1];
+          if (base64Data) {
+            // Decode base64 to binary
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            arrayBuffer = bytes.buffer;
+          } else {
+            throw new Error("Invalid base64 data");
+          }
+        } else {
+          // Legacy: try to parse as text (may not work for binary files)
+          const encoder = new TextEncoder();
+          arrayBuffer = encoder.encode(content).buffer;
+        }
+        
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        
+        if (result.value && result.value.trim()) {
+          setRenderedHtml(result.value);
+        } else {
+          setRenderError("Could not extract content from document");
+        }
+      } catch (err) {
+        console.error("Error rendering DOCX:", err);
+        setRenderError("Unable to render document. The file may need to be re-uploaded with base64 encoding.");
+      } finally {
+        setIsRendering(false);
+      }
+    };
+    
+    renderDocx();
+  }, [content, isDocx]);
+  
+  // For DOCX files that are being rendered
+  if (isDocx) {
+    if (isRendering) {
+      return (
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center">
+            <RefreshCw className="h-12 w-12 mx-auto text-primary animate-spin mb-4" />
+            <h3 className="text-lg font-medium">Rendering Document...</h3>
+            <p className="text-muted-foreground">Converting to viewable format</p>
+          </div>
+        </div>
+      );
+    }
+    
+    if (renderedHtml) {
+      return (
+        <div className="h-full overflow-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 min-h-full shadow-inner">
+            <div 
+              className="prose prose-sm dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: renderedHtml }}
+            />
+          </div>
+        </div>
+      );
+    }
+    
+    if (renderError || !content) {
+      return (
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <FileText className="h-20 w-20 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">{fileType}</h3>
+            <div className="bg-muted/50 rounded-lg p-4 mb-4">
+              <div className="grid grid-cols-2 gap-2 text-sm text-left">
+                <span className="text-muted-foreground">File Name:</span>
+                <span className="font-medium">{document.name}</span>
+                <span className="text-muted-foreground">Size:</span>
+                <span className="font-medium">
+                  {document.originalSizeBytes 
+                    ? `${(document.originalSizeBytes / 1024).toFixed(1)} KB`
+                    : 'Unknown'}
+                </span>
+                <span className="text-muted-foreground">Status:</span>
+                <span className="font-medium flex items-center gap-1">
+                  <FileCheck className="h-3 w-3 text-green-500" />
+                  Authenticated
+                </span>
+              </div>
+            </div>
+            {renderError && (
+              <p className="text-sm text-amber-600 dark:text-amber-400 mb-2">
+                {renderError}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              For best results, upload documents in text format or download to view locally.
+            </p>
+          </div>
+        </div>
+      );
+    }
+  }
+  
+  // For other binary formats (PDF, images, etc.)
+  if (isBinaryFormat(document.name) && !isDocx) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center max-w-md">
           <FileText className="h-20 w-20 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-lg font-semibold mb-2">{fileType}</h3>
           <p className="text-muted-foreground mb-4">
-            This is a binary file format that cannot be displayed as text in the browser.
+            This file format requires specialized viewing software.
           </p>
           <div className="bg-muted/50 rounded-lg p-4 mb-4">
-            <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="grid grid-cols-2 gap-2 text-sm text-left">
               <span className="text-muted-foreground">File Name:</span>
               <span className="font-medium">{document.name}</span>
               <span className="text-muted-foreground">File Type:</span>
@@ -149,9 +272,6 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
               </span>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
-            To view this file, download it and open with the appropriate application.
-          </p>
         </div>
       </div>
     );
@@ -379,14 +499,17 @@ export default function FileManagerPage() {
       const file = files[0];
       const reader = new FileReader();
       reader.onload = () => {
+        // Use base64 for all files to preserve binary content
+        const base64Result = reader.result as string;
         setUploadForm(prev => ({
           ...prev,
           name: file.name,
-          content: reader.result as string,
+          content: base64Result,
         }));
         setIsUploadOpen(true);
       };
-      reader.readAsText(file);
+      // Always read as base64 data URL to preserve binary content
+      reader.readAsDataURL(file);
     }
   }, []);
   
@@ -395,14 +518,17 @@ export default function FileManagerPage() {
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
+        // Use base64 for all files to preserve binary content
+        const base64Result = reader.result as string;
         setUploadForm(prev => ({
           ...prev,
           name: file.name,
-          content: reader.result as string,
+          content: base64Result,
         }));
         setIsUploadOpen(true);
       };
-      reader.readAsText(file);
+      // Always read as base64 data URL to preserve binary content
+      reader.readAsDataURL(file);
     }
   };
   
