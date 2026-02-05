@@ -10,7 +10,7 @@ export function TabBar() {
 
   return (
     <div 
-      className="grid gap-2 px-3 py-2 border-b border-border bg-muted"
+      className="grid gap-2 px-3 py-3 border-b border-border bg-slate-200 dark:bg-slate-800"
       style={{ gridTemplateColumns: 'repeat(8, minmax(0, 1fr))' }}
       data-testid="tab-bar"
     >
