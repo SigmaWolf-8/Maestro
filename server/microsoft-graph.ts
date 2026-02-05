@@ -287,12 +287,41 @@ export async function getOneDriveFileUrl(
   
   const file = await client.api(`/me/drive/items/${fileId}`).get();
   
-  const editUrl = file.webUrl.replace(/\?.*$/, "") + "?action=edit";
-  
-  return {
-    webUrl: file.webUrl,
-    editUrl: editUrl
-  };
+  // Try to create a proper edit link using Microsoft Graph createLink API
+  try {
+    const linkResult = await client
+      .api(`/me/drive/items/${fileId}/createLink`)
+      .post({
+        type: "edit",
+        scope: "organization"
+      });
+    
+    return {
+      webUrl: file.webUrl,
+      editUrl: linkResult.link?.webUrl || file.webUrl
+    };
+  } catch {
+    // Fallback: try with anonymous scope or use webUrl directly
+    try {
+      const linkResult = await client
+        .api(`/me/drive/items/${fileId}/createLink`)
+        .post({
+          type: "edit",
+          scope: "anonymous"
+        });
+      
+      return {
+        webUrl: file.webUrl,
+        editUrl: linkResult.link?.webUrl || file.webUrl
+      };
+    } catch {
+      // Final fallback: just use webUrl which should open in Office Online
+      return {
+        webUrl: file.webUrl,
+        editUrl: file.webUrl
+      };
+    }
+  }
 }
 
 export async function getFilePreviewUrl(
