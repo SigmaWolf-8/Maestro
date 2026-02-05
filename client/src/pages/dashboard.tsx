@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import {
   FolderKanban,
   Network,
@@ -17,6 +18,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { DashboardStats, Project, WbsNode } from "@shared/schema";
 
 export default function Dashboard() {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
   });
@@ -61,15 +71,28 @@ export default function Dashboard() {
         />
         <div className="absolute inset-0 bg-gradient-to-l from-black/60 via-black/30 to-transparent" />
         <div className="absolute inset-0 flex items-start justify-end p-6">
-          <div className="text-white flex gap-4">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg" data-testid="text-dashboard-title">
-              Welcome
-            </h1>
-            <div className="flex flex-col text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg leading-none">
-              <span>B</span>
-              <span>a</span>
-              <span>c</span>
-              <span>k</span>
+          <div className="text-white flex flex-col items-end gap-3">
+            <div className="flex gap-4">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg" data-testid="text-dashboard-title">
+                Welcome
+              </h1>
+              <div className="flex flex-col text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg leading-none">
+                <span>B</span>
+                <span>a</span>
+                <span>c</span>
+                <span>k</span>
+              </div>
+            </div>
+            <div 
+              className="bg-black/50 backdrop-blur-sm border border-white/20 rounded-lg p-3 min-w-[140px] text-center"
+              data-testid="clock-widget"
+            >
+              <div className="text-2xl font-mono font-bold tracking-wider">
+                {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+              </div>
+              <div className="text-xs text-white/80 mt-1">
+                {currentTime.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+              </div>
             </div>
           </div>
         </div>
