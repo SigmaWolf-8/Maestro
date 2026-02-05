@@ -21,6 +21,12 @@ export interface WbsDimensionConfig {
   required: boolean;
 }
 
+export interface MicrosoftConfig {
+  clientId: string;
+  clientSecret: string;
+  tenantId: string;
+}
+
 export interface Tenant {
   id: string;
   subdomain: string;
@@ -30,6 +36,7 @@ export interface Tenant {
     branding: TenantBranding;
     modules: Record<string, boolean>;
     wbsDimensions: WbsDimensionConfig[];
+    microsoft?: MicrosoftConfig;
   };
   storageMode: string;
   onboardingComplete: boolean;
@@ -45,6 +52,7 @@ interface SettingsContextType {
   setActiveTenant: (tenantId: string) => void;
   updateTenantBranding: (branding: Partial<TenantBranding>) => void;
   updateTenantDetails: (details: { companyName?: string; contactEmail?: string }) => void;
+  updateMicrosoftConfig: (config: MicrosoftConfig) => Promise<void>;
   createTenant: (companyName: string, contactEmail?: string) => Promise<Tenant>;
 }
 
@@ -134,6 +142,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
+  const updateMicrosoftConfig = async (config: MicrosoftConfig): Promise<void> => {
+    if (!activeTenant) return;
+    
+    const newConfig = { ...activeTenant.config, microsoft: config };
+    await updateMutation.mutateAsync({ tenantId: activeTenant.id, updates: { config: newConfig } });
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -143,6 +158,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setActiveTenant,
         updateTenantBranding,
         updateTenantDetails,
+        updateMicrosoftConfig,
         createTenant,
       }}
     >

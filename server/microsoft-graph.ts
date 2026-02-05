@@ -7,25 +7,43 @@ interface TokenInfo {
   expiresAt: number;
 }
 
+interface MicrosoftCredentials {
+  clientId: string;
+  clientSecret: string;
+  tenantId: string;
+}
+
 // OAuth state store with expiration for CSRF protection
 interface OAuthState {
   state: string;
   createdAt: number;
   userId?: string;
+  tenantId?: string;
+  credentials?: MicrosoftCredentials;
 }
 const oauthStateStore = new Map<string, OAuthState>();
 
 // Token store keyed by authenticated user ID
 const tokenStore = new Map<string, TokenInfo>();
 
+// Credentials store keyed by tenant ID (for use after OAuth callback)
+const credentialsStore = new Map<string, MicrosoftCredentials>();
+
 // Generate and store OAuth state for CSRF protection
-export function generateOAuthState(userId?: string): string {
+export function generateOAuthState(userId?: string, tenantId?: string, credentials?: MicrosoftCredentials): string {
   const state = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
   oauthStateStore.set(state, {
     state,
     createdAt: Date.now(),
     userId,
+    tenantId,
+    credentials,
   });
+  
+  // Store credentials for later use
+  if (tenantId && credentials) {
+    credentialsStore.set(tenantId, credentials);
+  }
   
   // Clean up old states (older than 10 minutes)
   const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
@@ -38,8 +56,8 @@ export function generateOAuthState(userId?: string): string {
   return state;
 }
 
-// Validate OAuth state and return associated user ID
-export function validateOAuthState(state: string): { valid: boolean; userId?: string } {
+// Validate OAuth state and return associated user ID and credentials
+export function validateOAuthState(state: string): { valid: boolean; userId?: string; tenantId?: string; credentials?: MicrosoftCredentials } {
   const stored = oauthStateStore.get(state);
   if (!stored) {
     return { valid: false };
@@ -55,25 +73,61 @@ export function validateOAuthState(state: string): { valid: boolean; userId?: st
   // Remove used state (one-time use)
   oauthStateStore.delete(state);
   
-  return { valid: true, userId: stored.userId };
+  return { valid: true, userId: stored.userId, tenantId: stored.tenantId, credentials: stored.credentials };
 }
 
-const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID;
-const MICROSOFT_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET;
-const MICROSOFT_TENANT_ID = process.env.MICROSOFT_TENANT_ID || "common";
+// Get stored credentials for a tenant
+export function getStoredCredentials(tenantId: string): MicrosoftCredentials | undefined {
+  return credentialsStore.get(tenantId);
+}
+
+// Store credentials for a tenant
+export function setStoredCredentials(tenantId: string, credentials: MicrosoftCredentials): void {
+  credentialsStore.set(tenantId, credentials);
+}
+
 const REDIRECT_URI = process.env.REPLIT_DEV_DOMAIN 
   ? `https://${process.env.REPLIT_DEV_DOMAIN}/api/microsoft/callback`
   : "http://localhost:5000/api/microsoft/callback";
 
+// Legacy: Check if configured via environment variables
 export function isConfigured(): boolean {
-  return !!(MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET);
+  return !!(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET);
 }
 
-export function getAuthUrl(state: string): string {
-  if (!MICROSOFT_CLIENT_ID) {
-    throw new Error("Microsoft Client ID not configured");
+// Check if tenant has credentials configured
+export function isTenantConfigured(tenantConfig?: { clientId?: string; clientSecret?: string }): boolean {
+  if (tenantConfig?.clientId && tenantConfig?.clientSecret) {
+    return true;
+  }
+  return isConfigured();
+}
+
+// Get credentials - prefer tenant config, fall back to env vars
+export function getCredentials(tenantConfig?: MicrosoftCredentials): MicrosoftCredentials | null {
+  if (tenantConfig?.clientId && tenantConfig?.clientSecret) {
+    return {
+      clientId: tenantConfig.clientId,
+      clientSecret: tenantConfig.clientSecret,
+      tenantId: tenantConfig.tenantId || "common",
+    };
   }
   
+  // Fallback to environment variables
+  const clientId = process.env.MICROSOFT_CLIENT_ID;
+  const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+  if (clientId && clientSecret) {
+    return {
+      clientId,
+      clientSecret,
+      tenantId: process.env.MICROSOFT_TENANT_ID || "common",
+    };
+  }
+  
+  return null;
+}
+
+export function getAuthUrl(state: string, credentials: MicrosoftCredentials): string {
   const scopes = [
     "openid",
     "profile",
@@ -83,7 +137,7 @@ export function getAuthUrl(state: string): string {
   ].join(" ");
   
   const params = new URLSearchParams({
-    client_id: MICROSOFT_CLIENT_ID,
+    client_id: credentials.clientId,
     response_type: "code",
     redirect_uri: REDIRECT_URI,
     response_mode: "query",
@@ -91,24 +145,20 @@ export function getAuthUrl(state: string): string {
     state: state
   });
   
-  return `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/oauth2/v2.0/authorize?${params.toString()}`;
+  return `https://login.microsoftonline.com/${credentials.tenantId}/oauth2/v2.0/authorize?${params.toString()}`;
 }
 
-export async function exchangeCodeForToken(code: string): Promise<TokenInfo> {
-  if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET) {
-    throw new Error("Microsoft credentials not configured");
-  }
-  
+export async function exchangeCodeForToken(code: string, credentials: MicrosoftCredentials): Promise<TokenInfo> {
   const params = new URLSearchParams({
-    client_id: MICROSOFT_CLIENT_ID,
-    client_secret: MICROSOFT_CLIENT_SECRET,
+    client_id: credentials.clientId,
+    client_secret: credentials.clientSecret,
     code: code,
     redirect_uri: REDIRECT_URI,
     grant_type: "authorization_code"
   });
   
   const response = await fetch(
-    `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/oauth2/v2.0/token`,
+    `https://login.microsoftonline.com/${credentials.tenantId}/oauth2/v2.0/token`,
     {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -130,20 +180,16 @@ export async function exchangeCodeForToken(code: string): Promise<TokenInfo> {
   };
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<TokenInfo> {
-  if (!MICROSOFT_CLIENT_ID || !MICROSOFT_CLIENT_SECRET) {
-    throw new Error("Microsoft credentials not configured");
-  }
-  
+export async function refreshAccessToken(refreshToken: string, credentials: MicrosoftCredentials): Promise<TokenInfo> {
   const params = new URLSearchParams({
-    client_id: MICROSOFT_CLIENT_ID,
-    client_secret: MICROSOFT_CLIENT_SECRET,
+    client_id: credentials.clientId,
+    client_secret: credentials.clientSecret,
     refresh_token: refreshToken,
     grant_type: "refresh_token"
   });
   
   const response = await fetch(
-    `https://login.microsoftonline.com/${MICROSOFT_TENANT_ID}/oauth2/v2.0/token`,
+    `https://login.microsoftonline.com/${credentials.tenantId}/oauth2/v2.0/token`,
     {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -173,14 +219,14 @@ export function getToken(userId: string): TokenInfo | undefined {
   return tokenStore.get(userId);
 }
 
-export async function getValidToken(userId: string): Promise<string | null> {
+export async function getValidToken(userId: string, credentials?: MicrosoftCredentials): Promise<string | null> {
   const token = tokenStore.get(userId);
   if (!token) return null;
   
   if (Date.now() >= token.expiresAt - 60000) {
-    if (token.refreshToken) {
+    if (token.refreshToken && credentials) {
       try {
-        const newToken = await refreshAccessToken(token.refreshToken);
+        const newToken = await refreshAccessToken(token.refreshToken, credentials);
         storeToken(userId, newToken);
         return newToken.accessToken;
       } catch {

@@ -156,15 +156,19 @@ The application includes seeded demo data:
 
 ## Recent Changes
 
-### February 2026 - Microsoft 365 Integration for Document Editing
-- Implemented Microsoft Graph API integration for Office document editing
+### February 2026 - Microsoft 365 Self-Service SSO Integration
+- Implemented self-service Microsoft 365 configuration for enterprise SSO
+- Users can configure Azure AD credentials directly via "Setup Microsoft 365" button in document viewer
+- Configuration modal guides users through Azure Portal app registration process
+- Microsoft credentials stored securely per-tenant in database (not environment variables)
+- Tenant-specific credentials take precedence over global environment variables
 - OAuth2 authentication flow with Azure AD for OneDrive access
 - "Edit in Office" button appears in document viewer for Word, Excel, PowerPoint files
 - Documents uploaded to OneDrive "TheMaestro" folder for editing
 - Opens Office Online in new browser tab for full editing capability
-- Server-side token management with automatic refresh
-- API endpoints: /api/microsoft/status, /api/microsoft/auth-url, /api/microsoft/callback, /api/microsoft/upload, /api/microsoft/edit-url/:fileId, /api/microsoft/files, /api/microsoft/connected
-- Requires environment variables: MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_TENANT_ID (optional)
+- Server-side token management with automatic refresh per tenant
+- API endpoints support tenantId parameter: /api/microsoft/status, /api/microsoft/auth-url, /api/microsoft/callback, /api/microsoft/upload, /api/microsoft/edit-url/:fileId, /api/microsoft/files, /api/microsoft/connected
+- Fallback to environment variables (MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_TENANT_ID) if tenant config not set
 
 ### February 2026 - WBS Page Enhancements
 - Made all parent and child WBS nodes fully editable via Edit dialog

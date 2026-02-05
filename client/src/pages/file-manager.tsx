@@ -60,6 +60,7 @@ import {
 } from "lucide-react";
 import type { Document, WbsMasterCode, DocumentMetaTag } from "@shared/schema";
 import { wbsDimensionDefinitions } from "@shared/schema";
+import { MicrosoftConfigModal } from "@/components/microsoft-config-modal";
 
 // Icon mapping for dimensions
 const dimensionIcons: Record<string, any> = {
@@ -158,11 +159,19 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
   const [renderError, setRenderError] = useState<string | null>(null);
   const [isUploadingToOneDrive, setIsUploadingToOneDrive] = useState(false);
   const [oneDriveFileId, setOneDriveFileId] = useState<string | null>(null);
+  const [showMsConfigModal, setShowMsConfigModal] = useState(false);
   
-  // Check Microsoft 365 connection status (configured = env vars set, connected = user authenticated)
-  const { data: msStatus } = useQuery<{ configured: boolean; connected: boolean }>({
-    queryKey: ["/api/microsoft/connected"],
-    refetchInterval: 30000, // Refresh every 30 seconds
+  const { activeTenant } = useSettings();
+  
+  // Check Microsoft 365 connection status (configured = tenant or env vars set, connected = user authenticated)
+  const { data: msStatus, refetch: refetchMsStatus } = useQuery<{ configured: boolean; connected: boolean }>({
+    queryKey: ["/api/microsoft/connected", activeTenant?.id],
+    queryFn: async () => {
+      const params = activeTenant?.id ? `?tenantId=${activeTenant.id}` : "";
+      const res = await fetch(`/api/microsoft/connected${params}`);
+      return res.json();
+    },
+    refetchInterval: 30000,
   });
   
   const ext = getFileExtension(document.name);
@@ -175,11 +184,23 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
   
   // Handle Edit in Office button click
   const handleEditInOffice = async () => {
+    // If not configured, show config modal
+    if (!msStatus?.configured) {
+      setShowMsConfigModal(true);
+      return;
+    }
+    
     if (!msStatus?.connected) {
       // Not connected - initiate OAuth flow
       try {
-        const res = await fetch("/api/microsoft/auth-url");
+        const params = activeTenant?.id ? `?tenantId=${activeTenant.id}` : "";
+        const res = await fetch(`/api/microsoft/auth-url${params}`);
         if (!res.ok) {
+          const data = await res.json();
+          if (data.needsConfig) {
+            setShowMsConfigModal(true);
+            return;
+          }
           toast({
             title: "Authentication Required",
             description: "Please sign in with your Microsoft 365 account to edit documents",
@@ -213,6 +234,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
           fileName: document.name,
           content: content,
           mimeType: document.mimeType,
+          tenantId: activeTenant?.id,
         }),
       });
       
@@ -241,6 +263,13 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
     } finally {
       setIsUploadingToOneDrive(false);
     }
+  };
+  
+  // Handle config modal success
+  const handleMsConfigured = () => {
+    refetchMsStatus();
+    // After configuring, initiate OAuth flow
+    setTimeout(() => handleEditInOffice(), 500);
   };
   
   // Security verification effect
@@ -365,7 +394,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
           {securityDetails?.encryptionMode && `Mode: ${securityDetails.encryptionMode}`}
         </span>
       </div>
-      {isOffice && msStatus?.configured && (
+      {isOffice && (
         <Button
           variant="outline"
           size="sm"
@@ -385,10 +414,15 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
               Edit in {officeApp}
               <ExternalLink className="h-3 w-3" />
             </>
-          ) : (
+          ) : msStatus?.configured ? (
             <>
               <Cloud className="h-4 w-4 text-blue-600" />
               Connect to Edit
+            </>
+          ) : (
+            <>
+              <Cloud className="h-4 w-4 text-blue-600" />
+              Setup Microsoft 365
             </>
           )}
         </Button>
@@ -396,6 +430,11 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
       <div className="text-xs text-green-600 dark:text-green-400">
         {securityDetails?.timestamp && `${new Date(securityDetails.timestamp).toLocaleString()}`}
       </div>
+      <MicrosoftConfigModal
+        open={showMsConfigModal}
+        onOpenChange={setShowMsConfigModal}
+        onConfigured={handleMsConfigured}
+      />
     </div>
   );
   

@@ -1405,27 +1405,58 @@ export async function registerRoutes(
   });
 
   // Microsoft Graph API routes
-  app.get("/api/microsoft/status", async (_req: Request, res: Response) => {
-    res.json({
-      configured: microsoftGraph.isConfigured(),
-      connected: false // Will be updated when user authenticates
-    });
+  app.get("/api/microsoft/status", async (req: Request, res: Response) => {
+    const tenantId = req.query.tenantId as string;
+    
+    if (tenantId) {
+      try {
+        const tenant = await storage.getTenant(tenantId);
+        const tenantConfig = tenant?.config?.microsoft;
+        const configured = microsoftGraph.isTenantConfigured(tenantConfig);
+        res.json({ configured, tenantConfigured: !!tenantConfig?.clientId });
+      } catch {
+        res.json({ configured: microsoftGraph.isConfigured(), tenantConfigured: false });
+      }
+    } else {
+      res.json({ configured: microsoftGraph.isConfigured(), tenantConfigured: false });
+    }
   });
 
   app.get("/api/microsoft/auth-url", async (req: Request, res: Response) => {
     try {
-      if (!microsoftGraph.isConfigured()) {
+      const tenantId = req.query.tenantId as string;
+      const sessionId = "default-user";
+      
+      // Try to get credentials from tenant config first
+      let credentials: { clientId: string; clientSecret: string; tenantId: string } | null = null;
+      
+      if (tenantId) {
+        const tenant = await storage.getTenant(tenantId);
+        if (tenant?.config?.microsoft?.clientId && tenant?.config?.microsoft?.clientSecret) {
+          credentials = {
+            clientId: tenant.config.microsoft.clientId,
+            clientSecret: tenant.config.microsoft.clientSecret,
+            tenantId: tenant.config.microsoft.tenantId || "common",
+          };
+        }
+      }
+      
+      // Fall back to environment variables
+      if (!credentials) {
+        credentials = microsoftGraph.getCredentials();
+      }
+      
+      if (!credentials) {
         return res.status(400).json({ 
-          error: "Microsoft integration not configured",
-          message: "Please add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET environment variables"
+          error: "Microsoft 365 not configured",
+          needsConfig: true,
+          message: "Please configure your Microsoft 365 credentials"
         });
       }
       
       // Generate secure OAuth state with CSRF protection
-      // In production, bind to authenticated user session
-      const sessionId = "default-user"; // Simplified for demo
-      const state = microsoftGraph.generateOAuthState(sessionId);
-      const authUrl = microsoftGraph.getAuthUrl(state);
+      const state = microsoftGraph.generateOAuthState(sessionId, tenantId, credentials);
+      const authUrl = microsoftGraph.getAuthUrl(state, credentials);
       res.json({ authUrl, state });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1451,11 +1482,40 @@ export async function registerRoutes(
         return res.redirect("/documents/files?microsoft=error&message=" + encodeURIComponent("OAuth state validation failed. Please try again."));
       }
       
-      const token = await microsoftGraph.exchangeCodeForToken(code);
+      // Use credentials from state validation
+      let credentials = stateValidation.credentials;
+      
+      if (!credentials) {
+        // Try to get from tenant or env
+        if (stateValidation.tenantId) {
+          const tenant = await storage.getTenant(stateValidation.tenantId);
+          if (tenant?.config?.microsoft) {
+            credentials = {
+              clientId: tenant.config.microsoft.clientId,
+              clientSecret: tenant.config.microsoft.clientSecret,
+              tenantId: tenant.config.microsoft.tenantId || "common",
+            };
+          }
+        }
+        if (!credentials) {
+          credentials = microsoftGraph.getCredentials() || undefined;
+        }
+      }
+      
+      if (!credentials) {
+        return res.redirect("/documents/files?microsoft=error&message=" + encodeURIComponent("No credentials available"));
+      }
+      
+      const token = await microsoftGraph.exchangeCodeForToken(code, credentials);
       
       // Store token keyed by validated user ID from state
       const sessionId = stateValidation.userId || "default-user";
       microsoftGraph.storeToken(sessionId, token);
+      
+      // Store credentials for future use
+      if (stateValidation.tenantId && credentials) {
+        microsoftGraph.setStoredCredentials(stateValidation.tenantId, credentials);
+      }
       
       // Redirect back to file manager with success
       res.redirect("/documents/files?microsoft=connected");
@@ -1468,7 +1528,15 @@ export async function registerRoutes(
   app.post("/api/microsoft/upload", async (req: Request, res: Response) => {
     try {
       const sessionId = "default-user";
-      const accessToken = await microsoftGraph.getValidToken(sessionId);
+      const tenantId = req.body.tenantId as string;
+      
+      // Get credentials for token refresh if needed
+      let credentials = tenantId ? microsoftGraph.getStoredCredentials(tenantId) : undefined;
+      if (!credentials) {
+        credentials = microsoftGraph.getCredentials() || undefined;
+      }
+      
+      const accessToken = await microsoftGraph.getValidToken(sessionId, credentials);
       
       if (!accessToken) {
         return res.status(401).json({ error: "Not authenticated with Microsoft" });
@@ -1564,10 +1632,39 @@ export async function registerRoutes(
     }
   });
 
-  app.get("/api/microsoft/connected", async (_req: Request, res: Response) => {
+  app.get("/api/microsoft/connected", async (req: Request, res: Response) => {
     const sessionId = "default-user";
-    const isConfigured = microsoftGraph.isConfigured();
-    const accessToken = isConfigured ? await microsoftGraph.getValidToken(sessionId) : null;
+    const tenantId = req.query.tenantId as string;
+    
+    // Check if configured via tenant config or env vars
+    let isConfigured = false;
+    let credentials: { clientId: string; clientSecret: string; tenantId: string } | undefined;
+    
+    if (tenantId) {
+      try {
+        const tenant = await storage.getTenant(tenantId);
+        if (tenant?.config?.microsoft?.clientId && tenant?.config?.microsoft?.clientSecret) {
+          isConfigured = true;
+          credentials = {
+            clientId: tenant.config.microsoft.clientId,
+            clientSecret: tenant.config.microsoft.clientSecret,
+            tenantId: tenant.config.microsoft.tenantId || "common",
+          };
+        }
+      } catch {
+        // Fall through to env var check
+      }
+    }
+    
+    if (!isConfigured) {
+      const envCreds = microsoftGraph.getCredentials();
+      if (envCreds) {
+        isConfigured = true;
+        credentials = envCreds;
+      }
+    }
+    
+    const accessToken = isConfigured ? await microsoftGraph.getValidToken(sessionId, credentials) : null;
     res.json({ 
       configured: isConfigured,
       connected: !!accessToken 

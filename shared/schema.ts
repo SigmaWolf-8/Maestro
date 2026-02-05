@@ -317,6 +317,12 @@ export const wbsDimensionDefinitions = [
   { key: "responsibility", label: "Responsibility", icon: "Users", description: "Responsible party or department" },
 ] as const;
 
+export interface MicrosoftConfig {
+  clientId: string;
+  clientSecret: string;
+  tenantId: string;
+}
+
 export interface TenantConfig {
   branding: {
     primaryColor: string;
@@ -338,6 +344,7 @@ export interface TenantConfig {
     sortOrder?: number;
     required?: boolean;
   }>;
+  microsoft?: MicrosoftConfig;
 }
 
 export interface UserProfile {
