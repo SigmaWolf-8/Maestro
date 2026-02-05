@@ -10,7 +10,7 @@ export function TabBar() {
 
   return (
     <div 
-      className="grid gap-2 px-3 py-3 border-b border-border bg-slate-200 dark:bg-slate-800"
+      className="grid gap-2 px-3 py-3 border-b border-border bg-slate-300 dark:bg-slate-800"
       style={{ gridTemplateColumns: 'repeat(8, minmax(0, 1fr))' }}
       data-testid="tab-bar"
     >
@@ -19,15 +19,10 @@ export function TabBar() {
         return (
           <div
             key={tab.id}
-            style={{ 
-              boxShadow: isActive 
-                ? 'inset 2px 2px 4px rgba(0,0,0,0.4), inset -1px -1px 3px rgba(255,255,255,0.2)' 
-                : '2px 2px 4px rgba(0,0,0,0.2), -1px -1px 2px rgba(255,255,255,1), inset 0 0 0 1px rgba(0,0,0,0.05)'
-            }}
-            className={`group flex items-center gap-1 px-3 py-1.5 rounded text-sm cursor-pointer transition-all min-w-0 ${
+            className={`group flex items-center gap-1 px-3 py-1.5 rounded text-sm cursor-pointer transition-all min-w-0 border ${
               isActive
-                ? "bg-primary text-primary-foreground"
-                : "bg-background text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground border-primary shadow-inner"
+                : "bg-background text-muted-foreground hover:text-foreground border-border shadow-md"
             }`}
             onClick={() => setActiveTab(tab.id)}
             data-testid={`tab-${tab.id}`}
