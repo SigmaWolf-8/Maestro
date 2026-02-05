@@ -18,7 +18,7 @@ export function TabBar() {
         return (
           <div
             key={tab.id}
-            className={`group flex items-center gap-1 px-3 py-1 rounded-md text-sm cursor-pointer transition-colors min-w-0 w-[calc(12.5%-2px)] max-w-[180px] ${
+            className={`group flex items-center gap-1 px-3 py-1 rounded-md text-sm cursor-pointer transition-colors min-w-0 w-[calc((100%-14px)/8)] max-w-[180px] ${
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
