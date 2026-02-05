@@ -2038,18 +2038,74 @@ export async function registerRoutes(
   // Microsoft Graph API routes
   app.get("/api/microsoft/status", async (req: Request, res: Response) => {
     const tenantId = req.query.tenantId as string;
+    const session = req.session as any;
+    const accessToken = session?.microsoft?.accessToken;
+    const email = session?.microsoft?.email;
+    
+    // Check if user has an active Microsoft session
+    const connected = !!accessToken;
     
     if (tenantId) {
       try {
         const tenant = await storage.getTenant(tenantId);
         const tenantConfig = tenant?.config?.microsoft;
         const configured = microsoftGraph.isTenantConfigured(tenantConfig);
-        res.json({ configured, tenantConfigured: !!tenantConfig?.clientId });
+        res.json({ connected, email, configured, tenantConfigured: !!tenantConfig?.clientId });
       } catch {
-        res.json({ configured: microsoftGraph.isConfigured(), tenantConfigured: false });
+        res.json({ connected, email, configured: microsoftGraph.isConfigured(), tenantConfigured: false });
       }
     } else {
-      res.json({ configured: microsoftGraph.isConfigured(), tenantConfigured: false });
+      res.json({ connected, email, configured: microsoftGraph.isConfigured(), tenantConfigured: false });
+    }
+  });
+
+  // Connect Microsoft 365 - redirects to OAuth flow
+  app.get("/api/microsoft/connect", async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.query.tenantId as string;
+      const sessionId = "default-user";
+      
+      let credentials: { clientId: string; clientSecret: string; tenantId: string } | null = null;
+      
+      if (tenantId) {
+        const tenant = await storage.getTenant(tenantId);
+        if (tenant?.config?.microsoft?.clientId && tenant?.config?.microsoft?.clientSecret) {
+          credentials = {
+            clientId: tenant.config.microsoft.clientId,
+            clientSecret: tenant.config.microsoft.clientSecret,
+            tenantId: tenant.config.microsoft.tenantId || "common",
+          };
+        }
+      }
+      
+      if (!credentials) {
+        credentials = microsoftGraph.getCredentials();
+      }
+      
+      if (!credentials) {
+        return res.redirect("/settings?error=microsoft_not_configured");
+      }
+      
+      const state = microsoftGraph.generateOAuthState(sessionId, tenantId, credentials);
+      const authUrl = microsoftGraph.getAuthUrl(state, credentials);
+      res.redirect(authUrl);
+    } catch (error) {
+      console.error("Microsoft connect error:", error);
+      res.redirect("/settings?error=microsoft_connect_failed");
+    }
+  });
+
+  // Disconnect Microsoft 365
+  app.post("/api/microsoft/disconnect", async (req: Request, res: Response) => {
+    try {
+      const session = req.session as any;
+      if (session?.microsoft) {
+        delete session.microsoft;
+      }
+      res.json({ success: true, message: "Microsoft 365 disconnected" });
+    } catch (error) {
+      console.error("Microsoft disconnect error:", error);
+      res.status(500).json({ error: "Failed to disconnect" });
     }
   });
 

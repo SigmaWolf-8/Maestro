@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useSettings, type TenantBranding } from "@/components/settings-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save } from "lucide-react";
+import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save, Mail, Link, Unlink, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const colorPresets = [
@@ -142,6 +144,36 @@ export default function Settings() {
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyEmail, setNewCompanyEmail] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isConnectingM365, setIsConnectingM365] = useState(false);
+
+  // Microsoft 365 connection status
+  const { data: m365Status, refetch: refetchM365Status } = useQuery<{ connected: boolean; email?: string }>({
+    queryKey: ["/api/microsoft/status"],
+  });
+
+  const handleConnectM365 = () => {
+    if (!activeTenant) return;
+    setIsConnectingM365(true);
+    // Redirect to Microsoft OAuth
+    window.location.href = `/api/microsoft/connect?tenantId=${activeTenant.id}`;
+  };
+
+  const handleDisconnectM365 = async () => {
+    try {
+      await apiRequest("POST", "/api/microsoft/disconnect");
+      refetchM365Status();
+      toast({
+        title: "Disconnected",
+        description: "Microsoft 365 account has been disconnected.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to disconnect Microsoft 365 account.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     if (branding) {
@@ -744,6 +776,57 @@ export default function Settings() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Microsoft 365 Integration Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Microsoft 365 Integration
+          </CardTitle>
+          <CardDescription>
+            Connect your Microsoft 365 account to send emails directly from the app
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="space-y-1">
+              {m365Status?.connected ? (
+                <>
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
+                    <Check className="h-4 w-4" />
+                    Connected
+                  </p>
+                  {m365Status.email && (
+                    <p className="text-sm text-muted-foreground">
+                      Signed in as {m365Status.email}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Not connected. Connect to send emails via your Microsoft 365 account.
+                </p>
+              )}
+            </div>
+            {m365Status?.connected ? (
+              <Button variant="outline" onClick={handleDisconnectM365} data-testid="button-disconnect-m365">
+                <Unlink className="h-4 w-4 mr-2" />
+                Disconnect
+              </Button>
+            ) : (
+              <Button onClick={handleConnectM365} disabled={isConnectingM365} data-testid="button-connect-m365">
+                {isConnectingM365 ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Link className="h-4 w-4 mr-2" />
+                )}
+                Connect Microsoft 365
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
