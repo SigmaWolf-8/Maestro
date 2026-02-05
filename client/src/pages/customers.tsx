@@ -59,27 +59,15 @@ export default function CustomersForm() {
   const [newJobNum, setNewJobNum] = useState("");
   const [pendingChanges, setPendingChanges] = useState<Record<string, any>>({});
 
-  // Fetch all customers for the dropdown
+  // Fetch all customers for the dropdown - uses default fetcher since routes handle tenant fallback
   const { data: allCustomers, isLoading: customersLoading } = useQuery<Customer[]>({
-    queryKey: ["/api/customers", tenantId],
-    queryFn: async () => {
-      const params = tenantId ? `?tenantId=${tenantId}` : "";
-      const res = await fetch(`/api/customers${params}`);
-      return res.json();
-    },
-    enabled: !!tenantId,
+    queryKey: ["/api/customers"],
   });
 
-  // Fetch selected customer with quote
-  const { data: selectedData, isLoading: dataLoading, refetch: refetchData } = useQuery<CustomerWithQuote>({
-    queryKey: ["/api/customers/job", selectedJobNum, tenantId],
-    queryFn: async () => {
-      const params = tenantId ? `?tenantId=${tenantId}` : "";
-      const res = await fetch(`/api/customers/job/${selectedJobNum}${params}`);
-      if (!res.ok) return null;
-      return res.json();
-    },
-    enabled: !!selectedJobNum && !!tenantId,
+  // Fetch selected customer with quote - path segments form URL via default fetcher
+  const { data: selectedData, isLoading: dataLoading, refetch: refetchData } = useQuery<CustomerWithQuote | null>({
+    queryKey: ["/api/customers/job", String(selectedJobNum)],
+    enabled: !!selectedJobNum,
   });
 
   // Update customer field mutation (VBA AfterUpdate equivalent)
