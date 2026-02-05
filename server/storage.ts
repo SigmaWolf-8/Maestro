@@ -1063,7 +1063,7 @@ export async function seedNavigationForTenant(tenantId: string) {
       parentId: null,
       itemOrder: 30,
       itemType: "menu",
-      title: "People & Contacts",
+      title: "People",
       iconName: "Users",
       path: null,
       component: null,

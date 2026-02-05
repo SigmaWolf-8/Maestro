@@ -57,23 +57,23 @@ export function PhotosPage() {
 }
 
 export function CustomersPage() {
-  return <PlaceholderPage title="Customers" section="People & Contacts" description="Manage customer relationships and contact information." />;
+  return <PlaceholderPage title="Customers" section="People" description="Manage customer relationships and contact information." />;
 }
 
 export function VendorsPage() {
-  return <PlaceholderPage title="Vendors & Pricing" section="People & Contacts" description="Manage vendor relationships and pricing information." />;
+  return <PlaceholderPage title="Vendors & Pricing" section="People" description="Manage vendor relationships and pricing information." />;
 }
 
 export function EmployeesPage() {
-  return <PlaceholderPage title="Employees" section="People & Contacts" description="View and manage employee information." />;
+  return <PlaceholderPage title="Employees" section="People" description="View and manage employee information." />;
 }
 
 export function SubcontractorsPage() {
-  return <PlaceholderPage title="Subcontractors" section="People & Contacts" description="Manage subcontractor relationships and certifications." />;
+  return <PlaceholderPage title="Subcontractors" section="People" description="Manage subcontractor relationships and certifications." />;
 }
 
 export function ContactsDirectoryPage() {
-  return <PlaceholderPage title="Contacts Directory" section="People & Contacts" description="Search and browse all contacts across the organization." />;
+  return <PlaceholderPage title="Contacts Directory" section="People" description="Search and browse all contacts across the organization." />;
 }
 
 export function EstimatingPage() {
