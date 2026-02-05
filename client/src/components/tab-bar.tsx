@@ -10,7 +10,8 @@ export function TabBar() {
 
   return (
     <div 
-      className="flex flex-wrap gap-2 px-3 py-2 border-b border-border bg-muted/50"
+      className="grid gap-2 px-3 py-2 border-b border-border bg-muted/50"
+      style={{ gridTemplateColumns: 'repeat(8, minmax(0, 1fr))' }}
       data-testid="tab-bar"
     >
       {tabs.map((tab) => {
@@ -19,10 +20,9 @@ export function TabBar() {
           <div
             key={tab.id}
             style={{ 
-              width: 'calc((100% - 56px) / 8)',
               boxShadow: isActive 
-                ? 'inset 2px 2px 5px rgba(0,0,0,0.3), inset -2px -2px 5px rgba(255,255,255,0.1)' 
-                : '2px 2px 5px rgba(0,0,0,0.2), -2px -2px 5px rgba(255,255,255,0.7)'
+                ? 'inset 2px 2px 4px rgba(0,0,0,0.35), inset -1px -1px 3px rgba(255,255,255,0.15)' 
+                : '3px 3px 6px rgba(0,0,0,0.25), -2px -2px 5px rgba(255,255,255,0.9)'
             }}
             className={`group flex items-center gap-1 px-3 py-1.5 rounded-md text-sm cursor-pointer transition-all min-w-0 border ${
               isActive
