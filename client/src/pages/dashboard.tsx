@@ -19,6 +19,7 @@ import type { DashboardStats, Project, WbsNode } from "@shared/schema";
 
 export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showColorOverlay, setShowColorOverlay] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -81,16 +82,18 @@ export default function Dashboard() {
           data-testid="img-hero"
         />
         <div className="absolute inset-0 bg-gradient-to-l from-black/60 via-black/30 to-transparent" />
-        <div 
-          className="absolute inset-0"
-          style={{ 
-            backgroundColor: 'hsl(var(--sidebar))',
-            maskImage: 'linear-gradient(to bottom, transparent 52%, rgba(0,0,0,0.3) 62%, rgba(0,0,0,0.7) 72%, black 85%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 52%, rgba(0,0,0,0.3) 62%, rgba(0,0,0,0.7) 72%, black 85%)',
-            mixBlendMode: 'color',
-            opacity: 1
-          }}
-        />
+        {showColorOverlay && (
+          <div 
+            className="absolute inset-0 transition-opacity duration-300"
+            style={{ 
+              backgroundColor: 'hsl(var(--sidebar))',
+              maskImage: 'linear-gradient(to bottom, transparent 52%, rgba(0,0,0,0.3) 62%, rgba(0,0,0,0.7) 72%, black 85%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, transparent 52%, rgba(0,0,0,0.3) 62%, rgba(0,0,0,0.7) 72%, black 85%)',
+              mixBlendMode: 'color',
+              opacity: 1
+            }}
+          />
+        )}
         <div className="absolute inset-0 flex items-start justify-end p-6">
           <div className="text-white flex flex-col items-end gap-3">
             <div className="flex gap-4">
@@ -105,8 +108,10 @@ export default function Dashboard() {
               </div>
             </div>
             <div 
-              className="bg-black/50 backdrop-blur-sm border border-white/20 rounded p-2.5 text-center"
+              className="bg-black/50 backdrop-blur-sm border border-white/20 rounded p-2.5 text-center cursor-pointer hover:bg-black/60 transition-colors"
               data-testid="clock-widget"
+              onClick={() => setShowColorOverlay(!showColorOverlay)}
+              title="Click to toggle color overlay"
             >
               <div className="text-base font-mono font-bold tracking-wider">
                 {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
