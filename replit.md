@@ -156,6 +156,18 @@ The application includes seeded demo data:
 
 ## Recent Changes
 
+### February 2026 - Customers Form (MS Access VBA Recreation)
+- Built Customers Form page at /people/customers recreating legacy MS Access VBA form functionality
+- Database tables: customers and quotes with all original VBA form fields
+- Job Number lookup dropdown (like VBA's combo box) for customer selection
+- Customer fields: First/Last Name, Address, City, State/Province, ZIP, Country, Phone numbers, Email, Web Page
+- Quote fields: Q#, Customer, Date, Division, Model, Project Address, Lot/Block/Plan, Square Footage (Main/Upper/Low/Gar), Permits (DP/BP/DGBP)
+- Auto-save on field blur (recreating VBA AfterUpdate event behavior)
+- Edit mode toggle for field enable/disable
+- "Seed Sample Data" button for testing (creates 3 sample customers with quotes)
+- API endpoints: GET/POST/PATCH/DELETE /api/customers, GET/POST/PATCH/DELETE /api/quotes
+- Field-level update endpoints: PATCH /api/customers/field, PATCH /api/quotes/field
+
 ### February 2026 - Microsoft 365 Self-Service SSO Integration
 - Implemented self-service Microsoft 365 configuration for enterprise SSO
 - Users can configure Azure AD credentials directly via "Setup Microsoft 365" button in document viewer
