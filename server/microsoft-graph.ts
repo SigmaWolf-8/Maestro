@@ -268,7 +268,13 @@ export async function uploadToOneDrive(
   } catch {
   }
   
-  const uploadPath = `/me/drive/root:/${folderPath}/${fileName}:/content`;
+  // Add timestamp to filename to avoid lock conflicts
+  const ext = fileName.lastIndexOf('.') > 0 ? fileName.substring(fileName.lastIndexOf('.')) : '';
+  const baseName = fileName.lastIndexOf('.') > 0 ? fileName.substring(0, fileName.lastIndexOf('.')) : fileName;
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+  const uniqueFileName = `${baseName}_${timestamp}${ext}`;
+  
+  const uploadPath = `/me/drive/root:/${folderPath}/${uniqueFileName}:/content`;
   
   const result = await client.api(uploadPath).put(content);
   
