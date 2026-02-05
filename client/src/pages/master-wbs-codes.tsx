@@ -78,6 +78,7 @@ const codeFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional(),
   sortOrder: z.string().optional(),
+  parentCodeId: z.string().optional(),
 });
 
 type CodeFormData = z.infer<typeof codeFormSchema>;
@@ -149,6 +150,7 @@ export default function MasterWbsCodes() {
       name: "",
       description: "",
       sortOrder: "0",
+      parentCodeId: "",
     },
   });
 
@@ -163,6 +165,7 @@ export default function MasterWbsCodes() {
         ...data,
         tenantId: activeTenant?.id,
         sortOrder: parseInt(data.sortOrder || "0"),
+        parentCodeId: data.parentCodeId || null,
       });
     },
     onSuccess: () => {
@@ -181,6 +184,7 @@ export default function MasterWbsCodes() {
       return apiRequest("PATCH", `/api/wbs-codes/${editingCode?.id}`, {
         ...data,
         sortOrder: parseInt(data.sortOrder || "0"),
+        parentCodeId: data.parentCodeId || null,
       });
     },
     onSuccess: () => {
@@ -290,6 +294,7 @@ export default function MasterWbsCodes() {
       name: "",
       description: "",
       sortOrder: "0",
+      parentCodeId: "",
     });
     setIsDialogOpen(true);
   };
@@ -302,8 +307,28 @@ export default function MasterWbsCodes() {
       name: code.name,
       description: code.description || "",
       sortOrder: String(code.sortOrder || 0),
+      parentCodeId: code.parentCodeId || "",
     });
     setIsDialogOpen(true);
+  };
+  
+  // Get available parent codes (codes from other dimensions that can be parents)
+  const getAvailableParentCodes = (currentDimensionType: string): WbsMasterCode[] => {
+    if (!codes) return [];
+    // Allow codes from any dimension to be parents (except the same code being edited)
+    return codes.filter(c => c.id !== editingCode?.id);
+  };
+  
+  // Get parent code info by ID
+  const getParentCode = (parentCodeId: string | null | undefined): WbsMasterCode | undefined => {
+    if (!parentCodeId || !codes) return undefined;
+    return codes.find(c => c.id === parentCodeId);
+  };
+  
+  // Get child codes for a given parent
+  const getChildCodes = (parentId: string): WbsMasterCode[] => {
+    if (!codes) return [];
+    return codes.filter(c => c.parentCodeId === parentId);
   };
 
   const onSubmit = (data: CodeFormData) => {
@@ -456,6 +481,7 @@ export default function MasterWbsCodes() {
                 <TableRow>
                   <TableHead className="w-24">Code</TableHead>
                   <TableHead>Name</TableHead>
+                  <TableHead className="hidden lg:table-cell">Parent</TableHead>
                   <TableHead className="hidden md:table-cell">Description</TableHead>
                   <TableHead className="w-20">Order</TableHead>
                   <TableHead className="w-24 text-right">Actions</TableHead>
@@ -477,6 +503,23 @@ export default function MasterWbsCodes() {
                         </Badge>
                       </TableCell>
                       <TableCell className="font-medium">{code.name}</TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {code.parentCodeId ? (
+                          <div className="flex items-center gap-1">
+                            {(() => {
+                              const parent = getParentCode(code.parentCodeId);
+                              if (!parent) return <span className="text-muted-foreground">—</span>;
+                              return (
+                                <Badge variant="secondary" className="text-xs">
+                                  {parent.code} ({getDimensionLabel(parent.dimensionType)})
+                                </Badge>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         {code.description || "—"}
                       </TableCell>
@@ -624,6 +667,43 @@ export default function MasterWbsCodes() {
                         data-testid="input-description"
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="parentCodeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Parent Code (Optional)</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-parent-code">
+                          <SelectValue placeholder="Select parent code (optional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">No Parent</SelectItem>
+                        {getAvailableParentCodes(form.getValues("dimensionType")).map((parentCode) => (
+                          <SelectItem key={parentCode.id} value={parentCode.id}>
+                            <span className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-xs">
+                                {getDimensionLabel(parentCode.dimensionType)}
+                              </Badge>
+                              {parentCode.code} - {parentCode.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Link this code to a parent code from another dimension (e.g., Cost Code under CSI Division)
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
