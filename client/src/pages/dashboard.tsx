@@ -59,8 +59,8 @@ export default function Dashboard() {
           className="w-full h-full object-cover"
           data-testid="img-hero"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
-        <div className="absolute inset-0 flex items-start p-6">
+        <div className="absolute inset-0 bg-gradient-to-l from-black/60 via-black/30 to-transparent" />
+        <div className="absolute inset-0 flex items-start justify-end p-6">
           <div className="text-white flex gap-4">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg" data-testid="text-dashboard-title">
               Welcome
