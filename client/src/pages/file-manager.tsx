@@ -275,7 +275,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
   
   // Handle sync from OneDrive - pulls edited content back
   const handleSyncFromOneDrive = async () => {
-    if (!oneDriveFileId || !selectedDocument) return;
+    if (!oneDriveFileId || !document) return;
     
     setIsSyncingFromOneDrive(true);
     try {
@@ -284,7 +284,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenantId: activeTenant?.id,
-          documentId: selectedDocument.id,
+          documentId: document.id,
         }),
       });
       
@@ -302,12 +302,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
       
       // Invalidate document cache to refresh the view
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/documents", selectedDocument.id] });
-      
-      // Update the selectedDocument with the new content from the result
-      if (result.document) {
-        setSelectedDocument(result.document);
-      }
+      queryClient.invalidateQueries({ queryKey: ["/api/documents", document.id] });
       
     } catch (err: any) {
       toast({
@@ -319,6 +314,21 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
       setIsSyncingFromOneDrive(false);
     }
   };
+  
+  // Auto-sync when window regains focus (user returns from Office Online)
+  useEffect(() => {
+    if (!oneDriveFileId) return;
+    
+    const handleVisibilityChange = () => {
+      if (window.document.visibilityState === 'visible' && oneDriveFileId) {
+        // Auto sync when returning to tab
+        handleSyncFromOneDrive();
+      }
+    };
+    
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => window.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [oneDriveFileId]);
   
   // Security verification effect
   useEffect(() => {
