@@ -4,6 +4,7 @@ import { storage, seedNavigationForTenant } from "./storage";
 import { z } from "zod";
 import { insertProjectSchema, insertWbsNodeSchema, insertTenantUserSchema } from "@shared/schema";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import * as microsoftGraph from "./microsoft-graph";
 
 let cachedTenantId: string | null = null;
 
@@ -1401,6 +1402,133 @@ export async function registerRoutes(
       console.error("Error copying master WBS to project:", error);
       res.status(500).json({ error: "Failed to copy master WBS codes" });
     }
+  });
+
+  // Microsoft Graph API routes
+  app.get("/api/microsoft/status", async (_req: Request, res: Response) => {
+    res.json({
+      configured: microsoftGraph.isConfigured(),
+      connected: false // Will be updated when user authenticates
+    });
+  });
+
+  app.get("/api/microsoft/auth-url", async (req: Request, res: Response) => {
+    try {
+      if (!microsoftGraph.isConfigured()) {
+        return res.status(400).json({ 
+          error: "Microsoft integration not configured",
+          message: "Please add MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET environment variables"
+        });
+      }
+      
+      const state = Math.random().toString(36).substring(7);
+      const authUrl = microsoftGraph.getAuthUrl(state);
+      res.json({ authUrl, state });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/microsoft/callback", async (req: Request, res: Response) => {
+    try {
+      const { code, state } = req.query;
+      
+      if (!code || typeof code !== "string") {
+        return res.status(400).send("Missing authorization code");
+      }
+      
+      const token = await microsoftGraph.exchangeCodeForToken(code);
+      
+      // Store token with a session ID (simplified - in production use proper session management)
+      const sessionId = "default-user";
+      microsoftGraph.storeToken(sessionId, token);
+      
+      // Redirect back to file manager with success
+      res.redirect("/documents/files?microsoft=connected");
+    } catch (error: any) {
+      console.error("Microsoft OAuth callback error:", error);
+      res.redirect("/documents/files?microsoft=error&message=" + encodeURIComponent(error.message));
+    }
+  });
+
+  app.post("/api/microsoft/upload", async (req: Request, res: Response) => {
+    try {
+      const sessionId = "default-user";
+      const accessToken = await microsoftGraph.getValidToken(sessionId);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Not authenticated with Microsoft" });
+      }
+      
+      const { fileName, content, mimeType } = req.body;
+      
+      if (!fileName || !content) {
+        return res.status(400).json({ error: "Missing fileName or content" });
+      }
+      
+      // Convert base64 content to buffer if needed
+      let fileBuffer: Buffer;
+      if (content.startsWith("data:")) {
+        const base64Data = content.split(",")[1];
+        fileBuffer = Buffer.from(base64Data, "base64");
+      } else {
+        fileBuffer = Buffer.from(content, "base64");
+      }
+      
+      const result = await microsoftGraph.uploadToOneDrive(
+        accessToken,
+        fileName,
+        fileBuffer,
+        mimeType || "application/octet-stream"
+      );
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Microsoft upload error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/microsoft/edit-url/:fileId", async (req: Request, res: Response) => {
+    try {
+      const sessionId = "default-user";
+      const accessToken = await microsoftGraph.getValidToken(sessionId);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Not authenticated with Microsoft" });
+      }
+      
+      const { fileId } = req.params;
+      const urls = await microsoftGraph.getOneDriveFileUrl(accessToken, fileId);
+      
+      res.json(urls);
+    } catch (error: any) {
+      console.error("Microsoft get edit URL error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/microsoft/files", async (_req: Request, res: Response) => {
+    try {
+      const sessionId = "default-user";
+      const accessToken = await microsoftGraph.getValidToken(sessionId);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Not authenticated with Microsoft" });
+      }
+      
+      const files = await microsoftGraph.listOneDriveFiles(accessToken);
+      res.json(files);
+    } catch (error: any) {
+      console.error("Microsoft list files error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/microsoft/connected", async (_req: Request, res: Response) => {
+    const sessionId = "default-user";
+    const accessToken = await microsoftGraph.getValidToken(sessionId);
+    res.json({ connected: !!accessToken });
   });
 
   return httpServer;
