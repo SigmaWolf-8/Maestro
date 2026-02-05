@@ -63,7 +63,7 @@ export default function Dashboard() {
         <div className="absolute inset-0 flex items-start p-6">
           <div className="text-white">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight drop-shadow-lg" data-testid="text-dashboard-title">
-              Welcome Back
+              Welcome
             </h1>
           </div>
         </div>
