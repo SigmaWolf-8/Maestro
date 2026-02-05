@@ -1566,8 +1566,12 @@ export async function registerRoutes(
 
   app.get("/api/microsoft/connected", async (_req: Request, res: Response) => {
     const sessionId = "default-user";
-    const accessToken = await microsoftGraph.getValidToken(sessionId);
-    res.json({ connected: !!accessToken });
+    const isConfigured = microsoftGraph.isConfigured();
+    const accessToken = isConfigured ? await microsoftGraph.getValidToken(sessionId) : null;
+    res.json({ 
+      configured: isConfigured,
+      connected: !!accessToken 
+    });
   });
 
   return httpServer;

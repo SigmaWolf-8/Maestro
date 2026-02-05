@@ -159,8 +159,8 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
   const [isUploadingToOneDrive, setIsUploadingToOneDrive] = useState(false);
   const [oneDriveFileId, setOneDriveFileId] = useState<string | null>(null);
   
-  // Check Microsoft 365 connection status
-  const { data: msConnected } = useQuery<{ connected: boolean }>({
+  // Check Microsoft 365 connection status (configured = env vars set, connected = user authenticated)
+  const { data: msStatus } = useQuery<{ configured: boolean; connected: boolean }>({
     queryKey: ["/api/microsoft/connected"],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
@@ -175,21 +175,23 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
   
   // Handle Edit in Office button click
   const handleEditInOffice = async () => {
-    if (!msConnected?.connected) {
+    if (!msStatus?.connected) {
       // Not connected - initiate OAuth flow
       try {
         const res = await fetch("/api/microsoft/auth-url");
         if (!res.ok) {
-          const err = await res.json();
           toast({
-            title: "Microsoft 365 Setup Required",
-            description: err.message || "Please configure Microsoft integration",
-            variant: "destructive",
+            title: "Authentication Required",
+            description: "Please sign in with your Microsoft 365 account to edit documents",
           });
           return;
         }
         const data = await res.json();
         window.open(data.authUrl, "_blank");
+        toast({
+          title: "Connecting to Microsoft 365",
+          description: "Please complete sign-in in the new window",
+        });
       } catch {
         toast({
           title: "Connection Error",
@@ -363,7 +365,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
           {securityDetails?.encryptionMode && `Mode: ${securityDetails.encryptionMode}`}
         </span>
       </div>
-      {isOffice && (
+      {isOffice && msStatus?.configured && (
         <Button
           variant="outline"
           size="sm"
@@ -377,7 +379,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
               <RefreshCw className="h-4 w-4 animate-spin" />
               Uploading...
             </>
-          ) : msConnected?.connected ? (
+          ) : msStatus?.connected ? (
             <>
               <Cloud className="h-4 w-4 text-blue-600" />
               Edit in {officeApp}
@@ -386,7 +388,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
           ) : (
             <>
               <Cloud className="h-4 w-4 text-blue-600" />
-              Connect Microsoft 365
+              Connect to Edit
             </>
           )}
         </Button>
