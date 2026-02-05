@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useSettings } from "@/components/settings-provider";
@@ -130,10 +130,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
     encryptionMode: string;
   } | null>(null);
   const [renderedHtml, setRenderedHtml] = useState<string | null>(null);
-  const [pdfPages, setPdfPages] = useState<string[]>([]);
-  const [isRendering, setIsRendering] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
-  const pdfContainerRef = useRef<HTMLDivElement>(null);
   
   const ext = getFileExtension(document.name);
   const fileType = getFileTypeName(document.name);
@@ -170,7 +167,6 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
     if (!content || !isDocx || securityState !== 'verified') return;
     
     const renderDocx = async () => {
-      setIsRendering(true);
       setRenderError(null);
       
       try {
@@ -205,73 +201,21 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
       } catch (err) {
         console.error("Error rendering DOCX:", err);
         setRenderError("Unable to render document. Please re-upload the file.");
-      } finally {
-        setIsRendering(false);
       }
     };
     
     renderDocx();
   }, [content, isDocx, securityState]);
   
-  // PDF rendering effect
-  useEffect(() => {
-    if (!content || !isPdf || securityState !== 'verified') return;
+  // PDF rendering - use native browser PDF viewer via iframe/object
+  const pdfDataUrl = useMemo(() => {
+    if (!isPdf || !content || securityState !== 'verified') return null;
     
-    const renderPdf = async () => {
-      setIsRendering(true);
-      setRenderError(null);
-      
-      try {
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-        
-        let pdfData: Uint8Array;
-        
-        if (content.startsWith('data:')) {
-          const base64Data = content.split(',')[1];
-          if (base64Data) {
-            const binaryString = atob(base64Data);
-            pdfData = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              pdfData[i] = binaryString.charCodeAt(i);
-            }
-          } else {
-            throw new Error("Invalid base64 data");
-          }
-        } else {
-          const encoder = new TextEncoder();
-          pdfData = encoder.encode(content);
-        }
-        
-        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-        const pages: string[] = [];
-        
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const scale = 1.5;
-          const viewport = page.getViewport({ scale });
-          
-          const canvas = window.document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-          
-          if (context) {
-            await page.render({ canvasContext: context, viewport, canvas } as any).promise;
-            pages.push(canvas.toDataURL());
-          }
-        }
-        
-        setPdfPages(pages);
-      } catch (err) {
-        console.error("Error rendering PDF:", err);
-        setRenderError("Unable to render PDF. Please re-upload the file.");
-      } finally {
-        setIsRendering(false);
-      }
-    };
-    
-    renderPdf();
+    // If content is already a data URL, use it directly
+    if (content.startsWith('data:')) {
+      return content;
+    }
+    return null;
   }, [content, isPdf, securityState]);
   
   // Security verification screen
@@ -306,19 +250,6 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
     );
   }
   
-  // Rendering state
-  if (isRendering) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-12 w-12 mx-auto text-primary animate-spin mb-4" />
-          <h3 className="text-lg font-medium">Rendering Document...</h3>
-          <p className="text-muted-foreground">Converting to viewable format</p>
-        </div>
-      </div>
-    );
-  }
-  
   // Security verified header
   const SecurityBanner = () => (
     <div className="bg-green-50 dark:bg-green-950/30 border-b border-green-200 dark:border-green-800 px-4 py-2 flex items-center gap-3">
@@ -335,19 +266,17 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
     </div>
   );
   
-  // PDF viewer
-  if (isPdf && pdfPages.length > 0) {
+  // PDF viewer - using native browser PDF viewer via iframe
+  if (isPdf && pdfDataUrl) {
     return (
       <div className="h-full flex flex-col">
         <SecurityBanner />
-        <div className="flex-1 overflow-auto p-4" ref={pdfContainerRef}>
-          <div className="space-y-4">
-            {pdfPages.map((pageData, index) => (
-              <div key={index} className="bg-white rounded-lg shadow-md mx-auto" style={{ maxWidth: '100%' }}>
-                <img src={pageData} alt={`Page ${index + 1}`} className="w-full h-auto" />
-              </div>
-            ))}
-          </div>
+        <div className="flex-1 p-4">
+          <iframe 
+            src={pdfDataUrl}
+            className="w-full h-full rounded-lg shadow-md border-0"
+            title={document.name}
+          />
         </div>
       </div>
     );
@@ -383,7 +312,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
   }
   
   // Error or unsupported format
-  if (renderError || (isBinaryFormat(document.name) && !renderedHtml && pdfPages.length === 0)) {
+  if (renderError || (isBinaryFormat(document.name) && !renderedHtml && !pdfDataUrl)) {
     return (
       <div className="h-full flex flex-col">
         <SecurityBanner />
