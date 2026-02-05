@@ -610,6 +610,44 @@ export async function registerRoutes(
     }
   });
 
+  // Seed sample customers (for testing)
+  app.post("/api/customers/seed", async (req, res) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
+      
+      const sampleCustomers = [
+        { tenantId, jobNum: 1001, firstName: "John", lastName: "Smith", address: "123 Main St", city: "Calgary", stateProvince: "AB", zipPostalCode: "T2P 1A1", countryRegion: "Canada", homePhone: "(403) 555-1234" },
+        { tenantId, jobNum: 1002, firstName: "Sarah", lastName: "Johnson", address: "456 Oak Ave", city: "Edmonton", stateProvince: "AB", zipPostalCode: "T5H 2B2", countryRegion: "Canada", homePhone: "(780) 555-5678" },
+        { tenantId, jobNum: 1003, firstName: "Michael", lastName: "Williams", address: "789 Pine Rd", city: "Vancouver", stateProvince: "BC", zipPostalCode: "V6B 3C3", countryRegion: "Canada", homePhone: "(604) 555-9012" },
+      ];
+      
+      const sampleQuotes = [
+        { tenantId, jobNum: 1001, qNum: "Q-2026-001", customer: "John Smith", division: "Residential", model: "The Parkview", projectAddress: "Lot 15, Block 3, Parkland", lot: "15", block: "3", plan: "Plan A", main: "1200", upper: "800", low: "0", gar: "400" },
+        { tenantId, jobNum: 1002, qNum: "Q-2026-002", customer: "Sarah Johnson", division: "Residential", model: "The Sunrise", projectAddress: "Lot 22, Block 5, Sunrise Valley", lot: "22", block: "5", plan: "Plan B", main: "1500", upper: "1000", low: "500", gar: "450" },
+        { tenantId, jobNum: 1003, qNum: "Q-2026-003", customer: "Michael Williams", division: "Commercial", model: "Business Center", projectAddress: "123 Commerce Blvd", lot: "1", block: "A", plan: "Commercial", main: "5000", upper: "0", low: "0", gar: "0" },
+      ];
+      
+      for (const c of sampleCustomers) {
+        const existing = await storage.getCustomerByJobNum(tenantId, c.jobNum);
+        if (!existing) {
+          await storage.createCustomer(c);
+        }
+      }
+      
+      for (const q of sampleQuotes) {
+        const existing = await storage.getQuoteByJobNum(tenantId, q.jobNum);
+        if (!existing) {
+          await storage.createQuote(q);
+        }
+      }
+      
+      res.json({ success: true, message: "Sample customers and quotes seeded" });
+    } catch (error) {
+      console.error("Error seeding customers:", error);
+      res.status(500).json({ error: "Failed to seed customers" });
+    }
+  });
+
   // ==================== QUOTES API (MS Access VBA Form Recreation) ====================
   
   // Get all quotes for tenant
