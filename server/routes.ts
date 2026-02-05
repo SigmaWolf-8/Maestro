@@ -1663,9 +1663,9 @@ export async function registerRoutes(
       // Update the document in our database with the new content
       const base64Content = downloadResult.content.toString('base64');
       
-      await storage.updateDocument(documentId, {
-        content: base64Content,
-        size: downloadResult.content.length,
+      const updatedDoc = await storage.updateDocument(documentId, {
+        plainContent: base64Content,
+        originalSizeBytes: downloadResult.content.length,
         updatedAt: new Date(),
       });
       
@@ -1674,7 +1674,8 @@ export async function registerRoutes(
         name: downloadResult.name,
         size: downloadResult.content.length,
         lastModified: downloadResult.lastModified,
-        message: "Document synced from OneDrive"
+        message: "Document synced from OneDrive",
+        document: updatedDoc
       });
     } catch (error: any) {
       console.error("Microsoft sync error:", error);

@@ -275,7 +275,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
   
   // Handle sync from OneDrive - pulls edited content back
   const handleSyncFromOneDrive = async () => {
-    if (!oneDriveFileId) return;
+    if (!oneDriveFileId || !selectedDocument) return;
     
     setIsSyncingFromOneDrive(true);
     try {
@@ -284,7 +284,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tenantId: activeTenant?.id,
-          documentId: document.id,
+          documentId: selectedDocument.id,
         }),
       });
       
@@ -302,7 +302,12 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
       
       // Invalidate document cache to refresh the view
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/documents", document.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents", selectedDocument.id] });
+      
+      // Update the selectedDocument with the new content from the result
+      if (result.document) {
+        setSelectedDocument(result.document);
+      }
       
     } catch (err: any) {
       toast({
