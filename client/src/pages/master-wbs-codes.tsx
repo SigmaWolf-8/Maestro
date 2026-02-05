@@ -24,6 +24,8 @@ import {
   Users,
   RefreshCw,
   Settings,
+  List,
+  GitBranch,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,6 +107,136 @@ interface DimensionConfig {
   description: string;
 }
 
+interface TreeViewProps {
+  codes: WbsMasterCode[];
+  dimensionCodes: WbsMasterCode[];
+  expandedNodes: Set<string>;
+  onToggleNode: (nodeId: string) => void;
+  onEdit: (code: WbsMasterCode) => void;
+  onDelete: (id: string) => void;
+  getParentCode: (id: string) => WbsMasterCode | undefined;
+  getDimensionLabel: (key: string) => string;
+  dimensionIcons: Record<string, React.ReactNode>;
+}
+
+function TreeView({
+  codes,
+  dimensionCodes,
+  expandedNodes,
+  onToggleNode,
+  onEdit,
+  onDelete,
+  getParentCode,
+  getDimensionLabel,
+  dimensionIcons,
+}: TreeViewProps) {
+  const buildTree = (codesArr: WbsMasterCode[]) => {
+    const rootNodes: WbsMasterCode[] = [];
+    const childrenMap = new Map<string, WbsMasterCode[]>();
+    
+    codesArr.forEach((code) => {
+      if (!code.parentCodeId) {
+        rootNodes.push(code);
+      } else {
+        const children = childrenMap.get(code.parentCodeId) || [];
+        children.push(code);
+        childrenMap.set(code.parentCodeId, children);
+      }
+    });
+
+    rootNodes.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    childrenMap.forEach((children) => {
+      children.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    });
+
+    return { rootNodes, childrenMap };
+  };
+
+  const renderNode = (code: WbsMasterCode, childrenMap: Map<string, WbsMasterCode[]>, depth: number = 0) => {
+    const children = childrenMap.get(code.id) || [];
+    const hasChildren = children.length > 0;
+    const isExpanded = expandedNodes.has(code.id);
+
+    return (
+      <div key={code.id} data-testid={`tree-node-${code.id}`}>
+        <div
+          className={`flex items-center gap-2 p-2 rounded-md hover-elevate group`}
+          style={{ paddingLeft: `${depth * 20 + 8}px` }}
+        >
+          {hasChildren ? (
+            <button
+              onClick={() => onToggleNode(code.id)}
+              className="p-0.5 hover:bg-muted rounded"
+              data-testid={`tree-toggle-${code.id}`}
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+          ) : (
+            <span className="w-5" />
+          )}
+          
+          <Badge variant="outline" className="font-mono text-xs">
+            {code.code}
+          </Badge>
+          
+          <span className="font-medium flex-1">{code.name}</span>
+          
+          {code.description && (
+            <span className="text-xs text-muted-foreground hidden md:block max-w-[200px] truncate">
+              {code.description}
+            </span>
+          )}
+          
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onEdit(code)}
+              data-testid={`tree-edit-${code.id}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onDelete(code.id)}
+              data-testid={`tree-delete-${code.id}`}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </div>
+        
+        {hasChildren && isExpanded && (
+          <div className="border-l border-border ml-4">
+            {children.map((child) => renderNode(child, childrenMap, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const { rootNodes, childrenMap } = buildTree(dimensionCodes);
+
+  if (dimensionCodes.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8">
+        No codes defined for this dimension. Click "Add Code" to create one.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1" data-testid="tree-view">
+      {rootNodes.map((node) => renderNode(node, childrenMap, 0))}
+    </div>
+  );
+}
+
 export default function MasterWbsCodes() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDimensionSettingsOpen, setIsDimensionSettingsOpen] = useState(false);
@@ -112,6 +244,8 @@ export default function MasterWbsCodes() {
   const [expandedDimensions, setExpandedDimensions] = useState<Set<string>>(new Set(["phase"]));
   const [selectedDimension, setSelectedDimension] = useState<string>("phase");
   const [dimensionLabels, setDimensionLabels] = useState<Record<string, { code: string; label: string; description: string; sortOrder: number }>>({});
+  const [viewMode, setViewMode] = useState<"table" | "tree">("table");
+  const [expandedTreeNodes, setExpandedTreeNodes] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { activeTenant } = useSettings();
 
@@ -132,6 +266,10 @@ export default function MasterWbsCodes() {
     
     setDimensionLabels(labels);
   }, [activeTenant]);
+
+  useEffect(() => {
+    setExpandedTreeNodes(new Set());
+  }, [selectedDimension]);
 
   // Get dimension label (custom or default)
   const getDimensionLabel = (key: string): string => {
@@ -461,88 +599,134 @@ export default function MasterWbsCodes() {
                 {getDimensionDescription(selectedDimension)}
               </CardDescription>
             </div>
-            <Button
-              onClick={() => openCreateDialog(selectedDimension)}
-              data-testid="button-add-code"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Code
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="flex border rounded-md">
+                <Button
+                  size="icon"
+                  variant={viewMode === "table" ? "default" : "ghost"}
+                  onClick={() => setViewMode("table")}
+                  className="rounded-r-none"
+                  data-testid="button-view-table"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant={viewMode === "tree" ? "default" : "ghost"}
+                  onClick={() => setViewMode("tree")}
+                  className="rounded-l-none"
+                  data-testid="button-view-tree"
+                >
+                  <GitBranch className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button
+                onClick={() => openCreateDialog(selectedDimension)}
+                data-testid="button-add-code"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Code
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-24">Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden lg:table-cell">Parent</TableHead>
-                  <TableHead className="hidden md:table-cell">Description</TableHead>
-                  <TableHead className="w-20">Order</TableHead>
-                  <TableHead className="w-24 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {getCodesForDimension(selectedDimension).length === 0 ? (
+            {viewMode === "table" ? (
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      No codes defined for this dimension. Click "Add Code" to create one.
-                    </TableCell>
+                    <TableHead className="w-24">Code</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden lg:table-cell">Parent</TableHead>
+                    <TableHead className="hidden md:table-cell">Description</TableHead>
+                    <TableHead className="w-20">Order</TableHead>
+                    <TableHead className="w-24 text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  getCodesForDimension(selectedDimension).map((code) => (
-                    <TableRow key={code.id} data-testid={`row-code-${code.id}`}>
-                      <TableCell>
-                        <Badge variant="outline" className="font-mono">
-                          {code.code}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">{code.name}</TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {code.parentCodeId ? (
-                          <div className="flex items-center gap-1">
-                            {(() => {
-                              const parent = getParentCode(code.parentCodeId);
-                              if (!parent) return <span className="text-muted-foreground">—</span>;
-                              return (
-                                <Badge variant="secondary" className="text-xs">
-                                  {parent.code} ({getDimensionLabel(parent.dimensionType)})
-                                </Badge>
-                              );
-                            })()}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">
-                        {code.description || "—"}
-                      </TableCell>
-                      <TableCell>{code.sortOrder || 0}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => openEditDialog(code)}
-                            data-testid={`button-edit-${code.id}`}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => deleteMutation.mutate(code.id)}
-                            data-testid={`button-delete-${code.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {getCodesForDimension(selectedDimension).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        No codes defined for this dimension. Click "Add Code" to create one.
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    getCodesForDimension(selectedDimension).map((code) => (
+                      <TableRow key={code.id} data-testid={`row-code-${code.id}`}>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono">
+                            {code.code}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium">{code.name}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {code.parentCodeId ? (
+                            <div className="flex items-center gap-1">
+                              {(() => {
+                                const parent = getParentCode(code.parentCodeId);
+                                if (!parent) return <span className="text-muted-foreground">—</span>;
+                                return (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {parent.code} ({getDimensionLabel(parent.dimensionType)})
+                                  </Badge>
+                                );
+                              })()}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                          {code.description || "—"}
+                        </TableCell>
+                        <TableCell>{code.sortOrder || 0}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => openEditDialog(code)}
+                              data-testid={`button-edit-${code.id}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => deleteMutation.mutate(code.id)}
+                              data-testid={`button-delete-${code.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            ) : (
+              <TreeView
+                codes={codes || []}
+                dimensionCodes={getCodesForDimension(selectedDimension)}
+                expandedNodes={expandedTreeNodes}
+                onToggleNode={(nodeId) => {
+                  setExpandedTreeNodes((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(nodeId)) {
+                      next.delete(nodeId);
+                    } else {
+                      next.add(nodeId);
+                    }
+                    return next;
+                  });
+                }}
+                onEdit={openEditDialog}
+                onDelete={(id) => deleteMutation.mutate(id)}
+                getParentCode={getParentCode}
+                getDimensionLabel={getDimensionLabel}
+                dimensionIcons={dimensionIcons}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

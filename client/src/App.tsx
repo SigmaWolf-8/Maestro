@@ -10,6 +10,8 @@ import { SettingsProvider, useSettings } from "@/components/settings-provider";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
+import { TabProvider } from "@/components/tab-provider";
+import { TabBar } from "@/components/tab-bar";
 import { CorporateFooter } from "@/components/corporate-footer";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
@@ -182,6 +184,7 @@ function AppLayout() {
               <ThemeToggle />
             </div>
           </header>
+          <TabBar />
           <main className="flex-1 overflow-auto flex flex-col">
             <div className="flex-1">
               <Router />
@@ -200,7 +203,9 @@ function App() {
       <ThemeProvider defaultTheme="light" storageKey="maestro-theme">
         <SettingsProvider>
           <TooltipProvider>
-            <AppLayout />
+            <TabProvider>
+              <AppLayout />
+            </TabProvider>
             <Toaster />
           </TooltipProvider>
         </SettingsProvider>
