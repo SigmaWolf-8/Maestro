@@ -5,6 +5,7 @@ import { z } from "zod";
 import { insertProjectSchema, insertWbsNodeSchema, insertTenantUserSchema, type Customer, type VendorContact, type TenantUser } from "@shared/schema";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import * as microsoftGraph from "./microsoft-graph";
+import nodemailer from "nodemailer";
 
 let cachedTenantId: string | null = null;
 
@@ -959,40 +960,128 @@ export async function registerRoutes(
 
   // ==================== EMAIL API (AutoSendEmail from VBA) ====================
 
-  // Send email to vendor via Microsoft 365
+  // Send email via SMTP or Microsoft 365
   app.post("/api/email/send", validateBody(emailSendSchema), async (req, res) => {
     try {
       const { to, subject, body, cc } = req.body;
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
       
-      // Check if user has Microsoft 365 session
+      // First check for SMTP configuration in tenant config
+      const tenant = await storage.getTenant(tenantId);
+      const smtpConfig = tenant?.config?.smtp;
+      
+      if (smtpConfig?.email && smtpConfig?.password) {
+        // Use SMTP (simple email/password)
+        console.log("Sending email via SMTP:", { to, subject, from: smtpConfig.email });
+        
+        const transporter = nodemailer.createTransport({
+          host: smtpConfig.host || "smtp.office365.com",
+          port: smtpConfig.port || 587,
+          secure: false,
+          auth: {
+            user: smtpConfig.email,
+            pass: smtpConfig.password,
+          },
+        });
+        
+        await transporter.sendMail({
+          from: smtpConfig.email,
+          to: to,
+          cc: cc,
+          subject: subject,
+          html: body,
+        });
+        
+        return res.json({ 
+          success: true, 
+          message: "Email sent successfully"
+        });
+      }
+      
+      // Check if user has Microsoft 365 session (OAuth)
       const session = req.session as any;
       const accessToken = session?.microsoft?.accessToken;
       
-      if (!accessToken) {
-        return res.status(401).json({ 
-          error: "Microsoft 365 not connected", 
-          message: "Please connect your Microsoft 365 account in Settings to send emails"
-        });
+      if (accessToken) {
+        console.log("Sending email via Microsoft 365 Graph API:", { to, subject });
+        
+        const result = await microsoftGraph.sendEmail(accessToken, { to, subject, body, cc });
+        
+        if (result.success) {
+          return res.json({ 
+            success: true, 
+            message: "Email sent successfully via Microsoft 365"
+          });
+        } else {
+          return res.status(500).json({ 
+            error: "Failed to send email", 
+            message: result.error 
+          });
+        }
       }
       
-      console.log("Sending email via Microsoft 365:", { to, subject });
-      
-      const result = await microsoftGraph.sendEmail(accessToken, { to, subject, body, cc });
-      
-      if (result.success) {
-        res.json({ 
-          success: true, 
-          message: "Email sent successfully via Microsoft 365"
-        });
-      } else {
-        res.status(500).json({ 
-          error: "Failed to send email", 
-          message: result.error 
-        });
-      }
+      // No email configuration found
+      return res.status(401).json({ 
+        error: "Email not configured", 
+        message: "Please configure your email settings in Settings to send emails"
+      });
     } catch (error: any) {
       console.error("Error sending email:", error);
       res.status(500).json({ error: "Failed to send email", message: error.message });
+    }
+  });
+
+  // Save SMTP configuration for a tenant
+  app.post("/api/tenants/:id/smtp-config", async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.params.id;
+      const { email, password, host, port } = req.body;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+
+      const tenant = await storage.getTenant(tenantId);
+      if (!tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      // Update tenant config with SMTP credentials
+      const updatedConfig = {
+        ...tenant.config,
+        smtp: {
+          email,
+          password,
+          host: host || "smtp.office365.com",
+          port: port || 587,
+        },
+      };
+
+      await storage.updateTenant(tenantId, { config: updatedConfig });
+      res.json({ success: true, message: "Email configuration saved" });
+    } catch (error) {
+      console.error("Save SMTP config error:", error);
+      res.status(500).json({ error: "Failed to save configuration" });
+    }
+  });
+
+  // Get SMTP status
+  app.get("/api/smtp/status", async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.query.tenantId as string;
+      if (!tenantId) {
+        return res.json({ configured: false });
+      }
+      
+      const tenant = await storage.getTenant(tenantId);
+      const smtpConfig = tenant?.config?.smtp;
+      
+      res.json({ 
+        configured: !!(smtpConfig?.email && smtpConfig?.password),
+        email: smtpConfig?.email || null,
+      });
+    } catch (error) {
+      res.json({ configured: false });
     }
   });
 
