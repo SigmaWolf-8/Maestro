@@ -158,6 +158,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
   const [renderedHtml, setRenderedHtml] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [isUploadingToOneDrive, setIsUploadingToOneDrive] = useState(false);
+  const [isSyncingFromOneDrive, setIsSyncingFromOneDrive] = useState(false);
   const [oneDriveFileId, setOneDriveFileId] = useState<string | null>(null);
   const [showMsConfigModal, setShowMsConfigModal] = useState(false);
   
@@ -270,6 +271,48 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
     refetchMsStatus();
     // After configuring, initiate OAuth flow
     setTimeout(() => handleEditInOffice(), 500);
+  };
+  
+  // Handle sync from OneDrive - pulls edited content back
+  const handleSyncFromOneDrive = async () => {
+    if (!oneDriveFileId) return;
+    
+    setIsSyncingFromOneDrive(true);
+    try {
+      const res = await fetch(`/api/microsoft/sync/${oneDriveFileId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantId: activeTenant?.id,
+          documentId: document.id,
+        }),
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Sync failed");
+      }
+      
+      const result = await res.json();
+      
+      toast({
+        title: "Document Synced",
+        description: `Updated from OneDrive (${(result.size / 1024).toFixed(1)} KB)`,
+      });
+      
+      // Invalidate document cache to refresh the view
+      queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/documents", document.id] });
+      
+    } catch (err: any) {
+      toast({
+        title: "Sync Failed",
+        description: err.message || "Unable to sync document from OneDrive",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncingFromOneDrive(false);
+    }
   };
   
   // Security verification effect
@@ -395,37 +438,61 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
         </span>
       </div>
       {isOffice && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleEditInOffice}
-          disabled={isUploadingToOneDrive}
-          className="gap-2 bg-white dark:bg-gray-900 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
-          data-testid="button-edit-in-office"
-        >
-          {isUploadingToOneDrive ? (
-            <>
-              <RefreshCw className="h-4 w-4 animate-spin" />
-              Uploading...
-            </>
-          ) : msStatus?.connected ? (
-            <>
-              <Cloud className="h-4 w-4 text-blue-600" />
-              Edit in {officeApp}
-              <ExternalLink className="h-3 w-3" />
-            </>
-          ) : msStatus?.configured ? (
-            <>
-              <Cloud className="h-4 w-4 text-blue-600" />
-              Connect to Edit
-            </>
-          ) : (
-            <>
-              <Cloud className="h-4 w-4 text-blue-600" />
-              Setup Microsoft 365
-            </>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEditInOffice}
+            disabled={isUploadingToOneDrive || isSyncingFromOneDrive}
+            className="gap-2 bg-white dark:bg-gray-900 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
+            data-testid="button-edit-in-office"
+          >
+            {isUploadingToOneDrive ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : msStatus?.connected ? (
+              <>
+                <Cloud className="h-4 w-4 text-blue-600" />
+                Edit in {officeApp}
+                <ExternalLink className="h-3 w-3" />
+              </>
+            ) : msStatus?.configured ? (
+              <>
+                <Cloud className="h-4 w-4 text-blue-600" />
+                Connect to Edit
+              </>
+            ) : (
+              <>
+                <Cloud className="h-4 w-4 text-blue-600" />
+                Setup Microsoft 365
+              </>
+            )}
+          </Button>
+          {oneDriveFileId && msStatus?.connected && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncFromOneDrive}
+              disabled={isSyncingFromOneDrive || isUploadingToOneDrive}
+              className="gap-2 bg-white dark:bg-gray-900 border-green-300 dark:border-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+              data-testid="button-sync-from-onedrive"
+            >
+              {isSyncingFromOneDrive ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 text-green-600" />
+                  Sync Changes
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       )}
       <div className="text-xs text-green-600 dark:text-green-400">
         {securityDetails?.timestamp && `${new Date(securityDetails.timestamp).toLocaleString()}`}

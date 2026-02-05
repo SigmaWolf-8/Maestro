@@ -1632,6 +1632,59 @@ export async function registerRoutes(
     }
   });
 
+  // Sync document from OneDrive - downloads updated content and updates local document
+  app.post("/api/microsoft/sync/:fileId", async (req: Request, res: Response) => {
+    try {
+      const sessionId = "default-user";
+      const tenantId = req.body.tenantId as string;
+      const documentId = req.body.documentId as string;
+      
+      // Get credentials for token refresh if needed
+      let credentials = tenantId ? microsoftGraph.getStoredCredentials(tenantId) : undefined;
+      if (!credentials) {
+        credentials = microsoftGraph.getCredentials() || undefined;
+      }
+      
+      const accessToken = await microsoftGraph.getValidToken(sessionId, credentials);
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Not authenticated with Microsoft" });
+      }
+      
+      const { fileId } = req.params;
+      
+      if (!documentId) {
+        return res.status(400).json({ error: "Missing documentId" });
+      }
+      
+      // Download file from OneDrive
+      const downloadResult = await microsoftGraph.downloadFromOneDrive(accessToken, fileId);
+      
+      // Update the document in our database with the new content
+      const base64Content = downloadResult.content.toString('base64');
+      
+      await storage.updateDocument(documentId, {
+        content: base64Content,
+        size: downloadResult.content.length,
+        updatedAt: new Date(),
+      });
+      
+      res.json({
+        success: true,
+        name: downloadResult.name,
+        size: downloadResult.content.length,
+        lastModified: downloadResult.lastModified,
+        message: "Document synced from OneDrive"
+      });
+    } catch (error: any) {
+      console.error("Microsoft sync error:", error);
+      res.status(500).json({ 
+        error: "Sync failed", 
+        details: error.message 
+      });
+    }
+  });
+
   app.get("/api/microsoft/connected", async (req: Request, res: Response) => {
     const sessionId = "default-user";
     const tenantId = req.query.tenantId as string;

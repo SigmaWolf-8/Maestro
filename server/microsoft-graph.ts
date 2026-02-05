@@ -365,3 +365,32 @@ export async function listOneDriveFiles(
     return [];
   }
 }
+
+export async function downloadFromOneDrive(
+  accessToken: string,
+  fileId: string
+): Promise<{ content: Buffer; name: string; mimeType: string; lastModified: string }> {
+  const client = getGraphClient(accessToken);
+  
+  // Get file metadata first
+  const file = await client.api(`/me/drive/items/${fileId}`).get();
+  
+  // Download the file content
+  const downloadUrl = await client
+    .api(`/me/drive/items/${fileId}/content`)
+    .getStream();
+  
+  // Collect the stream into a buffer
+  const chunks: Buffer[] = [];
+  for await (const chunk of downloadUrl) {
+    chunks.push(Buffer.from(chunk));
+  }
+  const content = Buffer.concat(chunks);
+  
+  return {
+    content,
+    name: file.name,
+    mimeType: file.file?.mimeType || 'application/octet-stream',
+    lastModified: file.lastModifiedDateTime
+  };
+}
