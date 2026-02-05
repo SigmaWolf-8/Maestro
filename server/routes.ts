@@ -126,6 +126,59 @@ const quoteFieldUpdateSchema = z.object({
   value: z.any(),
 });
 
+// Vendors & Contacts schemas (from MS Access SalviVendors VBA form)
+const vendorCreateSchema = z.object({
+  tenantId: z.string(),
+  company: z.string().min(1),
+  vendorId: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  stateProvince: z.string().optional(),
+  zipPostalCode: z.string().optional(),
+  countryRegion: z.string().optional(),
+  apTerms: z.string().optional(),
+  arTerms: z.string().optional(),
+  gstNum: z.string().optional(),
+  wcbNum: z.string().optional(),
+  insuranceCert: z.string().optional(),
+  matVendor: z.boolean().optional(),
+  subtrade: z.boolean().optional(),
+  includeInPayroll: z.boolean().optional(),
+  rateReliability: z.number().min(1).max(5).nullable().optional(),
+  rateQuality: z.number().min(1).max(5).nullable().optional(),
+  rateSpeed: z.number().min(1).max(5).nullable().optional(),
+  ratePricing: z.number().min(1).max(5).nullable().optional(),
+  rateCongeniality: z.number().min(1).max(5).nullable().optional(),
+});
+
+const vendorUpdateSchema = vendorCreateSchema.partial().omit({ tenantId: true });
+
+const vendorFieldUpdateSchema = z.object({
+  field: z.string(),
+  value: z.any(),
+});
+
+const vendorContactCreateSchema = z.object({
+  tenantId: z.string(),
+  vendorId: z.string(),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  jobTitle: z.string().optional(),
+  businessPhone: z.string().optional(),
+  mobilePhone: z.string().optional(),
+  emailAddress: z.string().email().optional().or(z.literal('')),
+  isPrimary: z.boolean().optional(),
+});
+
+const vendorContactUpdateSchema = vendorContactCreateSchema.partial().omit({ tenantId: true, vendorId: true });
+
+const emailSendSchema = z.object({
+  to: z.string().email(),
+  subject: z.string().min(1),
+  body: z.string(),
+  cc: z.string().optional(),
+});
+
 function validateBody<T>(schema: z.ZodSchema<T>) {
   return (req: Request, res: Response, next: NextFunction) => {
     const result = schema.safeParse(req.body);
@@ -767,7 +820,7 @@ export async function registerRoutes(
   });
 
   // Create vendor
-  app.post("/api/vendors", async (req, res) => {
+  app.post("/api/vendors", validateBody(vendorCreateSchema), async (req, res) => {
     try {
       const vendor = await storage.createVendor(req.body);
       res.status(201).json(vendor);
@@ -778,7 +831,7 @@ export async function registerRoutes(
   });
 
   // Update vendor
-  app.patch("/api/vendors/:id", async (req, res) => {
+  app.patch("/api/vendors/:id", validateBody(vendorUpdateSchema), async (req, res) => {
     try {
       const vendor = await storage.updateVendor(req.params.id, req.body);
       if (!vendor) {
@@ -792,7 +845,7 @@ export async function registerRoutes(
   });
 
   // Update vendor field (for auto-save)
-  app.patch("/api/vendors/:id/field", async (req, res) => {
+  app.patch("/api/vendors/:id/field", validateBody(vendorFieldUpdateSchema), async (req, res) => {
     try {
       const { field, value } = req.body;
       const vendor = await storage.updateVendorField(req.params.id, field, value);
@@ -866,7 +919,7 @@ export async function registerRoutes(
   });
 
   // Create vendor contact
-  app.post("/api/vendors/:vendorId/contacts", async (req, res) => {
+  app.post("/api/vendors/:vendorId/contacts", validateBody(vendorContactCreateSchema.omit({ vendorId: true })), async (req, res) => {
     try {
       const contact = await storage.createVendorContact({
         ...req.body,
@@ -880,7 +933,7 @@ export async function registerRoutes(
   });
 
   // Update vendor contact
-  app.patch("/api/vendor-contacts/:id", async (req, res) => {
+  app.patch("/api/vendor-contacts/:id", validateBody(vendorContactUpdateSchema), async (req, res) => {
     try {
       const contact = await storage.updateVendorContact(req.params.id, req.body);
       if (!contact) {
@@ -907,7 +960,7 @@ export async function registerRoutes(
   // ==================== EMAIL API (AutoSendEmail from VBA) ====================
 
   // Send email to vendor
-  app.post("/api/email/send", async (req, res) => {
+  app.post("/api/email/send", validateBody(emailSendSchema), async (req, res) => {
     try {
       const { to, subject, body, cc } = req.body;
       
