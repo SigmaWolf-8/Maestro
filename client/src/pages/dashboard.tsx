@@ -84,8 +84,8 @@ export default function Dashboard() {
           className="absolute inset-0 mix-blend-color"
           style={{ 
             backgroundColor: 'hsl(var(--sidebar))',
-            maskImage: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.7) 60%, black 75%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.7) 60%, black 75%)',
+            maskImage: 'linear-gradient(to bottom, transparent 28%, rgba(0,0,0,0.3) 38%, rgba(0,0,0,0.7) 48%, black 62%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, transparent 28%, rgba(0,0,0,0.3) 38%, rgba(0,0,0,0.7) 48%, black 62%)',
             opacity: 0.9
           }}
         />
