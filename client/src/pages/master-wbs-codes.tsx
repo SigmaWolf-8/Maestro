@@ -110,20 +110,21 @@ export default function MasterWbsCodes() {
   const [editingCode, setEditingCode] = useState<WbsMasterCode | null>(null);
   const [expandedDimensions, setExpandedDimensions] = useState<Set<string>>(new Set(["phase"]));
   const [selectedDimension, setSelectedDimension] = useState<string>("phase");
-  const [dimensionLabels, setDimensionLabels] = useState<Record<string, { label: string; description: string }>>({});
+  const [dimensionLabels, setDimensionLabels] = useState<Record<string, { label: string; description: string; sortOrder: number }>>({});
   const { toast } = useToast();
   const { activeTenant } = useSettings();
 
   // Initialize dimension labels from tenant config or defaults
   useEffect(() => {
     const customDimensions = activeTenant?.config?.wbsDimensions;
-    const labels: Record<string, { label: string; description: string }> = {};
+    const labels: Record<string, { label: string; description: string; sortOrder: number }> = {};
     
-    wbsDimensionDefinitions.forEach((dim) => {
+    wbsDimensionDefinitions.forEach((dim, index) => {
       const customDim = customDimensions?.find((d: any) => d.key === dim.key);
       labels[dim.key] = {
         label: customDim?.label || dim.label,
         description: customDim?.description || dim.description,
+        sortOrder: customDim?.sortOrder ?? index,
       };
     });
     
@@ -245,15 +246,16 @@ export default function MasterWbsCodes() {
   });
 
   const handleSaveDimensionSettings = () => {
-    const customDimensions = wbsDimensionDefinitions.map((dim) => ({
+    const customDimensions = wbsDimensionDefinitions.map((dim, index) => ({
       key: dim.key,
       label: dimensionLabels[dim.key]?.label || dim.label,
       description: dimensionLabels[dim.key]?.description || dim.description,
+      sortOrder: dimensionLabels[dim.key]?.sortOrder ?? index,
     }));
     saveDimensionSettingsMutation.mutate(customDimensions);
   };
 
-  const updateDimensionLabel = (key: string, field: "label" | "description", value: string) => {
+  const updateDimensionLabel = (key: string, field: "label" | "description" | "sortOrder", value: string | number) => {
     setDimensionLabels((prev) => ({
       ...prev,
       [key]: {
@@ -261,6 +263,15 @@ export default function MasterWbsCodes() {
         [field]: value,
       },
     }));
+  };
+
+  // Get sorted dimensions based on sortOrder
+  const getSortedDimensions = () => {
+    return [...wbsDimensionDefinitions].sort((a, b) => {
+      const orderA = dimensionLabels[a.key]?.sortOrder ?? wbsDimensionDefinitions.findIndex(d => d.key === a.key);
+      const orderB = dimensionLabels[b.key]?.sortOrder ?? wbsDimensionDefinitions.findIndex(d => d.key === b.key);
+      return orderA - orderB;
+    });
   };
 
   const openCreateDialog = (dimensionType: string) => {
@@ -376,7 +387,7 @@ export default function MasterWbsCodes() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="space-y-1 px-2 pb-2">
-              {wbsDimensionDefinitions.map((dim) => {
+              {getSortedDimensions().map((dim) => {
                 const count = getCodeCount(dim.key);
                 const isSelected = selectedDimension === dim.key;
                 return (
@@ -637,14 +648,14 @@ export default function MasterWbsCodes() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {wbsDimensionDefinitions.map((dim) => (
+            {wbsDimensionDefinitions.map((dim, defaultIndex) => (
               <div key={dim.key} className="grid grid-cols-12 gap-3 items-start p-3 rounded-lg border">
                 <div className="col-span-1 flex items-center justify-center pt-2">
                   {dimensionIcons[dim.key]}
                 </div>
                 <div className="col-span-11 space-y-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
+                  <div className="grid grid-cols-6 gap-3">
+                    <div className="col-span-3">
                       <label className="text-sm font-medium text-muted-foreground">
                         Display Name
                       </label>
@@ -655,7 +666,7 @@ export default function MasterWbsCodes() {
                         data-testid={`input-dimension-label-${dim.key}`}
                       />
                     </div>
-                    <div>
+                    <div className="col-span-2">
                       <label className="text-sm font-medium text-muted-foreground">
                         Description
                       </label>
@@ -664,6 +675,19 @@ export default function MasterWbsCodes() {
                         onChange={(e) => updateDimensionLabel(dim.key, "description", e.target.value)}
                         placeholder={dim.description}
                         data-testid={`input-dimension-desc-${dim.key}`}
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Sort
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="99"
+                        value={dimensionLabels[dim.key]?.sortOrder ?? defaultIndex}
+                        onChange={(e) => updateDimensionLabel(dim.key, "sortOrder", parseInt(e.target.value) || 0)}
+                        data-testid={`input-dimension-sort-${dim.key}`}
                       />
                     </div>
                   </div>

@@ -335,6 +335,7 @@ export interface TenantConfig {
     key: string;
     label: string;
     description?: string;
+    sortOrder?: number;
     required?: boolean;
   }>;
 }
