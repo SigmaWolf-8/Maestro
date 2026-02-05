@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +23,7 @@ import {
   DollarSign,
   Users,
   RefreshCw,
+  Settings,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -97,13 +98,46 @@ const dimensionIcons: Record<string, React.ReactNode> = {
   responsibility: <Users className="h-4 w-4" />,
 };
 
+interface DimensionConfig {
+  key: string;
+  label: string;
+  description: string;
+}
+
 export default function MasterWbsCodes() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDimensionSettingsOpen, setIsDimensionSettingsOpen] = useState(false);
   const [editingCode, setEditingCode] = useState<WbsMasterCode | null>(null);
   const [expandedDimensions, setExpandedDimensions] = useState<Set<string>>(new Set(["phase"]));
   const [selectedDimension, setSelectedDimension] = useState<string>("phase");
+  const [dimensionLabels, setDimensionLabels] = useState<Record<string, { label: string; description: string }>>({});
   const { toast } = useToast();
   const { activeTenant } = useSettings();
+
+  // Initialize dimension labels from tenant config or defaults
+  useEffect(() => {
+    const customDimensions = activeTenant?.config?.wbsDimensions;
+    const labels: Record<string, { label: string; description: string }> = {};
+    
+    wbsDimensionDefinitions.forEach((dim) => {
+      const customDim = customDimensions?.find((d: any) => d.key === dim.key);
+      labels[dim.key] = {
+        label: customDim?.label || dim.label,
+        description: customDim?.description || dim.description,
+      };
+    });
+    
+    setDimensionLabels(labels);
+  }, [activeTenant]);
+
+  // Get dimension label (custom or default)
+  const getDimensionLabel = (key: string): string => {
+    return dimensionLabels[key]?.label || wbsDimensionDefinitions.find(d => d.key === key)?.label || key;
+  };
+
+  const getDimensionDescription = (key: string): string => {
+    return dimensionLabels[key]?.description || wbsDimensionDefinitions.find(d => d.key === key)?.description || "";
+  };
 
   const form = useForm<CodeFormData>({
     resolver: zodResolver(codeFormSchema),
@@ -184,6 +218,50 @@ export default function MasterWbsCodes() {
       toast({ title: "Failed to seed codes", variant: "destructive" });
     },
   });
+
+  const saveDimensionSettingsMutation = useMutation({
+    mutationFn: async (customDimensions: Array<{ key: string; label: string; description: string }>) => {
+      const currentConfig = activeTenant?.config || {
+        branding: { primaryColor: "", secondaryColor: "", logoUrl: null, faviconUrl: null },
+        modules: { hrSync: false, advancedWbs: false, documentTemplating: false },
+        wbsDimensions: [],
+      };
+      
+      return apiRequest("PATCH", `/api/tenants/${activeTenant?.id}`, {
+        config: {
+          ...currentConfig,
+          wbsDimensions: customDimensions,
+        },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+      setIsDimensionSettingsOpen(false);
+      toast({ title: "Dimension settings saved successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to save dimension settings", variant: "destructive" });
+    },
+  });
+
+  const handleSaveDimensionSettings = () => {
+    const customDimensions = wbsDimensionDefinitions.map((dim) => ({
+      key: dim.key,
+      label: dimensionLabels[dim.key]?.label || dim.label,
+      description: dimensionLabels[dim.key]?.description || dim.description,
+    }));
+    saveDimensionSettingsMutation.mutate(customDimensions);
+  };
+
+  const updateDimensionLabel = (key: string, field: "label" | "description", value: string) => {
+    setDimensionLabels((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        [field]: value,
+      },
+    }));
+  };
 
   const openCreateDialog = (dimensionType: string) => {
     setEditingCode(null);
@@ -272,6 +350,14 @@ export default function MasterWbsCodes() {
           </Badge>
           <Button
             variant="outline"
+            onClick={() => setIsDimensionSettingsOpen(true)}
+            data-testid="button-configure-dimensions"
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Configure Dimensions
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => seedMutation.mutate()}
             disabled={seedMutation.isPending}
             data-testid="button-seed-defaults"
@@ -306,7 +392,7 @@ export default function MasterWbsCodes() {
                   >
                     <div className="flex items-center gap-2">
                       {dimensionIcons[dim.key]}
-                      <span className="text-sm font-medium">{dim.label}</span>
+                      <span className="text-sm font-medium">{getDimensionLabel(dim.key)}</span>
                     </div>
                     <Badge
                       variant={isSelected ? "secondary" : "outline"}
@@ -326,10 +412,10 @@ export default function MasterWbsCodes() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 {dimensionIcons[selectedDimension]}
-                {wbsDimensionDefinitions.find((d) => d.key === selectedDimension)?.label || "Codes"}
+                {getDimensionLabel(selectedDimension)}
               </CardTitle>
               <CardDescription>
-                {wbsDimensionDefinitions.find((d) => d.key === selectedDimension)?.description}
+                {getDimensionDescription(selectedDimension)}
               </CardDescription>
             </div>
             <Button
@@ -538,6 +624,73 @@ export default function MasterWbsCodes() {
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dimension Settings Dialog */}
+      <Dialog open={isDimensionSettingsOpen} onOpenChange={setIsDimensionSettingsOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Configure WBS Dimensions</DialogTitle>
+            <DialogDescription>
+              Customize the names and descriptions of the 13 WBS dimensions for your organization.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {wbsDimensionDefinitions.map((dim) => (
+              <div key={dim.key} className="grid grid-cols-12 gap-3 items-start p-3 rounded-lg border">
+                <div className="col-span-1 flex items-center justify-center pt-2">
+                  {dimensionIcons[dim.key]}
+                </div>
+                <div className="col-span-11 space-y-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Display Name
+                      </label>
+                      <Input
+                        value={dimensionLabels[dim.key]?.label || dim.label}
+                        onChange={(e) => updateDimensionLabel(dim.key, "label", e.target.value)}
+                        placeholder={dim.label}
+                        data-testid={`input-dimension-label-${dim.key}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">
+                        Description
+                      </label>
+                      <Input
+                        value={dimensionLabels[dim.key]?.description || dim.description}
+                        onChange={(e) => updateDimensionLabel(dim.key, "description", e.target.value)}
+                        placeholder={dim.description}
+                        data-testid={`input-dimension-desc-${dim.key}`}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Key: <code className="bg-muted px-1 rounded">{dim.key}</code>
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDimensionSettingsOpen(false)}
+              data-testid="button-cancel-dimension-settings"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveDimensionSettings}
+              disabled={saveDimensionSettingsMutation.isPending}
+              data-testid="button-save-dimension-settings"
+            >
+              {saveDimensionSettingsMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

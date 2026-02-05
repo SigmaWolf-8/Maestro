@@ -334,7 +334,8 @@ export interface TenantConfig {
   wbsDimensions: Array<{
     key: string;
     label: string;
-    required: boolean;
+    description?: string;
+    required?: boolean;
   }>;
 }
 
