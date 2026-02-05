@@ -7,7 +7,56 @@ interface TokenInfo {
   expiresAt: number;
 }
 
+// OAuth state store with expiration for CSRF protection
+interface OAuthState {
+  state: string;
+  createdAt: number;
+  userId?: string;
+}
+const oauthStateStore = new Map<string, OAuthState>();
+
+// Token store keyed by authenticated user ID
 const tokenStore = new Map<string, TokenInfo>();
+
+// Generate and store OAuth state for CSRF protection
+export function generateOAuthState(userId?: string): string {
+  const state = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+  oauthStateStore.set(state, {
+    state,
+    createdAt: Date.now(),
+    userId,
+  });
+  
+  // Clean up old states (older than 10 minutes)
+  const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+  for (const [key, value] of oauthStateStore.entries()) {
+    if (value.createdAt < tenMinutesAgo) {
+      oauthStateStore.delete(key);
+    }
+  }
+  
+  return state;
+}
+
+// Validate OAuth state and return associated user ID
+export function validateOAuthState(state: string): { valid: boolean; userId?: string } {
+  const stored = oauthStateStore.get(state);
+  if (!stored) {
+    return { valid: false };
+  }
+  
+  // State should not be older than 10 minutes
+  const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+  if (stored.createdAt < tenMinutesAgo) {
+    oauthStateStore.delete(state);
+    return { valid: false };
+  }
+  
+  // Remove used state (one-time use)
+  oauthStateStore.delete(state);
+  
+  return { valid: true, userId: stored.userId };
+}
 
 const MICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID;
 const MICROSOFT_CLIENT_SECRET = process.env.MICROSOFT_CLIENT_SECRET;

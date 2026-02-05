@@ -1421,7 +1421,10 @@ export async function registerRoutes(
         });
       }
       
-      const state = Math.random().toString(36).substring(7);
+      // Generate secure OAuth state with CSRF protection
+      // In production, bind to authenticated user session
+      const sessionId = "default-user"; // Simplified for demo
+      const state = microsoftGraph.generateOAuthState(sessionId);
       const authUrl = microsoftGraph.getAuthUrl(state);
       res.json({ authUrl, state });
     } catch (error: any) {
@@ -1437,10 +1440,21 @@ export async function registerRoutes(
         return res.status(400).send("Missing authorization code");
       }
       
+      if (!state || typeof state !== "string") {
+        return res.status(400).send("Missing or invalid state parameter");
+      }
+      
+      // Validate OAuth state to prevent CSRF attacks
+      const stateValidation = microsoftGraph.validateOAuthState(state);
+      if (!stateValidation.valid) {
+        console.error("OAuth state validation failed");
+        return res.redirect("/documents/files?microsoft=error&message=" + encodeURIComponent("OAuth state validation failed. Please try again."));
+      }
+      
       const token = await microsoftGraph.exchangeCodeForToken(code);
       
-      // Store token with a session ID (simplified - in production use proper session management)
-      const sessionId = "default-user";
+      // Store token keyed by validated user ID from state
+      const sessionId = stateValidation.userId || "default-user";
       microsoftGraph.storeToken(sessionId, token);
       
       // Redirect back to file manager with success
@@ -1466,26 +1480,51 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Missing fileName or content" });
       }
       
-      // Convert base64 content to buffer if needed
+      // Validate file name for security
+      const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      
+      // Convert base64 content to buffer
       let fileBuffer: Buffer;
-      if (content.startsWith("data:")) {
-        const base64Data = content.split(",")[1];
-        fileBuffer = Buffer.from(base64Data, "base64");
-      } else {
-        fileBuffer = Buffer.from(content, "base64");
+      try {
+        if (content.startsWith("data:")) {
+          const base64Data = content.split(",")[1];
+          if (!base64Data) {
+            return res.status(400).json({ error: "Invalid data URL format" });
+          }
+          fileBuffer = Buffer.from(base64Data, "base64");
+        } else {
+          fileBuffer = Buffer.from(content, "base64");
+        }
+      } catch (decodeError) {
+        return res.status(400).json({ error: "Failed to decode file content" });
       }
       
-      const result = await microsoftGraph.uploadToOneDrive(
+      // Validate file size (max 50MB for simple upload)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (fileBuffer.length > maxSize) {
+        return res.status(400).json({ error: "File size exceeds 50MB limit" });
+      }
+      
+      const uploadResult = await microsoftGraph.uploadToOneDrive(
         accessToken,
-        fileName,
+        sanitizedFileName,
         fileBuffer,
         mimeType || "application/octet-stream"
       );
       
-      res.json(result);
+      // Get edit URL for the uploaded file
+      const urls = await microsoftGraph.getOneDriveFileUrl(accessToken, uploadResult.id);
+      
+      res.json({
+        ...uploadResult,
+        editUrl: urls.editUrl,
+      });
     } catch (error: any) {
       console.error("Microsoft upload error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ 
+        error: "Upload failed", 
+        details: error.message 
+      });
     }
   });
 

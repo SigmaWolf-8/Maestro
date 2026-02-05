@@ -53,7 +53,10 @@ import {
   Shield,
   ShieldCheck,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ExternalLink,
+  Cloud,
+  Link2
 } from "lucide-react";
 import type { Document, WbsMasterCode, DocumentMetaTag } from "@shared/schema";
 import { wbsDimensionDefinitions } from "@shared/schema";
@@ -92,6 +95,27 @@ function isBinaryFormat(filename: string): boolean {
   return binaryFormats.includes(ext);
 }
 
+// Helper to determine if file is an Office format (editable via Microsoft 365)
+function isOfficeFormat(filename: string): boolean {
+  const ext = getFileExtension(filename);
+  const officeFormats = ['docx', 'doc', 'xlsx', 'xls', 'pptx', 'ppt'];
+  return officeFormats.includes(ext);
+}
+
+// Get Office app name for file type
+function getOfficeAppName(filename: string): string {
+  const ext = getFileExtension(filename);
+  const appNames: Record<string, string> = {
+    docx: 'Word',
+    doc: 'Word',
+    xlsx: 'Excel',
+    xls: 'Excel',
+    pptx: 'PowerPoint',
+    ppt: 'PowerPoint',
+  };
+  return appNames[ext] || 'Office';
+}
+
 // Helper to get friendly file type name
 function getFileTypeName(filename: string): string {
   const ext = getFileExtension(filename);
@@ -123,6 +147,7 @@ type SecurityState = 'verifying' | 'verified' | 'failed';
 
 // Document Content Viewer Component - handles different file types with security verification
 function DocumentContentViewer({ document, content }: { document: DocumentWithTags; content: string | null }) {
+  const { toast } = useToast();
   const [securityState, setSecurityState] = useState<SecurityState>('verifying');
   const [securityDetails, setSecurityDetails] = useState<{
     timestamp: string;
@@ -131,12 +156,90 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
   } | null>(null);
   const [renderedHtml, setRenderedHtml] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [isUploadingToOneDrive, setIsUploadingToOneDrive] = useState(false);
+  const [oneDriveFileId, setOneDriveFileId] = useState<string | null>(null);
+  
+  // Check Microsoft 365 connection status
+  const { data: msConnected } = useQuery<{ connected: boolean }>({
+    queryKey: ["/api/microsoft/connected"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
   
   const ext = getFileExtension(document.name);
   const fileType = getFileTypeName(document.name);
   const isDocx = ext === 'docx' || ext === 'doc';
   const isPdf = ext === 'pdf';
   const isImage = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext);
+  const isOffice = isOfficeFormat(document.name);
+  const officeApp = getOfficeAppName(document.name);
+  
+  // Handle Edit in Office button click
+  const handleEditInOffice = async () => {
+    if (!msConnected?.connected) {
+      // Not connected - initiate OAuth flow
+      try {
+        const res = await fetch("/api/microsoft/auth-url");
+        if (!res.ok) {
+          const err = await res.json();
+          toast({
+            title: "Microsoft 365 Setup Required",
+            description: err.message || "Please configure Microsoft integration",
+            variant: "destructive",
+          });
+          return;
+        }
+        const data = await res.json();
+        window.open(data.authUrl, "_blank");
+      } catch {
+        toast({
+          title: "Connection Error",
+          description: "Unable to connect to Microsoft 365",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
+    
+    // Connected - upload to OneDrive and get edit URL
+    setIsUploadingToOneDrive(true);
+    try {
+      // Upload file to OneDrive
+      const uploadRes = await fetch("/api/microsoft/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: document.name,
+          content: content,
+          mimeType: document.mimeType,
+        }),
+      });
+      
+      if (!uploadRes.ok) {
+        const errorData = await uploadRes.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.details || "Failed to upload to OneDrive");
+      }
+      
+      const uploadData = await uploadRes.json();
+      setOneDriveFileId(uploadData.id);
+      
+      // Open the file in Office Online using the edit URL for full editing capability
+      const editUrl = uploadData.editUrl || uploadData.webUrl;
+      window.open(editUrl, "_blank");
+      
+      toast({
+        title: `Opening in ${officeApp}`,
+        description: "Document uploaded to OneDrive and opened for editing",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Upload Failed",
+        description: err.message || "Unable to upload document to OneDrive",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingToOneDrive(false);
+    }
+  };
   
   // Security verification effect
   useEffect(() => {
@@ -250,7 +353,7 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
     );
   }
   
-  // Security verified header
+  // Security verified header with optional Edit in Office button
   const SecurityBanner = () => (
     <div className="bg-green-50 dark:bg-green-950/30 border-b border-green-200 dark:border-green-800 px-4 py-2 flex items-center gap-3">
       <ShieldCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -260,6 +363,34 @@ function DocumentContentViewer({ document, content }: { document: DocumentWithTa
           {securityDetails?.encryptionMode && `Mode: ${securityDetails.encryptionMode}`}
         </span>
       </div>
+      {isOffice && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleEditInOffice}
+          disabled={isUploadingToOneDrive}
+          className="gap-2 bg-white dark:bg-gray-900 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
+          data-testid="button-edit-in-office"
+        >
+          {isUploadingToOneDrive ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Uploading...
+            </>
+          ) : msConnected?.connected ? (
+            <>
+              <Cloud className="h-4 w-4 text-blue-600" />
+              Edit in {officeApp}
+              <ExternalLink className="h-3 w-3" />
+            </>
+          ) : (
+            <>
+              <Cloud className="h-4 w-4 text-blue-600" />
+              Connect Microsoft 365
+            </>
+          )}
+        </Button>
+      )}
       <div className="text-xs text-green-600 dark:text-green-400">
         {securityDetails?.timestamp && `${new Date(securityDetails.timestamp).toLocaleString()}`}
       </div>
