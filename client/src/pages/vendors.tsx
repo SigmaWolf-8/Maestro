@@ -45,6 +45,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { Vendor, VendorContact, VendorWithContacts } from "@shared/schema";
 
+const isValidEmail = (email: string): boolean => {
+  if (!email || email.trim() === "") return false;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+};
+
 export default function VendorsForm() {
   const { toast } = useToast();
   
@@ -125,7 +131,15 @@ export default function VendorsForm() {
 
   const sendEmail = useMutation({
     mutationFn: async (data: { to: string; subject: string; body: string }) => {
-      return apiRequest("POST", "/api/email/send", data);
+      const trimmedData = {
+        to: data.to.trim(),
+        subject: data.subject.trim(),
+        body: data.body,
+      };
+      if (!isValidEmail(trimmedData.to)) {
+        throw new Error("Please enter a valid email address");
+      }
+      return apiRequest("POST", "/api/email/send", trimmedData);
     },
     onSuccess: () => {
       setShowEmailDialog(false);
@@ -133,7 +147,24 @@ export default function VendorsForm() {
       toast({ title: "Email Sent", description: "Email has been sent successfully" });
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      let errorMessage = "Failed to send email";
+      try {
+        const message = error.message || "";
+        if (message.includes("{")) {
+          const jsonPart = message.substring(message.indexOf("{"));
+          const parsed = JSON.parse(jsonPart);
+          if (parsed.details?.to) {
+            errorMessage = parsed.details.to[0] || "Invalid email address";
+          } else if (parsed.error) {
+            errorMessage = parsed.error;
+          }
+        } else {
+          errorMessage = message;
+        }
+      } catch {
+        errorMessage = error.message || "Failed to send email";
+      }
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     },
   });
 
@@ -178,11 +209,17 @@ export default function VendorsForm() {
   };
 
   const openEmailDialog = () => {
-    if (currentContact?.emailAddress) {
-      setEmailData({
-        to: currentContact.emailAddress,
-        subject: "",
-        body: "",
+    const contactEmail = currentContact?.emailAddress?.trim() || "";
+    setEmailData({
+      to: contactEmail,
+      subject: "",
+      body: "",
+    });
+    if (!contactEmail) {
+      toast({ 
+        title: "No Email Address", 
+        description: "This contact doesn't have an email address. Please enter one manually.",
+        variant: "default"
       });
     }
     setShowEmailDialog(true);
@@ -787,7 +824,7 @@ export default function VendorsForm() {
             </Button>
             <Button
               onClick={() => sendEmail.mutate(emailData)}
-              disabled={!emailData.to || !emailData.subject || sendEmail.isPending}
+              disabled={!isValidEmail(emailData.to) || !emailData.subject.trim() || sendEmail.isPending}
               data-testid="button-send-email-confirm"
             >
               {sendEmail.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
