@@ -90,6 +90,7 @@ export default function FileManagerPage() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
   const [decryptedContent, setDecryptedContent] = useState<string | null>(null);
   const [isDecrypting, setIsDecrypting] = useState(false);
+  const [dimensionSearch, setDimensionSearch] = useState("");
   
   // Upload form state
   const [uploadForm, setUploadForm] = useState({
@@ -343,7 +344,7 @@ export default function FileManagerPage() {
   return (
     <div className="flex h-full">
       {/* Left Sidebar - Filters and Meta Tags */}
-      <div className="w-80 border-r flex flex-col bg-muted/30">
+      <div className="w-64 border-r flex flex-col bg-muted/30">
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold flex items-center gap-2">
@@ -395,9 +396,23 @@ export default function FileManagerPage() {
           </div>
         </div>
         
+        {/* Dimension Search */}
+        <div className="px-4 pb-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search WBS codes..."
+              value={dimensionSearch}
+              onChange={(e) => setDimensionSearch(e.target.value)}
+              className="pl-8 h-9 text-sm"
+              data-testid="input-search-wbs-codes"
+            />
+          </div>
+        </div>
+        
         {/* 13-Dimensional Filter Tree */}
         <ScrollArea className="flex-1">
-          <div className="p-4 space-y-2">
+          <div className="p-4 pt-2 space-y-2">
             {wbsCodes.length === 0 ? (
               <div className="text-center py-8">
                 <Tag className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
@@ -416,11 +431,18 @@ export default function FileManagerPage() {
             ) : (
               wbsDimensionDefinitions.map((dim) => {
                 const DimIcon = dimensionIcons[dim.key] || Tag;
-                const codes = getCodesByDimension(dim.key);
+                const allCodes = getCodesByDimension(dim.key);
+                const codes = dimensionSearch 
+                  ? allCodes.filter(c => 
+                      c.code.toLowerCase().includes(dimensionSearch.toLowerCase()) ||
+                      c.name.toLowerCase().includes(dimensionSearch.toLowerCase())
+                    )
+                  : allCodes;
                 const selectedFilters = activeFilters[dim.key] || [];
-                const isExpanded = expandedDimensions.includes(dim.key);
+                const isExpanded = expandedDimensions.includes(dim.key) || (!!dimensionSearch && codes.length > 0);
                 
-                if (codes.length === 0) return null;
+                if (codes.length === 0 && !dimensionSearch) return null;
+                if (codes.length === 0 && dimensionSearch) return null;
                 
                 return (
                   <Collapsible
@@ -440,6 +462,11 @@ export default function FileManagerPage() {
                           {selectedFilters.length > 0 && (
                             <Badge variant="secondary" className="h-5 px-1.5">
                               {selectedFilters.length}
+                            </Badge>
+                          )}
+                          {dimensionSearch && codes.length > 0 && (
+                            <Badge variant="outline" className="h-5 px-1.5 text-xs">
+                              {codes.length}
                             </Badge>
                           )}
                         </span>
@@ -556,7 +583,7 @@ export default function FileManagerPage() {
         
         <div className="flex-1 flex gap-4 px-4 pb-4 min-h-0">
           {/* Document List */}
-          <div className="w-80 flex flex-col">
+          <div className="w-64 flex flex-col">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold text-sm">
                 Documents ({filteredDocuments.length})
