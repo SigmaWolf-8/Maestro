@@ -2109,6 +2109,39 @@ export async function registerRoutes(
     }
   });
 
+  // Save Microsoft 365 configuration for a tenant
+  app.post("/api/tenants/:id/microsoft-config", async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.params.id;
+      const { clientId, clientSecret, tenantId: azureTenantId } = req.body;
+
+      if (!clientId || !clientSecret) {
+        return res.status(400).json({ error: "Client ID and Client Secret are required" });
+      }
+
+      const tenant = await storage.getTenant(tenantId);
+      if (!tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      // Update tenant config with Microsoft credentials
+      const updatedConfig = {
+        ...tenant.config,
+        microsoft: {
+          clientId,
+          clientSecret,
+          tenantId: azureTenantId || "common",
+        },
+      };
+
+      await storage.updateTenant(tenantId, { config: updatedConfig });
+      res.json({ success: true, message: "Microsoft 365 configuration saved" });
+    } catch (error) {
+      console.error("Save Microsoft config error:", error);
+      res.status(500).json({ error: "Failed to save configuration" });
+    }
+  });
+
   app.get("/api/microsoft/auth-url", async (req: Request, res: Response) => {
     try {
       const tenantId = req.query.tenantId as string;

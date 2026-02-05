@@ -145,10 +145,20 @@ export default function Settings() {
   const [newCompanyEmail, setNewCompanyEmail] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isConnectingM365, setIsConnectingM365] = useState(false);
+  const [m365ClientId, setM365ClientId] = useState("");
+  const [m365ClientSecret, setM365ClientSecret] = useState("");
+  const [m365TenantId, setM365TenantId] = useState("common");
+  const [isSavingM365Config, setIsSavingM365Config] = useState(false);
+  const [showM365Config, setShowM365Config] = useState(false);
 
   // Microsoft 365 connection status
-  const { data: m365Status, refetch: refetchM365Status } = useQuery<{ connected: boolean; email?: string }>({
-    queryKey: ["/api/microsoft/status"],
+  const { data: m365Status, refetch: refetchM365Status } = useQuery<{ connected: boolean; email?: string; configured?: boolean; tenantConfigured?: boolean }>({
+    queryKey: ["/api/microsoft/status", activeTenant?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/microsoft/status?tenantId=${activeTenant?.id || ""}`);
+      return res.json();
+    },
+    enabled: !!activeTenant,
   });
 
   const handleConnectM365 = () => {
@@ -172,6 +182,40 @@ export default function Settings() {
         description: "Failed to disconnect Microsoft 365 account.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleSaveM365Config = async () => {
+    if (!activeTenant || !m365ClientId.trim() || !m365ClientSecret.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both Client ID and Client Secret.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsSavingM365Config(true);
+    try {
+      await apiRequest("POST", `/api/tenants/${activeTenant.id}/microsoft-config`, {
+        clientId: m365ClientId.trim(),
+        clientSecret: m365ClientSecret.trim(),
+        tenantId: m365TenantId.trim() || "common",
+      });
+      refetchM365Status();
+      setShowM365Config(false);
+      toast({
+        title: "Configuration Saved",
+        description: "Microsoft 365 credentials have been saved. You can now connect your account.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save Microsoft 365 configuration.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingM365Config(false);
     }
   };
 
@@ -788,7 +832,8 @@ export default function Settings() {
             Connect your Microsoft 365 account to send emails directly from the app
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Connection Status */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="space-y-1">
               {m365Status?.connected ? (
@@ -803,28 +848,117 @@ export default function Settings() {
                     </p>
                   )}
                 </>
+              ) : m365Status?.tenantConfigured ? (
+                <p className="text-sm text-muted-foreground">
+                  Credentials configured. Click "Connect" to sign in with your Microsoft 365 account.
+                </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Not connected. Connect to send emails via your Microsoft 365 account.
+                  Set up your Azure AD credentials to enable email functionality.
                 </p>
               )}
             </div>
-            {m365Status?.connected ? (
-              <Button variant="outline" onClick={handleDisconnectM365} data-testid="button-disconnect-m365">
-                <Unlink className="h-4 w-4 mr-2" />
-                Disconnect
+            <div className="flex gap-2 flex-wrap">
+              {m365Status?.connected ? (
+                <Button variant="outline" onClick={handleDisconnectM365} data-testid="button-disconnect-m365">
+                  <Unlink className="h-4 w-4 mr-2" />
+                  Disconnect
+                </Button>
+              ) : m365Status?.tenantConfigured ? (
+                <Button onClick={handleConnectM365} disabled={isConnectingM365} data-testid="button-connect-m365">
+                  {isConnectingM365 ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Link className="h-4 w-4 mr-2" />
+                  )}
+                  Connect Microsoft 365
+                </Button>
+              ) : null}
+              <Button 
+                variant={showM365Config ? "secondary" : "outline"} 
+                onClick={() => setShowM365Config(!showM365Config)}
+                data-testid="button-toggle-m365-config"
+              >
+                {showM365Config ? "Hide Configuration" : "Configure Credentials"}
               </Button>
-            ) : (
-              <Button onClick={handleConnectM365} disabled={isConnectingM365} data-testid="button-connect-m365">
-                {isConnectingM365 ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Link className="h-4 w-4 mr-2" />
-                )}
-                Connect Microsoft 365
-              </Button>
-            )}
+            </div>
           </div>
+
+          {/* Configuration Form */}
+          {showM365Config && (
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium">Azure AD App Registration</h4>
+                <p className="text-xs text-muted-foreground">
+                  Enter your Azure AD application credentials. 
+                  <a 
+                    href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary underline ml-1"
+                  >
+                    Get credentials from Azure Portal
+                  </a>
+                </p>
+              </div>
+              
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="m365ClientId">Application (Client) ID</Label>
+                  <Input
+                    id="m365ClientId"
+                    value={m365ClientId}
+                    onChange={(e) => setM365ClientId(e.target.value)}
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    data-testid="input-m365-client-id"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="m365TenantId">Directory (Tenant) ID</Label>
+                  <Input
+                    id="m365TenantId"
+                    value={m365TenantId}
+                    onChange={(e) => setM365TenantId(e.target.value)}
+                    placeholder="common (or your tenant ID)"
+                    data-testid="input-m365-tenant-id"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="m365ClientSecret">Client Secret</Label>
+                <Input
+                  id="m365ClientSecret"
+                  type="password"
+                  value={m365ClientSecret}
+                  onChange={(e) => setM365ClientSecret(e.target.value)}
+                  placeholder="Enter your client secret value"
+                  data-testid="input-m365-client-secret"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Create a secret in Azure Portal → Certificates & secrets → New client secret
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowM365Config(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveM365Config} 
+                  disabled={isSavingM365Config || !m365ClientId.trim() || !m365ClientSecret.trim()}
+                  data-testid="button-save-m365-config"
+                >
+                  {isSavingM365Config ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Save Credentials
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
