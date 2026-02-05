@@ -81,7 +81,11 @@ export default function Dashboard() {
           data-testid="img-hero"
         />
         <div 
-          className="absolute inset-0 mix-blend-color opacity-40"
+          className="absolute inset-0 mix-blend-multiply opacity-30"
+          style={{ backgroundColor: 'hsl(var(--sidebar))' }}
+        />
+        <div 
+          className="absolute inset-0 mix-blend-color opacity-70"
           style={{ backgroundColor: 'hsl(var(--sidebar))' }}
         />
         <div className="absolute inset-0 bg-gradient-to-l from-black/60 via-black/30 to-transparent" />
