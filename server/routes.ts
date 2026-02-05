@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, seedNavigationForTenant } from "./storage";
 import { z } from "zod";
-import { insertProjectSchema, insertWbsNodeSchema, insertTenantUserSchema } from "@shared/schema";
+import { insertProjectSchema, insertWbsNodeSchema, insertTenantUserSchema, type Customer, type VendorContact, type TenantUser } from "@shared/schema";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import * as microsoftGraph from "./microsoft-graph";
 
@@ -992,14 +992,14 @@ export async function registerRoutes(
       const category = (req.query.category as string) || "all";
       
       // Get all contacts from different sources
-      const [customers, vendorContacts, teamMembers] = await Promise.all([
+      const [customers, vendorContacts, tenantUsers] = await Promise.all([
         storage.getCustomers(tenantId),
         storage.getAllVendorContacts(tenantId),
-        storage.getTeamMembers(tenantId),
+        storage.getTenantUsers(tenantId),
       ]);
       
       // Transform customers into unified contact format
-      const customerContacts = customers.map(c => ({
+      const customerContacts = customers.map((c: Customer) => ({
         id: `customer-${c.id}`,
         category: "Customer" as const,
         sortId: c.jobNum,
@@ -1013,7 +1013,7 @@ export async function registerRoutes(
       }));
       
       // Transform vendor contacts into unified format
-      const vendorContactsList = vendorContacts.map(vc => ({
+      const vendorContactsList = vendorContacts.map((vc: { contact: VendorContact; vendorName: string }) => ({
         id: `vendor-${vc.contact.id}`,
         category: "Vendor" as const,
         sortId: 0,
@@ -1026,20 +1026,20 @@ export async function registerRoutes(
         sourceId: vc.contact.id,
       }));
       
-      // Transform team members into unified format
-      const employeeContacts = teamMembers.map(tm => {
-        const profile = tm.profile as { firstName?: string; lastName?: string; jobTitle?: string } || {};
+      // Transform tenant users into unified format
+      const employeeContacts = tenantUsers.map((tu: TenantUser) => {
+        const profile = tu.profile as { firstName?: string; lastName?: string; jobTitle?: string } || {};
         return {
-          id: `employee-${tm.id}`,
+          id: `employee-${tu.id}`,
           category: "Employee" as const,
           sortId: 0,
-          fullName: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || tm.email,
+          fullName: [profile.firstName, profile.lastName].filter(Boolean).join(" ") || tu.email,
           company: "Internal",
-          email: tm.email,
+          email: tu.email,
           phone: "",
-          jobTitle: profile.jobTitle || tm.role,
+          jobTitle: profile.jobTitle || tu.role,
           city: "",
-          sourceId: tm.id,
+          sourceId: tu.id,
         };
       });
       

@@ -48,8 +48,21 @@ export default function ContactsDirectoryPage() {
   const [page, setPage] = useState(0);
   const limit = 50;
 
+  const queryParams = new URLSearchParams({
+    search: searchQuery,
+    sortBy,
+    category,
+    limit: limit.toString(),
+    offset: (page * limit).toString(),
+  }).toString();
+
   const { data, isLoading } = useQuery<DirectoryResponse>({
-    queryKey: ["/api/contacts/directory", { search: searchQuery, sortBy, category, limit, offset: page * limit }],
+    queryKey: ["/api/contacts/directory", searchQuery, sortBy, category, page],
+    queryFn: async () => {
+      const res = await fetch(`/api/contacts/directory?${queryParams}`);
+      if (!res.ok) throw new Error("Failed to fetch contacts");
+      return res.json();
+    },
   });
 
   const contacts = data?.contacts || [];
