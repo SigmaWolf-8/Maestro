@@ -10,7 +10,7 @@ export function TabBar() {
 
   return (
     <div 
-      className="flex flex-wrap items-center gap-0.5 px-2 py-1 border-b border-border bg-muted/30"
+      className="flex flex-wrap items-start gap-1 px-2 py-1 border-b border-border bg-muted/30"
       data-testid="tab-bar"
     >
       {tabs.map((tab) => {
@@ -18,7 +18,8 @@ export function TabBar() {
         return (
           <div
             key={tab.id}
-            className={`group flex items-center gap-1 px-3 py-1 rounded-md text-sm cursor-pointer transition-colors min-w-0 w-[calc((100%-14px)/8)] max-w-[180px] ${
+            style={{ width: 'calc((100% - 28px) / 8)' }}
+            className={`group flex items-center gap-1 px-3 py-1 rounded-md text-sm cursor-pointer transition-colors min-w-0 max-w-[180px] ${
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
