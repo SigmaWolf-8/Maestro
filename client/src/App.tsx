@@ -188,7 +188,7 @@ function AppLayout() {
           <TabBar />
           <main className="flex-1 overflow-auto flex flex-col relative">
             <div 
-              className="absolute inset-0 opacity-[0.03] pointer-events-none"
+              className="absolute inset-0 opacity-[0.08] pointer-events-none"
               style={{
                 backgroundImage: `url(${heroWatermark})`,
                 backgroundSize: 'cover',
