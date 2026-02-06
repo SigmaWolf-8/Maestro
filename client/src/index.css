@@ -228,7 +228,7 @@
 
   [data-state="expanded"] [data-sidebar="content"] [data-sidebar="menu-sub-button"] {
     font-family: inherit;
-    font-size: inherit;
+    font-size: 80%;
   }
 }
 
