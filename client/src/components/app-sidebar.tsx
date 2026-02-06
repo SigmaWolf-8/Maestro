@@ -317,17 +317,17 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="border-t-[3px] border-t-black/20 shadow-[inset_0_6px_12px_rgba(0,0,0,0.25),inset_0_-4px_8px_rgba(255,255,255,0.05)]">
-        <div className="p-3 space-y-3">
+        <div className="px-2 py-1 space-y-0.5">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 isActive={isActive("/settings")}
                 data-testid="nav-settings"
-                style={{ fontSize: '70%' }}
+                style={{ fontSize: '70%', minHeight: '1.5rem', height: '1.5rem' }}
               >
                 <Link href="/settings">
-                  <Settings className="h-3.5 w-3.5" />
+                  <Settings className="h-3 w-3" />
                   <span>Settings</span>
                 </Link>
               </SidebarMenuButton>
@@ -336,22 +336,22 @@ export function AppSidebar({
           
           <Link 
             href="/profile" 
-            className="flex items-center gap-3 pt-3 border-t border-sidebar-border/50 hover-elevate rounded-md p-2 -m-2 cursor-pointer"
+            className="flex items-center gap-2 pt-0.5 border-t border-sidebar-border/50 hover-elevate rounded-md px-1.5 py-0.5 -mx-1 cursor-pointer"
             data-testid="nav-profile"
             style={{ fontSize: '80%' }}
           >
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs">
+            <Avatar className="h-5 w-5">
+              <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground" style={{ fontSize: '0.55rem' }}>
                 {displayFirstName?.[0] || "U"}
                 {displayLastName?.[0] || ""}
               </AvatarFallback>
             </Avatar>
             {state !== "collapsed" && (
-              <div className="flex flex-col min-w-0 flex-1">
-                <span className="font-medium text-sidebar-foreground truncate">
+              <div className="flex flex-col min-w-0 flex-1 leading-tight">
+                <span className="font-medium text-sidebar-foreground truncate" style={{ fontSize: '0.7rem', lineHeight: '1rem' }}>
                   {displayFirstName} {displayLastName}
                 </span>
-                <span className="text-sidebar-foreground/60 truncate capitalize" style={{ fontSize: '85%' }}>
+                <span className="text-sidebar-foreground/60 truncate capitalize" style={{ fontSize: '0.6rem', lineHeight: '0.85rem' }}>
                   {userRole.replace("_", " ")}
                 </span>
               </div>
