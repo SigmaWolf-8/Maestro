@@ -30,6 +30,7 @@ import FileManagerPage from "@/pages/file-manager";
 import CustomersPage from "@/pages/customers";
 import VendorsPage from "@/pages/vendors";
 import ContactsDirectoryPage from "@/pages/contacts-directory";
+import MaestroDevPage from "@/pages/maestro-dev";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
@@ -120,6 +121,7 @@ function Router() {
       <Route path="/settings/user-groups" component={UserGroupsPage} />
       <Route path="/settings/permissions" component={GroupPermissionsPage} />
       <Route path="/profile" component={Profile} />
+      <Route path="/maestro" component={MaestroDevPage} />
       <Route component={NotFound} />
     </Switch>
   );
