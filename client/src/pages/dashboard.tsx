@@ -19,7 +19,7 @@ import type { DashboardStats, Project, WbsNode } from "@shared/schema";
 
 export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showColorOverlay, setShowColorOverlay] = useState(true);
+  const [showColorOverlay, setShowColorOverlay] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
