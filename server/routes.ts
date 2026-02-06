@@ -12,11 +12,23 @@ import { createSubscriptionsRouter } from "./api/subscriptions";
 import { createBillingRouter } from "./api/billing";
 import { createAdminPricingRouter } from "./api/admin-pricing";
 import { createPlenumNetRouter } from "./api/plenumnet";
+import { createStripeRouter } from "./api/stripe";
+import { createSystemRouter } from "./api/system";
+import { requestLogger, errorHandler } from "./middleware/request-logger";
+import { globalApiLimiter, authLimiter, plenumnetLimiter, webhookLimiter } from "./middleware/rate-limiter";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  app.use(requestLogger);
+
+  app.use("/api/", globalApiLimiter);
+  app.use("/api/login", authLimiter);
+  app.use("/api/auth", authLimiter);
+  app.use("/api/plenumnet/", plenumnetLimiter);
+  app.use("/api/stripe/webhook", webhookLimiter);
 
   await setupAuth(app);
   registerAuthRoutes(app);
@@ -32,6 +44,10 @@ export async function registerRoutes(
   app.use(createBillingRouter());
   app.use(createAdminPricingRouter());
   app.use(createPlenumNetRouter());
+  app.use(createStripeRouter());
+  app.use(createSystemRouter());
+
+  app.use(errorHandler);
 
   return httpServer;
 }

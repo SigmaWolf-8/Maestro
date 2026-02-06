@@ -1,6 +1,6 @@
 # The Maestro - Construction ERP | GitHub Roadmap
 
-**Architecture Version:** 3.2.1 | **Last Updated:** February 6, 2026
+**Architecture Version:** 3.3.0 | **Last Updated:** February 6, 2026
 
 ---
 
@@ -10,7 +10,7 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 
 ---
 
-## Current Release: v3.2.1 (February 6, 2026)
+## Current Release: v3.3.0 (February 6, 2026)
 
 ### Completed Features
 
@@ -88,19 +88,35 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 | Security Dashboard | Done | Interactive page with live GF(3) tables, encryption demos, hash tool |
 | BigInt JSON Serialization | Done | Recursive `serializeBigInts` utility across all API responses |
 
+#### Production Hardening (v3.3.0)
+| Feature | Status | Details |
+|---------|--------|---------|
+| Rate Limiting | Done | Per-tenant plan-tier limits (essentials: 100/min, professional: 500/min, enterprise: 2000/min, quantum: 10000/min), specialized limiters for auth/PlenumNET/webhooks |
+| Structured Logging | Done | JSON request logging with correlation IDs (X-Correlation-ID), error classification, hrtime duration tracking |
+| Error Handler Middleware | Done | Centralized error handling with status classification (BAD_REQUEST, UNAUTHORIZED, RATE_LIMITED, etc.) |
+| Stripe Live Integration | Done | StripeService with customer creation, product/price sync, subscription lifecycle, webhook handler (invoice.paid, payment_failed, subscription.updated/deleted), payment methods, setup intents |
+| Algorand SDK Adapter | Done | Pluggable adapter with REST API integration, mirror node verification, dev-mode fallback |
+| Hedera SDK Adapter | Done | Consensus Service adapter with topic messages, mirror node verification, dev-mode fallback |
+| Azure AD SSO Scaffolding | Done | OAuth2 code exchange, MS Graph profile fetch, JWT parsing middleware, multi-tenant support |
+| Migration Tooling | Done | generate-migration.sh, validate-schema.sh scripts, enhanced CI workflow with schema diff detection |
+| System Status API | Done | `/api/system/status` exposing Stripe, Algorand, Hedera, Azure AD, and all v3.3 feature readiness |
+
 ### Architecture Summary
 
 | Layer | Count | Technology |
 |-------|-------|------------|
 | Client Pages | 22 | React 18, shadcn/ui, TanStack Query v5 |
-| API Routers | 11 | Express.js domain routers |
-| Backend Services | 10 | TypeScript service classes |
+| API Routers | 13 | Express.js domain routers |
+| Backend Services | 12 | TypeScript service classes |
+| Middleware Layers | 3 | Rate limiter, request logger, Azure AD auth |
+| Ledger Adapters | 2 | Algorand, Hedera (pluggable pattern) |
 | Database Tables | 28 | PostgreSQL via Drizzle ORM |
 | Schema Domains | 7 | Per-domain barrel exports |
 | CI/CD Workflows | 4 | GitHub Actions |
+| Migration Scripts | 2 | Bash (generate + validate) |
 | PlenumNET Modules | 5 | Local libternary engine |
-| Total API Endpoints | 45+ | RESTful JSON |
-| Total Lines of Code | ~20,700+ | TypeScript (pages + API + services + schema) |
+| Total API Endpoints | 55+ | RESTful JSON |
+| Total Lines of Code | ~23,000+ | TypeScript (pages + API + services + schema + middleware) |
 
 ### CI/CD Pipeline
 | Workflow | Trigger | Purpose |
@@ -115,15 +131,16 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 ## Roadmap: Upcoming Milestones
 
 ### v3.3 - Production Hardening & Stripe Live Integration
-**Target:** Q1 2026
+**Released:** February 6, 2026
 
-- [ ] **Stripe Live Integration** - Connect Stripe API for real payment processing, webhook handling, and subscription lifecycle management
-- [ ] **Algorand/Hedera Live Witnessing** - Replace dev-mode stubs with real Algorand ABI calls and Hedera Consensus Service submissions
-- [ ] **Azure AD SSO (Production)** - Complete Azure AD B2C integration replacing Replit OIDC for production multi-tenant authentication
+- [x] **Stripe Live Integration** - StripeService with customer/subscription/invoice lifecycle, webhook handler, product/price sync, payment methods, setup intents
+- [x] **Algorand/Hedera SDK Adapters** - Pluggable adapter pattern with live API integration and dev-mode fallback gating
+- [x] **Azure AD SSO Scaffolding** - OAuth2 code exchange, MS Graph profile fetch, JWT parsing middleware, multi-tenant auth
 - [ ] **Kong Gateway Deployment** - Deploy Kong proxy with PlenumNET security plugins to production infrastructure
-- [ ] **Database Migration Tooling** - Automated Drizzle migration generation and deployment pipeline
-- [ ] **Rate Limiting & Throttling** - Per-tenant API rate limiting with usage-based quotas
-- [ ] **Error Monitoring** - Structured error logging, alerting, and incident tracking
+- [x] **Database Migration Tooling** - generate-migration.sh, validate-schema.sh, enhanced CI workflow with schema diff detection
+- [x] **Rate Limiting & Throttling** - Per-tenant plan-tier-aware rate limiting with specialized limiters for auth/PlenumNET/webhooks
+- [x] **Structured Logging** - JSON request logging with correlation IDs, error classification, duration tracking, error handler middleware
+- [x] **System Status API** - `/api/system/status` endpoint exposing all integration readiness
 
 ### v3.4 - Advanced Document & Collaboration
 **Target:** Q2 2026
@@ -171,6 +188,7 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| v3.3.0 | Feb 6, 2026 | Production hardening: rate limiting, structured logging, Stripe live integration, Algorand/Hedera adapters, Azure AD SSO, migration tooling, system status API |
 | v3.2.1 | Feb 6, 2026 | SaaS billing, Canadian tax compliance, real PlenumNET/Salvi Framework, Security Dashboard |
 | v3.1 | Feb 6, 2026 | Modularized routing (11 routers), complete WOPI protocol (12 endpoints), MS Graph token persistence |
 | v3.0 | Feb 6, 2026 | WOPI infrastructure, AI Analytics, Smart Inbox, Kong gateway, PlenumNET framework |

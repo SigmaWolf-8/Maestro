@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -26,42 +28,78 @@ jobs:
       - name: Validate schema compiles
         run: npx tsc --noEmit --skipLibCheck shared/schema.ts
 
-      - name: Detect schema changes
+      - name: Check barrel exports
         run: |
-          echo "=== Schema Change Detection ==="
+          for domain in tenants users projects wbs documents subscriptions billing; do
+            if [ ! -f "shared/schema/${domain}.ts" ]; then
+              echo "ERROR: Missing barrel export shared/schema/${domain}.ts"
+              exit 1
+            fi
+          done
+          echo "All barrel exports present."
+
+      - name: Detect schema changes
+        id: schema-diff
+        run: |
+          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} -- shared/schema.ts shared/schema/)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          TABLE_CHANGES=$(git diff ${{ github.event.pull_request.base.sha }} -- shared/schema.ts | grep -E "^\+.*pgTable|^\+.*serial|^\+.*varchar|^\+.*integer|^\+.*text|^\+.*timestamp|^\+.*boolean|^\+.*jsonb" || true)
+          echo "table_changes<<EOF" >> $GITHUB_OUTPUT
+          echo "$TABLE_CHANGES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+          if echo "$TABLE_CHANGES" | grep -q "pgTable"; then
+            echo "has_new_tables=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_new_tables=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate migration preview
+        run: |
+          echo "=== Migration Preview ==="
+          echo "Changed files:"
+          echo "${{ steps.schema-diff.outputs.changed_files }}"
           echo ""
-          echo "Changed files in shared/schema*:"
-          git diff --name-only ${{ github.event.pull_request.base.sha }} -- shared/schema.ts shared/schema/
+          echo "New tables detected: ${{ steps.schema-diff.outputs.has_new_tables }}"
           echo ""
-          echo "IMPORTANT: Schema changes require manual migration review."
-          echo "Run 'npx drizzle-kit push' in the Replit workspace after merge."
-          echo ""
-          echo "Checklist:"
-          echo "  - [ ] New tables have proper FK constraints"
-          echo "  - [ ] Insert schemas created with createInsertSchema()"  
-          echo "  - [ ] Types exported ($inferSelect, $inferInsert)"
-          echo "  - [ ] Storage interface (IStorage) updated"
-          echo "  - [ ] DatabaseStorage implementation added"
-          echo "  - [ ] Barrel exports updated in shared/schema/"
+          echo "IMPORTANT: Schema changes require review before deployment."
+          echo "Generate migration: ./scripts/generate-migration.sh <name>"
+          echo "Or push directly: npm run db:push"
 
       - name: Comment on PR
         uses: actions/github-script@v7
         with:
           script: |
-            const body = `### Database Schema Change Detected
-            
-            This PR modifies the database schema. Please verify:
-            
+            const hasNewTables = '${{ steps.schema-diff.outputs.has_new_tables }}' === 'true';
+            const changedFiles = `${{ steps.schema-diff.outputs.changed_files }}`;
+
+            const severity = hasNewTables ? 'NEW TABLES DETECTED' : 'Column/Type Changes';
+
+            const body = `### Database Schema Change Detected (${severity})
+
+            **Changed files:**
+            \`\`\`
+            ${changedFiles}
+            \`\`\`
+
+            #### Pre-merge Checklist:
             - [ ] New tables have proper foreign key constraints
             - [ ] Insert schemas created with \`createInsertSchema()\`
-            - [ ] Types exported (\`$inferSelect\`, \`$inferInsert\`)
+            - [ ] Types exported (\`$inferSelect\`, \`z.infer\`)
             - [ ] \`IStorage\` interface updated in \`server/storage.ts\`
             - [ ] \`DatabaseStorage\` implementation added
             - [ ] Barrel exports updated in \`shared/schema/\`
-            - [ ] Run \`npx drizzle-kit push\` after merge
-            
-            *Automated by Maestro CI/CD*`;
-            
+
+            #### Post-merge Actions:
+            - [ ] Generate migration: \`./scripts/generate-migration.sh <name>\`
+            - [ ] Review generated SQL in \`migrations/\`
+            - [ ] Apply: \`npx drizzle-kit migrate\` or \`npm run db:push\`
+
+            *Automated by Maestro CI/CD v3.3*`;
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

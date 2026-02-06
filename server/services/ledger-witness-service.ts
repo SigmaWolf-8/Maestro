@@ -2,13 +2,11 @@ import type { LedgerWitnessReceipt } from "../../shared/types/billing";
 import type { LedgerProvider } from "../../shared/types/subscriptions";
 import { ternaryHash } from "../plenumnet/ternary-encoding";
 import { getFemtosecondTimestamp } from "../plenumnet/femtosecond-timing";
-
-const ALGORAND_APP_ID = process.env.ALGORAND_APP_ID;
-const HEDERA_TOPIC_ID = process.env.HEDERA_TOPIC_ID;
+import { getLedgerAdapter, getLedgerStatus } from "./ledger-adapters";
 
 export class LedgerWitnessService {
-  private get isLiveMode(): boolean {
-    return !!(ALGORAND_APP_ID || HEDERA_TOPIC_ID);
+  getAdapterStatus() {
+    return getLedgerStatus();
   }
 
   async witnessTransaction(
@@ -17,53 +15,47 @@ export class LedgerWitnessService {
   ): Promise<LedgerWitnessReceipt> {
     const payloadHash = ternaryHash(JSON.stringify(payload));
     const timestamp = getFemtosecondTimestamp();
+    const adapter = getLedgerAdapter(provider);
+    const result = await adapter.witness(payloadHash, {
+      femtosecondTime: timestamp.humanReadable,
+    });
 
     if (provider === "algorand") {
-      return this.witnessAlgorand(payload, payloadHash, timestamp.humanReadable);
+      return {
+        provider: "algorand",
+        transactionId: result.transactionId,
+        algorandRound: result.blockHeight,
+        algorandAppId: parseInt(process.env.ALGORAND_APP_ID || "0", 10),
+        timestamp: new Date(),
+        payload: {
+          ...payload,
+          ternaryHash: payloadHash,
+          femtosecondTime: timestamp.humanReadable,
+          witnessMode: result.mode,
+          networkId: result.networkId,
+        },
+      };
     }
-    return this.witnessHedera(payload, payloadHash, timestamp.humanReadable);
-  }
 
-  private async witnessAlgorand(
-    payload: Record<string, unknown>,
-    payloadHash: string,
-    femtosecondTime: string
-  ): Promise<LedgerWitnessReceipt> {
-    const txId = `algo_dev_${payloadHash}_${Date.now()}`;
-    return {
-      provider: "algorand",
-      transactionId: txId,
-      algorandRound: Math.floor(Date.now() / 1000),
-      algorandAppId: ALGORAND_APP_ID ? parseInt(ALGORAND_APP_ID, 10) : 0,
-      timestamp: new Date(),
-      payload: {
-        ...payload,
-        ternaryHash: payloadHash,
-        femtosecondTime,
-        witnessMode: this.isLiveMode ? "live" : "development",
-      },
-    };
-  }
-
-  private async witnessHedera(
-    payload: Record<string, unknown>,
-    payloadHash: string,
-    femtosecondTime: string
-  ): Promise<LedgerWitnessReceipt> {
-    const txId = `hedera_dev_${payloadHash}_${Date.now()}`;
     return {
       provider: "hedera",
-      transactionId: txId,
-      hederaConsensusTimestamp: new Date().toISOString(),
-      hederaTopicSequenceNumber: Math.floor(Math.random() * 100000),
+      transactionId: result.transactionId,
+      hederaConsensusTimestamp: result.consensusTimestamp,
+      hederaTopicSequenceNumber: result.sequenceNumber,
       timestamp: new Date(),
       payload: {
         ...payload,
         ternaryHash: payloadHash,
-        femtosecondTime,
-        witnessMode: this.isLiveMode ? "live" : "development",
+        femtosecondTime: timestamp.humanReadable,
+        witnessMode: result.mode,
+        networkId: result.networkId,
       },
     };
+  }
+
+  async verifyTransaction(provider: LedgerProvider, transactionId: string) {
+    const adapter = getLedgerAdapter(provider);
+    return adapter.verify(transactionId);
   }
 
   async witnessInvoice(invoiceId: number, provider: LedgerProvider = "algorand"): Promise<LedgerWitnessReceipt> {
