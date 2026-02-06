@@ -25,9 +25,14 @@ import {
   RefreshCw,
   Terminal,
   DollarSign,
+  CreditCard,
+  Settings2,
+  Receipt,
 } from "lucide-react";
 import { SiGithub } from "react-icons/si";
 import BillingDashboard from "./billing-dashboard";
+import SubscriptionManagement from "./subscription-management";
+import AdminPricing from "./admin-pricing";
 
 const KONG_BASE_URL = "https://kong-9e76b3c08eusfq1zu.kongcloud.dev";
 
@@ -205,6 +210,7 @@ function ApiCategorySection({ category, endpoints }: { category: string; endpoin
 export default function MaestroDevPage() {
   const [apiFilter, setApiFilter] = useState("");
   const [activeTab, setActiveTab] = useState<"kong" | "github" | "api-docs" | "billing">("kong");
+  const [billingSubTab, setBillingSubTab] = useState<"subscriptions" | "invoices" | "admin-pricing">("subscriptions");
 
   const { data: kongTimestamp, isLoading: timestampLoading, refetch: refetchTimestamp } = useQuery<any>({
     queryKey: ["/api/kong/timestamp"],
@@ -748,7 +754,32 @@ export default function MaestroDevPage() {
       )}
 
       {activeTab === "billing" && (
-        <BillingDashboard embedded />
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-1 border-b">
+            {([
+              { id: "subscriptions" as const, label: "Subscriptions", icon: CreditCard },
+              { id: "invoices" as const, label: "Invoices", icon: Receipt },
+              { id: "admin-pricing" as const, label: "Admin Pricing", icon: Settings2 },
+            ]).map((sub) => (
+              <button
+                key={sub.id}
+                onClick={() => setBillingSubTab(sub.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border-b-2 transition-colors ${
+                  billingSubTab === sub.id
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid={`tab-billing-${sub.id}`}
+              >
+                <sub.icon className="h-3 w-3" />
+                {sub.label}
+              </button>
+            ))}
+          </div>
+          {billingSubTab === "subscriptions" && <SubscriptionManagement embedded />}
+          {billingSubTab === "invoices" && <BillingDashboard embedded />}
+          {billingSubTab === "admin-pricing" && <AdminPricing embedded />}
+        </div>
       )}
     </div>
   );

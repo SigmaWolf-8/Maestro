@@ -63,7 +63,7 @@ interface PlanEditState {
   isActive?: boolean;
 }
 
-export default function AdminPricing() {
+export default function AdminPricing({ embedded = false }: { embedded?: boolean }) {
   const [editingPlans, setEditingPlans] = useState<Record<number, PlanEditState>>({});
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [configForm, setConfigForm] = useState<PricingConfigEntry>({
@@ -181,14 +181,17 @@ export default function AdminPricing() {
   };
 
   return (
-    <div className="p-6 flex flex-col gap-6" data-testid="page-admin-pricing">
+    <div className={embedded ? "flex flex-col gap-3" : "p-6 flex flex-col gap-6"} data-testid="page-admin-pricing">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Settings2 className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Pricing Administration</h1>
-        </div>
+        {!embedded && (
+          <div className="flex items-center gap-3">
+            <Settings2 className="h-6 w-6 text-muted-foreground" />
+            <h1 className="text-2xl font-semibold" data-testid="text-page-title">Pricing Administration</h1>
+          </div>
+        )}
         <Button
           variant="outline"
+          size={embedded ? "sm" : "default"}
           onClick={() => seedMutation.mutate()}
           disabled={seedMutation.isPending}
           data-testid="button-seed-data"

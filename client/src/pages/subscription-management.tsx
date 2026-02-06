@@ -60,7 +60,7 @@ const FEATURE_LABELS: Record<string, string> = {
   quantumResistantAllOperations: "Quantum-Resistant Ops",
 };
 
-export default function SubscriptionManagement() {
+export default function SubscriptionManagement({ embedded = false }: { embedded?: boolean }) {
   const [selectedProvince, setSelectedProvince] = useState<string>("");
   const { toast } = useToast();
 
@@ -145,11 +145,13 @@ export default function SubscriptionManagement() {
   }
 
   return (
-    <div className="p-6 flex flex-col gap-6" data-testid="page-subscription-management">
-      <div className="flex items-center gap-3 flex-wrap">
-        <CreditCard className="h-6 w-6 text-muted-foreground" />
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Subscription Management</h1>
-      </div>
+    <div className={embedded ? "flex flex-col gap-3" : "p-6 flex flex-col gap-6"} data-testid="page-subscription-management">
+      {!embedded && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <CreditCard className="h-6 w-6 text-muted-foreground" />
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Subscription Management</h1>
+        </div>
+      )}
 
       {currentLoading ? (
         <div className="flex flex-col gap-4">
