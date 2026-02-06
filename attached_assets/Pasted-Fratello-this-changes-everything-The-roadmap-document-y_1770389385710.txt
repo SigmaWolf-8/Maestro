@@ -1,0 +1,70 @@
+Fratello — this changes everything. The roadmap document you've shared confirms **v3.2.1 is COMPLETE**. Let me map it against our 60-task list:
+
+---
+
+**The evidence is definitive.** Every v3.2.1 deliverable from our architecture spec is marked "Done":
+
+### Phase 1: Schema & Types — ✅ COMPLETE
+- 28 database tables (was 21 in v3.1 → +6 billing tables + 1 additional = 28)
+- 7 schema domains (barrel exports created)
+
+### Phase 2: Config & Tax Services — ✅ COMPLETE
+- Pricing Config: DB-driven key-value with PUBLIC/PRIVATE visibility ✅
+- Canadian Tax Service: All 13 provinces, GST/HST/PST/QST in basis points ✅
+
+### Phase 3: Core Services — ✅ COMPLETE
+- 10 backend services (was ~2 → +8 new services exactly as spec'd)
+- Billing Service with invoice generation, tax breakdown, payment tracking ✅
+- Usage Tracking with metrics recording, limit checking ✅
+- Ledger Witnessing: Algorand primary / Hedera fallback with dev/live mode gating ✅
+- Tenant Onboarding with automated provisioning ✅
+- Subscription Plans with tier-based feature gating ✅
+
+### Phase 4: API Routes — ✅ COMPLETE
+- 11 API routers, 45+ endpoints total ✅
+
+### Phase 5: Client — ✅ COMPLETE
+- 22 client pages (was 21 → +4 billing pages, -3 consolidated = 22)
+- Subscription Management Page ✅
+- Billing Dashboard Page ✅
+- Admin Pricing Page ✅
+
+### Phase 6: Infrastructure — ✅ COMPLETE
+- 4 CI/CD workflows (ci, deploy, db-migration, security) ✅
+- PlenumNET: 5 libternary modules, 15 endpoints, Security Dashboard ✅
+
+---
+
+### Updated Task List: **60 / 60 COMPLETE** 🎯
+
+| Phase | Tasks | Status |
+|-------|-------|--------|
+| TASK-000: Push v3.1 | 1/1 | ✅ |
+| Phase 1: Schema & Types | 13/13 | ✅ |
+| Phase 2: Config & Tax | 5/5 | ✅ |
+| Phase 3: Core Services | 6/6 | ✅ |
+| Phase 4: API Routes | 5/5 | ✅ |
+| Phase 5: Client | 17/17 | ✅ |
+| Phase 6: Infra & Verify | 13/13 | ✅ |
+| **TOTAL** | **60 / 60** | **100%** ✅ |
+
+### v3.2.1 Final Metrics
+
+| Metric | Value |
+|--------|-------|
+| Total Lines of Code | ~20,700+ |
+| Database Tables | 28 |
+| Client Pages | 22 |
+| API Routers | 11 |
+| Backend Services | 10 |
+| API Endpoints | 45+ |
+| PlenumNET Modules | 5 |
+| CI/CD Workflows | 4 |
+
+---
+
+### What's Next: v3.3 — Production Hardening
+
+The roadmap shows the path forward clearly. The next milestone is **v3.3 (Target Q1 2026)** — transitioning from dev-mode stubs to live production integrations: Stripe live payments, Algorand/Hedera live witnessing, Azure AD SSO replacing Replit OIDC, Kong gateway deployment, and operational tooling (rate limiting, error monitoring, migration automation).
+
+v3.2.1 is in the books. Così sia. 🐺
