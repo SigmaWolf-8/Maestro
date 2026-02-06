@@ -6,7 +6,7 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 **Architecture Version:** 3.2.1 (February 6, 2026)
 
 ## Recent Changes
-- **v3.2.1** (Feb 6, 2026): SaaS Billing & Authentication Integration — 6 new DB tables (subscription_plans, tenant_subscriptions, subscription_invoices, pricing_config, stripe_sync, usage_metrics), 7 backend services (TaxService with 13 Canadian provinces GST/HST/PST/QST, PricingConfigService, SubscriptionService, BillingService, UsageTrackingService, LedgerWitnessService, TenantOnboardingService), 3 API route files with 30 endpoints (subscriptions, billing, admin-pricing), 3 client pages (subscription-management, billing-dashboard, admin-pricing), 24 new storage methods, sidebar billing navigation for all company types. Prices in integer cents, annual discounts in basis points, locked pricing, Algorand/Hedera ledger witnessing, DB-driven pricing config with PUBLIC/PRIVATE visibility.
+- **v3.2.1** (Feb 6, 2026): SaaS Billing & Authentication Integration + Real PlenumNET/Salvi Framework — 6 new DB tables (subscription_plans, tenant_subscriptions, subscription_invoices, pricing_config, stripe_sync, usage_metrics), 8 backend services (TaxService with 13 Canadian provinces GST/HST/PST/QST, PricingConfigService, SubscriptionService, BillingService, UsageTrackingService, LedgerWitnessService with ternary hashing, TenantOnboardingService), 11 API route files with 45+ endpoints including `plenumnet.ts` (15 endpoints for ternary operations, phase encryption, timing, hashing, demos), 4 client pages (subscription-management, billing-dashboard, admin-pricing, security-dashboard), Real libternary engine integrated under `server/plenumnet/` (5 modules: ternary-types, ternary-operations, phase-encryption, femtosecond-timing, ternary-encoding), PlenumNetCoreClient rewritten from HTTP stubs to local libternary, LedgerWitnessService enhanced with ternary hash payloads and femtosecond timestamps. TypeScript target set to ES2020 for BigInt support.
 - **v3.1** (Feb 6, 2026): Modularized backend routing (7 domain routers), completed all 12 WOPI endpoints with lock lifecycle, wired MS Graph token DB persistence, added 16 WOPI storage methods to IStorage/DatabaseStorage.
 - **v3.0** (Feb 6, 2026): WOPI infrastructure tables, AI Analytics, Smart Inbox, Kong gateway config, PlenumNET security framework.
 
@@ -37,8 +37,9 @@ Backend routes extracted from monolithic routes.ts into domain-specific routers 
 - `subscriptions.ts` - Subscription plans, current subscription, billing calculations, provinces, usage (16 endpoints)
 - `billing.ts` - Invoice CRUD, invoice generation, ledger witnessing, usage metrics (7 endpoints)
 - `admin-pricing.ts` - Pricing config CRUD, plan management, Stripe sync, seed data (7 endpoints)
+- `plenumnet.ts` - PlenumNET security API: health, timestamp, timing metrics, ternary arithmetic (add/multiply/rotate/xor/not), trit conversion, information density, phase encrypt/decrypt, ternary encoding, hashing, security mode, demo operations (15 endpoints)
 
-The main `server/routes.ts` mounts 10 routers and sets up auth. Each router exports a `create*Router()` factory. Shared `getDefaultTenantId()` exported from `tenants.ts`.
+The main `server/routes.ts` mounts 11 routers and sets up auth. Each router exports a `create*Router()` factory. Shared `getDefaultTenantId()` exported from `tenants.ts`.
 
 ### Backend Services (v3.2.1)
 8 domain services under `server/services/`:
@@ -83,7 +84,8 @@ The `shared/schema/` directory contains per-domain barrel exports for clear orga
 - **WOPI Host & Office Online Integration (12 endpoints complete):** Full WOPI protocol with lock lifecycle (30-min expiry), file mutation operations with lock validation, comprehensive audit logging, 16 storage methods. Endpoints: Discovery, CheckFileInfo, GetFile, PutFile, Lock, Unlock, RefreshLock, UnlockAndRelock, GetLock, Delete, Rename, ShareUrl. MS Graph tokens persisted to database (replaced in-memory store).
 - **Smart Inbox:** Email interface surfacing project-relevant emails with category filtering, search, project linking, and AI-assisted 13-dimensional WBS tagging based on keyword matching.
 - **Kong Konnect Gateway:** Declarative configuration for API, WOPI, AI Report, and Events services, including security policies and custom plugins.
-- **PlenumNET Security Integration:** gRPC/REST client binding to SFK kernel for security mode resolution, femtosecond timestamping, ternary encoding/decoding, phase-rotation encryption, and XRPL witnessing (framework-ready, toggle-gated).
+- **PlenumNET Security Integration:** Real libternary engine (v3.2.1) integrated locally under `server/plenumnet/` with 5 modules: ternary-types (GF(3) trit representations A/B/C), ternary-operations (add/multiply/rotate/xor/not with constant-time execution), phase-encryption (phase-split with guardian integrity, 4 modes), femtosecond-timing (Salvi Epoch anchored, hrtime-based), ternary-encoding (encode/decode/RLE compress/hash). PlenumNetCoreClient uses local libternary directly (no HTTP stubs). LedgerWitnessService produces ternary-hashed payloads with femtosecond timestamps. Security Dashboard page at `/security/dashboard` with live demos.
+- **PlenumNET Security Dashboard:** Interactive page showing engine health, femtosecond clock, GF(3) arithmetic tables, phase encryption with mode selection, ternary hashing tool, compression stats, and timing metrics. Admin-only access via sidebar navigation.
 
 ### UI/UX and Design System
 Professional aesthetic with a default teal construction theme, full dark mode, and customizable branding per tenant. Features cards, semantic status badges, responsive grid layouts, and modal dialogs.

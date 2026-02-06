@@ -11,6 +11,7 @@ import { createIntelligenceRouter } from "./api/intelligence";
 import { createSubscriptionsRouter } from "./api/subscriptions";
 import { createBillingRouter } from "./api/billing";
 import { createAdminPricingRouter } from "./api/admin-pricing";
+import { createPlenumNetRouter } from "./api/plenumnet";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -30,6 +31,7 @@ export async function registerRoutes(
   app.use(createSubscriptionsRouter());
   app.use(createBillingRouter());
   app.use(createAdminPricingRouter());
+  app.use(createPlenumNetRouter());
 
   return httpServer;
 }
