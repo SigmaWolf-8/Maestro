@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Users, Building2, User, Mail, Phone, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Users, Mail, Phone, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,9 +41,13 @@ interface DirectoryResponse {
   offset: number;
 }
 
+type SortField = "name" | "company" | "category" | "jobTitle" | "email" | "phone";
+type SortDirection = "asc" | "desc";
+
 export default function ContactsDirectoryPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("name");
+  const [sortBy, setSortBy] = useState<SortField>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(0);
   const limit = 50;
@@ -51,13 +55,14 @@ export default function ContactsDirectoryPage() {
   const queryParams = new URLSearchParams({
     search: searchQuery,
     sortBy,
+    sortDirection,
     category,
     limit: limit.toString(),
     offset: (page * limit).toString(),
   }).toString();
 
   const { data, isLoading } = useQuery<DirectoryResponse>({
-    queryKey: ["/api/contacts/directory", searchQuery, sortBy, category, page],
+    queryKey: ["/api/contacts/directory", searchQuery, sortBy, sortDirection, category, page],
     queryFn: async () => {
       const res = await fetch(`/api/contacts/directory?${queryParams}`);
       if (!res.ok) throw new Error("Failed to fetch contacts");
@@ -68,6 +73,23 @@ export default function ContactsDirectoryPage() {
   const contacts = data?.contacts || [];
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / limit);
+
+  const handleSort = (field: SortField) => {
+    if (sortBy === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortDirection("asc");
+    }
+    setPage(0);
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortBy !== field) return <ArrowUpDown className="h-3 w-3 opacity-30" />;
+    return sortDirection === "asc"
+      ? <ArrowUp className="h-3 w-3" />
+      : <ArrowDown className="h-3 w-3" />;
+  };
 
   const getCategoryBadge = (cat: string) => {
     switch (cat) {
@@ -81,6 +103,15 @@ export default function ContactsDirectoryPage() {
         return <Badge variant="secondary" className="text-xs">{cat}</Badge>;
     }
   };
+
+  const sortableColumns: { field: SortField; label: string; className?: string }[] = [
+    { field: "category", label: "Type", className: "w-[60px]" },
+    { field: "name", label: "Name" },
+    { field: "company", label: "Company" },
+    { field: "jobTitle", label: "Title" },
+    { field: "email", label: "Email" },
+    { field: "phone", label: "Phone" },
+  ];
 
   return (
     <div className="flex flex-col gap-3 p-4" data-testid="page-contacts-directory">
@@ -113,41 +144,36 @@ export default function ContactsDirectoryPage() {
             data-testid="input-directory-search"
           />
         </div>
-        <div className="flex gap-2">
-          <Select value={category} onValueChange={(v) => { setCategory(v); setPage(0); }}>
-            <SelectTrigger className="w-32 h-9" data-testid="select-category">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="customer">Customers</SelectItem>
-              <SelectItem value="vendor">Vendors</SelectItem>
-              <SelectItem value="employee">Employees</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(0); }}>
-            <SelectTrigger className="w-32 h-9" data-testid="select-sort">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Name</SelectItem>
-              <SelectItem value="company">Company</SelectItem>
-              <SelectItem value="category">Category</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={category} onValueChange={(v) => { setCategory(v); setPage(0); }}>
+          <SelectTrigger className="w-32 h-9" data-testid="select-category">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="customer">Customers</SelectItem>
+            <SelectItem value="vendor">Vendors</SelectItem>
+            <SelectItem value="employee">Employees</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="border rounded-md overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-[60px] py-2 text-xs font-semibold">Type</TableHead>
-              <TableHead className="py-2 text-xs font-semibold">Name</TableHead>
-              <TableHead className="py-2 text-xs font-semibold">Company</TableHead>
-              <TableHead className="py-2 text-xs font-semibold">Title</TableHead>
-              <TableHead className="py-2 text-xs font-semibold">Email</TableHead>
-              <TableHead className="py-2 text-xs font-semibold">Phone</TableHead>
+              {sortableColumns.map((col) => (
+                <TableHead
+                  key={col.field}
+                  className={`py-2 text-xs font-semibold cursor-pointer select-none ${col.className || ""}`}
+                  onClick={() => handleSort(col.field)}
+                  data-testid={`sort-${col.field}`}
+                >
+                  <span className="flex items-center gap-1">
+                    {col.label}
+                    <SortIcon field={col.field} />
+                  </span>
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>

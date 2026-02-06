@@ -1097,6 +1097,7 @@ export async function registerRoutes(
       const offset = parseInt(req.query.offset as string) || 0;
       const search = (req.query.search as string) || "";
       const sortBy = (req.query.sortBy as string) || "name";
+      const sortDirection = (req.query.sortDirection as string) || "asc";
       const category = (req.query.category as string) || "all";
       
       // Get all contacts from different sources
@@ -1171,15 +1172,29 @@ export async function registerRoutes(
       }
       
       // Sort
+      const dir = sortDirection === "desc" ? -1 : 1;
       allContacts.sort((a, b) => {
+        let cmp = 0;
         switch (sortBy) {
           case "company":
-            return a.company.localeCompare(b.company);
+            cmp = a.company.localeCompare(b.company);
+            break;
           case "category":
-            return a.category.localeCompare(b.category);
-          default: // name
-            return a.fullName.localeCompare(b.fullName);
+            cmp = a.category.localeCompare(b.category);
+            break;
+          case "jobTitle":
+            cmp = a.jobTitle.localeCompare(b.jobTitle);
+            break;
+          case "email":
+            cmp = a.email.localeCompare(b.email);
+            break;
+          case "phone":
+            cmp = a.phone.localeCompare(b.phone);
+            break;
+          default:
+            cmp = a.fullName.localeCompare(b.fullName);
         }
+        return cmp * dir;
       });
       
       const total = allContacts.length;
