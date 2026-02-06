@@ -311,7 +311,7 @@ export function AppSidebar({
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu style={{ fontFamily: "'Great Vibes', cursive", fontSize: '120%' }}>
+            <SidebarMenu style={{ fontFamily: 'var(--sidebar-font-family, "Great Vibes", cursive)', fontSize: 'var(--sidebar-font-size, 120%)' }}>
               {navigationTree.map((item) => (
                 <NavMenuItem
                   key={item.id}

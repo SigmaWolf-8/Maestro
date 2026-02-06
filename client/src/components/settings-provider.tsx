@@ -2,15 +2,20 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
+export type FontStyleOption = "modern" | "classic" | "elegant" | "script" | "gotham" | "roboto" | "lato" | "opensans" | "merriweather" | "raleway";
+
 export interface TenantBranding {
   primaryColor: string;
   secondaryColor: string;
   sidebarColor: string;
   headerColor: string;
-  fontStyle: "modern" | "classic" | "elegant" | "script" | "gotham" | "roboto" | "lato" | "opensans" | "merriweather" | "raleway";
+  fontStyle: FontStyleOption;
   logoUrl: string | null;
   faviconUrl: string | null;
   companyUrl?: string;
+  heroImageUrl?: string | null;
+  sidebarFontStyle?: FontStyleOption;
+  sidebarFontSize?: string;
 }
 
 export interface WbsDimensionConfig {
@@ -82,6 +87,9 @@ const defaultBranding: TenantBranding = {
   fontStyle: "elegant",
   logoUrl: null,
   faviconUrl: null,
+  heroImageUrl: null,
+  sidebarFontStyle: "script",
+  sidebarFontSize: "120%",
 };
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -200,6 +208,32 @@ export function useSettings() {
   return context;
 }
 
+export function fontFamilyFromStyle(style: FontStyleOption): string {
+  switch (style) {
+    case "classic":
+      return "'Libre Baskerville', 'Georgia', serif";
+    case "elegant":
+      return "'Playfair Display', 'Georgia', serif";
+    case "script":
+      return "'Great Vibes', cursive";
+    case "gotham":
+      return "'Montserrat', 'Arial', sans-serif";
+    case "roboto":
+      return "'Roboto', 'system-ui', sans-serif";
+    case "lato":
+      return "'Lato', 'system-ui', sans-serif";
+    case "opensans":
+      return "'Open Sans', 'system-ui', sans-serif";
+    case "merriweather":
+      return "'Merriweather', 'Georgia', serif";
+    case "raleway":
+      return "'Raleway', 'system-ui', sans-serif";
+    case "modern":
+    default:
+      return "'Inter', 'system-ui', sans-serif";
+  }
+}
+
 function applyBranding(branding: TenantBranding) {
   const root = document.documentElement;
   
@@ -247,42 +281,15 @@ function applyBranding(branding: TenantBranding) {
   const accentSat = isNaN(parsedAccentSat) ? 85 : parsedAccentSat;
   root.style.setProperty("--chart-2", `${accentHue} ${accentSat}% 52%`);
 
-  let fontFamily: string;
-  switch (branding.fontStyle) {
-    case "classic":
-      fontFamily = "'Libre Baskerville', 'Georgia', serif";
-      break;
-    case "elegant":
-      fontFamily = "'Playfair Display', 'Georgia', serif";
-      break;
-    case "script":
-      fontFamily = "'Great Vibes', cursive";
-      break;
-    case "gotham":
-      fontFamily = "'Montserrat', 'Arial', sans-serif";
-      break;
-    case "roboto":
-      fontFamily = "'Roboto', 'system-ui', sans-serif";
-      break;
-    case "lato":
-      fontFamily = "'Lato', 'system-ui', sans-serif";
-      break;
-    case "opensans":
-      fontFamily = "'Open Sans', 'system-ui', sans-serif";
-      break;
-    case "merriweather":
-      fontFamily = "'Merriweather', 'Georgia', serif";
-      break;
-    case "raleway":
-      fontFamily = "'Raleway', 'system-ui', sans-serif";
-      break;
-    case "modern":
-    default:
-      fontFamily = "'Inter', 'system-ui', sans-serif";
-      break;
-  }
+  const fontFamily = fontFamilyFromStyle(branding.fontStyle);
   root.style.setProperty("--font-sans", fontFamily);
   root.style.setProperty("--font-serif", fontFamily);
+
+  const sidebarFontFamily = branding.sidebarFontStyle
+    ? fontFamilyFromStyle(branding.sidebarFontStyle)
+    : fontFamilyFromStyle("script");
+  root.style.setProperty("--sidebar-font-family", sidebarFontFamily);
+  root.style.setProperty("--sidebar-font-size", branding.sidebarFontSize || "120%");
 
   const sidebarLightness = parseInt(sidebar.split(" ")[2]) || 15;
   const isLightSidebar = sidebarLightness > 50;

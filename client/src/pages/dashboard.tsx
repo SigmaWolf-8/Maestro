@@ -10,8 +10,9 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
-import heroImage from "@/assets/images/hero-executive-home.png";
+import defaultHeroImage from "@/assets/images/hero-executive-home.png";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSettings } from "@/components/settings-provider";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +21,8 @@ import type { DashboardStats, Project, WbsNode } from "@shared/schema";
 export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showColorOverlay, setShowColorOverlay] = useState(false);
+  const { activeTenant } = useSettings();
+  const heroImage = activeTenant?.config?.branding?.heroImageUrl || defaultHeroImage;
 
   useEffect(() => {
     const timer = setInterval(() => {

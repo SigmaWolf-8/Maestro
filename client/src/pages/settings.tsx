@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useSettings, type TenantBranding, type CompanyType } from "@/components/settings-provider";
+import { useSettings, type TenantBranding, type CompanyType, type FontStyleOption } from "@/components/settings-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save, Mail, Briefcase } from "lucide-react";
+import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save, Mail, Briefcase, ImagePlus, PanelLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const colorPresets = [
@@ -146,6 +146,7 @@ export default function Settings() {
   const { activeTenant, updateTenantBranding, updateTenantDetails, updateCompanyType, createTenant, setActiveTenant, isLoading } = useSettings();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const heroInputRef = useRef<HTMLInputElement>(null);
   
   const branding = activeTenant?.config?.branding;
   const [primaryColor, setPrimaryColor] = useState(branding?.primaryColor || "168 76% 36%");
@@ -226,6 +227,41 @@ export default function Settings() {
     });
   };
 
+  const handleHeroUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File Too Large",
+          description: "Please select an image under 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateTenantBranding({ heroImageUrl: reader.result as string });
+        toast({
+          title: "Hero Image Updated",
+          description: "Your custom hero image has been applied to the dashboard.",
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveHero = () => {
+    updateTenantBranding({ heroImageUrl: null });
+    if (heroInputRef.current) {
+      heroInputRef.current.value = "";
+    }
+    toast({
+      title: "Hero Image Removed",
+      description: "Dashboard will display the default image.",
+    });
+  };
+
   const handleApplyCustomColors = () => {
     updateTenantBranding({
       primaryColor,
@@ -247,6 +283,9 @@ export default function Settings() {
       headerColor: "0 0% 100%",
       fontStyle: "elegant",
       logoUrl: null,
+      heroImageUrl: null,
+      sidebarFontStyle: "script",
+      sidebarFontSize: "120%",
     });
     setPrimaryColor("168 76% 36%");
     setAccentColor("28 85% 52%");
@@ -564,6 +603,74 @@ export default function Settings() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
+              <ImagePlus className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Dashboard Hero Image</CardTitle>
+            </div>
+            <CardDescription>
+              Upload a custom hero banner for the dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <Label>Hero Image</Label>
+              <div className="flex items-start gap-4">
+                {branding?.heroImageUrl ? (
+                  <div className="w-full max-w-[280px] h-[100px] rounded-md border border-border overflow-hidden bg-muted flex items-center justify-center">
+                    <img
+                      src={branding.heroImageUrl}
+                      alt="Custom hero"
+                      className="w-full h-full object-cover"
+                      data-testid="img-hero-preview"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-full max-w-[280px] h-[100px] rounded-md border border-dashed border-border bg-muted flex items-center justify-center">
+                    <div className="text-center">
+                      <ImagePlus className="h-6 w-6 text-muted-foreground mx-auto mb-1" />
+                      <span className="text-xs text-muted-foreground">Default image in use</span>
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-col gap-2">
+                  <input
+                    type="file"
+                    ref={heroInputRef}
+                    onChange={handleHeroUpload}
+                    accept="image/*"
+                    className="hidden"
+                    aria-label="Upload hero image file"
+                    data-testid="input-hero-upload"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => heroInputRef.current?.click()}
+                    data-testid="button-upload-hero"
+                  >
+                    Upload Hero
+                  </Button>
+                  {branding?.heroImageUrl && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemoveHero}
+                      data-testid="button-remove-hero"
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Recommended: Wide landscape image (16:9), max 5MB. When removed, the default Fallingwater image will be displayed.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
               <Type className="h-5 w-5 text-primary" />
               <CardTitle className="text-lg">Typography</CardTitle>
             </div>
@@ -606,6 +713,87 @@ export default function Settings() {
               <p className="text-sm text-muted-foreground">
                 Managing construction projects with elegance and precision.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <PanelLeft className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Sidebar Typography</CardTitle>
+            </div>
+            <CardDescription>
+              Customize sidebar font independently from main content
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="sidebarFontStyle">Sidebar Font</Label>
+              <Select
+                value={branding?.sidebarFontStyle || "script"}
+                onValueChange={(value: string) => {
+                  updateTenantBranding({ sidebarFontStyle: value as FontStyleOption });
+                  toast({
+                    title: "Sidebar Font Updated",
+                    description: `Sidebar now uses ${fontOptions.find(f => f.value === value)?.label || value}.`,
+                  });
+                }}
+              >
+                <SelectTrigger data-testid="select-sidebar-font-style">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {fontOptions.map((font) => (
+                    <SelectItem key={font.value} value={font.value}>
+                      <div className="flex flex-col">
+                        <span>{font.label}</span>
+                        <span className="text-xs text-muted-foreground">{font.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="sidebarFontSize">Sidebar Font Size</Label>
+              <Select
+                value={branding?.sidebarFontSize || "120%"}
+                onValueChange={(value: string) => {
+                  updateTenantBranding({ sidebarFontSize: value });
+                  toast({
+                    title: "Sidebar Font Size Updated",
+                    description: `Sidebar font size set to ${value}.`,
+                  });
+                }}
+              >
+                <SelectTrigger data-testid="select-sidebar-font-size">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="80%">Small (80%)</SelectItem>
+                  <SelectItem value="90%">Medium-Small (90%)</SelectItem>
+                  <SelectItem value="100%">Medium (100%)</SelectItem>
+                  <SelectItem value="110%">Medium-Large (110%)</SelectItem>
+                  <SelectItem value="120%">Large (120%)</SelectItem>
+                  <SelectItem value="130%">Extra Large (130%)</SelectItem>
+                  <SelectItem value="140%">Jumbo (140%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="p-4 rounded-md bg-muted/50 space-y-2">
+              <p className="text-sm font-medium">Sidebar Preview</p>
+              <div
+                style={{
+                  fontFamily: 'var(--sidebar-font-family)',
+                  fontSize: 'var(--sidebar-font-size)',
+                }}
+              >
+                <p>Dashboard</p>
+                <p>Projects</p>
+                <p>Settings</p>
+              </div>
             </div>
           </CardContent>
         </Card>
