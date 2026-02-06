@@ -551,7 +551,7 @@ export default function SecurityDashboard() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Epoch:</span>{" "}
-                    <span className="font-mono">2024-01-01</span>
+                    <span className="font-mono">2025-04-01</span>
                   </div>
                 </div>
               </div>

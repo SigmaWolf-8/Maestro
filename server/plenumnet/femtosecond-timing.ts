@@ -1,4 +1,4 @@
-export const SALVI_EPOCH = new Date('2024-01-01T00:00:00.000Z').getTime();
+export const SALVI_EPOCH = new Date('2025-04-01T00:00:00.000Z').getTime();
 export const FEMTOSECONDS_PER_MILLISECOND = 1_000_000_000_000n;
 export const FEMTOSECONDS_PER_SECOND = 1_000_000_000_000_000n;
 
