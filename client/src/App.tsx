@@ -129,14 +129,15 @@ function HeaderBranding() {
   const { activeTenant, tenants, setActiveTenant } = useSettings();
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm font-medium text-foreground hidden sm:inline">
+      <span className="text-sm font-medium hidden sm:inline" style={{ color: 'inherit' }}>
         The Maestro
       </span>
       {tenants.length > 1 && (
         <select
           value={activeTenant?.id || ""}
           onChange={(e) => setActiveTenant(e.target.value)}
-          className="text-xs text-muted-foreground bg-transparent border border-border rounded px-2 py-1 cursor-pointer hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          className="text-xs bg-transparent border rounded px-2 py-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+          style={{ color: 'inherit', borderColor: 'currentColor', opacity: 0.8 }}
           data-testid="select-company-header"
         >
           {tenants.map((t) => (
@@ -172,7 +173,7 @@ function ZoomControl() {
       >
         <span className="text-xs font-medium">−</span>
       </Button>
-      <span className="text-xs w-10 text-center" data-testid="text-zoom-level">{zoom}%</span>
+      <span className="text-xs w-10 text-center text-inherit" data-testid="text-zoom-level">{zoom}%</span>
       <Button
         size="icon"
         variant="ghost"
@@ -197,7 +198,7 @@ function AppLayout() {
       <div className="flex h-screen w-full">
         <AppSidebar currentUser={mockUser} tenantName="Acme Construction Co." />
         <SidebarInset className="flex flex-col flex-1 min-w-0">
-          <header className="flex items-center justify-between gap-2 h-14 px-4 border-b border-border shrink-0" style={{ backgroundColor: 'hsl(var(--header))', color: 'hsl(var(--header-foreground))' }}>
+          <header className="flex items-center justify-between gap-2 h-14 px-4 border-b border-border shrink-0 [&_button]:text-inherit [&_svg]:text-inherit" style={{ backgroundColor: 'hsl(var(--header))', color: 'hsl(var(--header-foreground))' }}>
             <div className="flex items-center gap-2">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <HeaderBranding />

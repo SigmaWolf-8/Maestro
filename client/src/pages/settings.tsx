@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useSettings, type TenantBranding } from "@/components/settings-provider";
+import { useSettings, type TenantBranding, type CompanyType } from "@/components/settings-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save, Mail } from "lucide-react";
+import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save, Mail, Briefcase } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const colorPresets = [
@@ -57,6 +57,20 @@ const fontOptions = [
   { value: "opensans", label: "Open Sans", description: "Neutral and legible" },
   { value: "merriweather", label: "Merriweather", description: "Pleasant reading serif" },
   { value: "raleway", label: "Raleway", description: "Elegant thin sans-serif" },
+];
+
+const companyTypeOptions: { value: CompanyType; label: string; description: string }[] = [
+  { value: "construction", label: "Construction", description: "Residential & commercial building" },
+  { value: "land_development", label: "Land Development", description: "Lot planning, subdivision & site development" },
+  { value: "holding_company", label: "Holding Company", description: "Parent company managing subsidiaries" },
+  { value: "payroll_company", label: "Payroll Company", description: "Payroll processing & workforce management" },
+  { value: "retail", label: "Retail", description: "Product sales, inventory & storefronts" },
+  { value: "tech", label: "Tech", description: "Software, SaaS & technology services" },
+  { value: "consulting", label: "Consulting", description: "Professional services & advisory" },
+  { value: "manufacturing", label: "Manufacturing", description: "Production, assembly & distribution" },
+  { value: "healthcare", label: "Healthcare", description: "Medical services & health administration" },
+  { value: "real_estate", label: "Real Estate", description: "Property management & brokerage" },
+  { value: "general", label: "General / Other", description: "Flexible configuration for any industry" },
 ];
 
 function hslToHex(hslString: string): string {
@@ -129,7 +143,7 @@ function hexToHsl(hex: string): string {
 }
 
 export default function Settings() {
-  const { activeTenant, updateTenantBranding, updateTenantDetails, createTenant, setActiveTenant, isLoading } = useSettings();
+  const { activeTenant, updateTenantBranding, updateTenantDetails, updateCompanyType, createTenant, setActiveTenant, isLoading } = useSettings();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -427,6 +441,59 @@ export default function Settings() {
               <Save className="h-4 w-4 mr-2" />
               Save Details
             </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Company Type</CardTitle>
+            </div>
+            <CardDescription>
+              Select your industry to customize navigation and features
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="companyType">Industry / Company Type</Label>
+              <Select
+                value={activeTenant?.config?.companyType || "construction"}
+                onValueChange={async (value: string) => {
+                  try {
+                    await updateCompanyType(value as CompanyType);
+                    toast({
+                      title: "Company Type Updated",
+                      description: `Navigation updated for ${companyTypeOptions.find(o => o.value === value)?.label || value}.`,
+                    });
+                  } catch {
+                    toast({
+                      title: "Error",
+                      description: "Failed to update company type.",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger data-testid="select-company-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {companyTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex flex-col">
+                        <span>{option.label}</span>
+                        <span className="text-xs text-muted-foreground">{option.description}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Changing the company type will reconfigure the sidebar navigation to match your industry.
+              All existing pages and data remain accessible.
+            </p>
           </CardContent>
         </Card>
 

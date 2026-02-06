@@ -28,6 +28,19 @@ export interface MicrosoftConfig {
   tenantId: string;
 }
 
+export type CompanyType = 
+  | "construction"
+  | "land_development"
+  | "holding_company"
+  | "payroll_company"
+  | "retail"
+  | "tech"
+  | "consulting"
+  | "manufacturing"
+  | "healthcare"
+  | "real_estate"
+  | "general";
+
 export interface Tenant {
   id: string;
   subdomain: string;
@@ -38,6 +51,7 @@ export interface Tenant {
     modules: Record<string, boolean>;
     wbsDimensions: WbsDimensionConfig[];
     microsoft?: MicrosoftConfig;
+    companyType?: CompanyType;
   };
   storageMode: string;
   onboardingComplete: boolean;
@@ -54,6 +68,7 @@ interface SettingsContextType {
   updateTenantBranding: (branding: Partial<TenantBranding>) => void;
   updateTenantDetails: (details: { companyName?: string; contactEmail?: string }) => void;
   updateMicrosoftConfig: (config: MicrosoftConfig) => Promise<void>;
+  updateCompanyType: (companyType: CompanyType) => Promise<void>;
   createTenant: (companyName: string, contactEmail?: string) => Promise<Tenant>;
 }
 
@@ -150,6 +165,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     await updateMutation.mutateAsync({ tenantId: activeTenant.id, updates: { config: newConfig } });
   };
 
+  const updateCompanyType = async (companyType: CompanyType): Promise<void> => {
+    if (!activeTenant) return;
+    
+    await apiRequest("POST", `/api/tenants/${activeTenant.id}/apply-company-type`, { companyType });
+    queryClient.invalidateQueries({ queryKey: ["/api/navigation", activeTenant.id] });
+    queryClient.invalidateQueries({ queryKey: ["/api/tenants"] });
+  };
+
   return (
     <SettingsContext.Provider
       value={{
@@ -160,6 +183,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         updateTenantBranding,
         updateTenantDetails,
         updateMicrosoftConfig,
+        updateCompanyType,
         createTenant,
       }}
     >

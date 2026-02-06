@@ -7,6 +7,7 @@ import {
   projects,
   wbsNodes,
   navigationItems,
+  rolePermissions,
   wbsTemplates,
   userGroups,
   userGroupMembers,
@@ -1433,4 +1434,527 @@ export async function seedNavigationForTenant(tenantId: string) {
     { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 4, itemType: "action", title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
     { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 5, itemType: "action", title: "Archives", iconName: "Archive", path: "/documents/archives", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
   ]);
+}
+
+interface NavSection {
+  title: string;
+  iconName: string;
+  order: number;
+  minRole: string;
+  maxChildren?: number;
+  children: { title: string; iconName: string; path: string; minRole: string }[];
+}
+
+function getNavigationTemplate(companyType: string): NavSection[] {
+  const dashboard: NavSection = {
+    title: "Dashboard", iconName: "LayoutDashboard", order: 10, minRole: "viewer", maxChildren: 3,
+    children: [
+      { title: "Overview", iconName: "Home", path: "/", minRole: "viewer" },
+      { title: "My Tasks", iconName: "CheckSquare", path: "/tasks", minRole: "viewer" },
+      { title: "Alerts", iconName: "Bell", path: "/alerts", minRole: "viewer" },
+    ],
+  };
+
+  const documents: NavSection = {
+    title: "Documents", iconName: "FolderArchive", order: 70, minRole: "viewer",
+    children: [
+      { title: "File Manager", iconName: "Files", path: "/documents/files", minRole: "viewer" },
+      { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
+      { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
+      { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
+    ],
+  };
+
+  switch (companyType) {
+    case "construction":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Customers", iconName: "Building", path: "/people/customers", minRole: "project_manager" },
+            { title: "Vendors & Pricing", iconName: "Truck", path: "/people/vendors", minRole: "project_manager" },
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Subcontractors", iconName: "HardHat", path: "/people/subcontractors", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Projects", iconName: "FolderKanban", order: 30, minRole: "viewer",
+          children: [
+            { title: "All Projects", iconName: "Folder", path: "/projects", minRole: "viewer" },
+            { title: "WBS Builder", iconName: "GitBranch", path: "/wbs", minRole: "project_manager" },
+            { title: "Schedule", iconName: "Calendar", path: "/schedule", minRole: "viewer" },
+            { title: "Specifications", iconName: "FileText", path: "/specifications", minRole: "viewer" },
+            { title: "Photos", iconName: "Camera", path: "/photos", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
+          children: [
+            { title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRole: "project_manager" },
+            { title: "Purchase Orders", iconName: "ClipboardList", path: "/finance/purchase-orders", minRole: "project_manager" },
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        {
+          title: "Sales", iconName: "TrendingUp", order: 50, minRole: "viewer",
+          children: [
+            { title: "Leads", iconName: "Target", path: "/sales/leads", minRole: "viewer" },
+            { title: "Proposals", iconName: "FileSpreadsheet", path: "/sales/proposals", minRole: "project_manager" },
+            { title: "Contracts", iconName: "Handshake", path: "/sales/contracts", minRole: "project_manager" },
+            { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
+            { title: "Pipeline", iconName: "TrendingUp", path: "/sales/pipeline", minRole: "project_manager" },
+          ],
+        },
+        {
+          title: "Marketing", iconName: "Megaphone", order: 60, minRole: "viewer",
+          children: [
+            { title: "Campaigns", iconName: "Megaphone", path: "/marketing/campaigns", minRole: "viewer" },
+            { title: "Referrals", iconName: "Share2", path: "/marketing/referrals", minRole: "viewer" },
+            { title: "Social Media", iconName: "Globe", path: "/marketing/social", minRole: "viewer" },
+            { title: "Branding", iconName: "Palette", path: "/marketing/branding", minRole: "project_manager" },
+            { title: "Analytics", iconName: "Presentation", path: "/marketing/analytics", minRole: "project_manager" },
+          ],
+        },
+        { ...documents, children: [
+          { title: "File Manager", iconName: "Files", path: "/documents/files", minRole: "viewer" },
+          { title: "Plan Room", iconName: "Map", path: "/documents/plans", minRole: "viewer" },
+          { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
+          { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
+          { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
+        ]},
+      ];
+
+    case "land_development":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Customers", iconName: "Building", path: "/people/customers", minRole: "project_manager" },
+            { title: "Vendors & Pricing", iconName: "Truck", path: "/people/vendors", minRole: "project_manager" },
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Consultants", iconName: "HardHat", path: "/people/subcontractors", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Projects", iconName: "FolderKanban", order: 30, minRole: "viewer",
+          children: [
+            { title: "All Projects", iconName: "Folder", path: "/projects", minRole: "viewer" },
+            { title: "Lot Tracking", iconName: "Map", path: "/wbs", minRole: "project_manager" },
+            { title: "Schedule", iconName: "Calendar", path: "/schedule", minRole: "viewer" },
+            { title: "Site Plans", iconName: "FileText", path: "/specifications", minRole: "viewer" },
+            { title: "Photos", iconName: "Camera", path: "/photos", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
+          children: [
+            { title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRole: "project_manager" },
+            { title: "Purchase Orders", iconName: "ClipboardList", path: "/finance/purchase-orders", minRole: "project_manager" },
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        {
+          title: "Sales", iconName: "TrendingUp", order: 50, minRole: "viewer",
+          children: [
+            { title: "Leads", iconName: "Target", path: "/sales/leads", minRole: "viewer" },
+            { title: "Proposals", iconName: "FileSpreadsheet", path: "/sales/proposals", minRole: "project_manager" },
+            { title: "Contracts", iconName: "Handshake", path: "/sales/contracts", minRole: "project_manager" },
+            { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
+            { title: "Pipeline", iconName: "TrendingUp", path: "/sales/pipeline", minRole: "project_manager" },
+          ],
+        },
+        { ...documents, children: [
+          { title: "File Manager", iconName: "Files", path: "/documents/files", minRole: "viewer" },
+          { title: "Plan Room", iconName: "Map", path: "/documents/plans", minRole: "viewer" },
+          { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
+          { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
+          { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
+        ]},
+      ];
+
+    case "holding_company":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 30, minRole: "accountant",
+          children: [
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        documents,
+      ];
+
+    case "payroll_company":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Vendors & Pricing", iconName: "Truck", path: "/people/vendors", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 30, minRole: "accountant",
+          children: [
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        documents,
+      ];
+
+    case "retail":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Customers", iconName: "Building", path: "/people/customers", minRole: "project_manager" },
+            { title: "Vendors & Pricing", iconName: "Truck", path: "/people/vendors", minRole: "project_manager" },
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Sales", iconName: "TrendingUp", order: 30, minRole: "viewer",
+          children: [
+            { title: "Leads", iconName: "Target", path: "/sales/leads", minRole: "viewer" },
+            { title: "Proposals", iconName: "FileSpreadsheet", path: "/sales/proposals", minRole: "project_manager" },
+            { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
+            { title: "Pipeline", iconName: "TrendingUp", path: "/sales/pipeline", minRole: "project_manager" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
+          children: [
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        {
+          title: "Marketing", iconName: "Megaphone", order: 50, minRole: "viewer",
+          children: [
+            { title: "Campaigns", iconName: "Megaphone", path: "/marketing/campaigns", minRole: "viewer" },
+            { title: "Social Media", iconName: "Globe", path: "/marketing/social", minRole: "viewer" },
+            { title: "Branding", iconName: "Palette", path: "/marketing/branding", minRole: "project_manager" },
+            { title: "Analytics", iconName: "Presentation", path: "/marketing/analytics", minRole: "project_manager" },
+          ],
+        },
+        documents,
+      ];
+
+    case "tech":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Customers", iconName: "Building", path: "/people/customers", minRole: "project_manager" },
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Projects", iconName: "FolderKanban", order: 30, minRole: "viewer",
+          children: [
+            { title: "All Projects", iconName: "Folder", path: "/projects", minRole: "viewer" },
+            { title: "WBS Builder", iconName: "GitBranch", path: "/wbs", minRole: "project_manager" },
+            { title: "Schedule", iconName: "Calendar", path: "/schedule", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
+          children: [
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        {
+          title: "Sales", iconName: "TrendingUp", order: 50, minRole: "viewer",
+          children: [
+            { title: "Leads", iconName: "Target", path: "/sales/leads", minRole: "viewer" },
+            { title: "Proposals", iconName: "FileSpreadsheet", path: "/sales/proposals", minRole: "project_manager" },
+            { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
+            { title: "Pipeline", iconName: "TrendingUp", path: "/sales/pipeline", minRole: "project_manager" },
+          ],
+        },
+        documents,
+      ];
+
+    case "consulting":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Customers", iconName: "Building", path: "/people/customers", minRole: "project_manager" },
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Projects", iconName: "FolderKanban", order: 30, minRole: "viewer",
+          children: [
+            { title: "All Projects", iconName: "Folder", path: "/projects", minRole: "viewer" },
+            { title: "Schedule", iconName: "Calendar", path: "/schedule", minRole: "viewer" },
+            { title: "Specifications", iconName: "FileText", path: "/specifications", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
+          children: [
+            { title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRole: "project_manager" },
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        {
+          title: "Sales", iconName: "TrendingUp", order: 50, minRole: "viewer",
+          children: [
+            { title: "Leads", iconName: "Target", path: "/sales/leads", minRole: "viewer" },
+            { title: "Proposals", iconName: "FileSpreadsheet", path: "/sales/proposals", minRole: "project_manager" },
+            { title: "Contracts", iconName: "Handshake", path: "/sales/contracts", minRole: "project_manager" },
+            { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
+          ],
+        },
+        documents,
+      ];
+
+    case "manufacturing":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Customers", iconName: "Building", path: "/people/customers", minRole: "project_manager" },
+            { title: "Vendors & Pricing", iconName: "Truck", path: "/people/vendors", minRole: "project_manager" },
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Projects", iconName: "FolderKanban", order: 30, minRole: "viewer",
+          children: [
+            { title: "All Projects", iconName: "Folder", path: "/projects", minRole: "viewer" },
+            { title: "WBS Builder", iconName: "GitBranch", path: "/wbs", minRole: "project_manager" },
+            { title: "Schedule", iconName: "Calendar", path: "/schedule", minRole: "viewer" },
+            { title: "Specifications", iconName: "FileText", path: "/specifications", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
+          children: [
+            { title: "Purchase Orders", iconName: "ClipboardList", path: "/finance/purchase-orders", minRole: "project_manager" },
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        {
+          title: "Sales", iconName: "TrendingUp", order: 50, minRole: "viewer",
+          children: [
+            { title: "Leads", iconName: "Target", path: "/sales/leads", minRole: "viewer" },
+            { title: "Proposals", iconName: "FileSpreadsheet", path: "/sales/proposals", minRole: "project_manager" },
+            { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
+          ],
+        },
+        documents,
+      ];
+
+    case "healthcare":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Customers", iconName: "Building", path: "/people/customers", minRole: "project_manager" },
+            { title: "Vendors & Pricing", iconName: "Truck", path: "/people/vendors", minRole: "project_manager" },
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Projects", iconName: "FolderKanban", order: 30, minRole: "viewer",
+          children: [
+            { title: "All Projects", iconName: "Folder", path: "/projects", minRole: "viewer" },
+            { title: "Schedule", iconName: "Calendar", path: "/schedule", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
+          children: [
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        documents,
+      ];
+
+    case "real_estate":
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Customers", iconName: "Building", path: "/people/customers", minRole: "project_manager" },
+            { title: "Vendors & Pricing", iconName: "Truck", path: "/people/vendors", minRole: "project_manager" },
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Projects", iconName: "FolderKanban", order: 30, minRole: "viewer",
+          children: [
+            { title: "All Projects", iconName: "Folder", path: "/projects", minRole: "viewer" },
+            { title: "Schedule", iconName: "Calendar", path: "/schedule", minRole: "viewer" },
+            { title: "Photos", iconName: "Camera", path: "/photos", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
+          children: [
+            { title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRole: "project_manager" },
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        {
+          title: "Sales", iconName: "TrendingUp", order: 50, minRole: "viewer",
+          children: [
+            { title: "Leads", iconName: "Target", path: "/sales/leads", minRole: "viewer" },
+            { title: "Proposals", iconName: "FileSpreadsheet", path: "/sales/proposals", minRole: "project_manager" },
+            { title: "Contracts", iconName: "Handshake", path: "/sales/contracts", minRole: "project_manager" },
+            { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
+            { title: "Pipeline", iconName: "TrendingUp", path: "/sales/pipeline", minRole: "project_manager" },
+          ],
+        },
+        {
+          title: "Marketing", iconName: "Megaphone", order: 60, minRole: "viewer",
+          children: [
+            { title: "Campaigns", iconName: "Megaphone", path: "/marketing/campaigns", minRole: "viewer" },
+            { title: "Social Media", iconName: "Globe", path: "/marketing/social", minRole: "viewer" },
+            { title: "Analytics", iconName: "Presentation", path: "/marketing/analytics", minRole: "project_manager" },
+          ],
+        },
+        { ...documents, children: [
+          { title: "File Manager", iconName: "Files", path: "/documents/files", minRole: "viewer" },
+          { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
+          { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
+          { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
+        ]},
+      ];
+
+    case "general":
+    default:
+      return [
+        dashboard,
+        {
+          title: "People", iconName: "Users", order: 20, minRole: "viewer",
+          children: [
+            { title: "Customers", iconName: "Building", path: "/people/customers", minRole: "project_manager" },
+            { title: "Vendors & Pricing", iconName: "Truck", path: "/people/vendors", minRole: "project_manager" },
+            { title: "Employees", iconName: "User", path: "/people/employees", minRole: "project_manager" },
+            { title: "Contacts Directory", iconName: "Contact", path: "/people/directory", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Projects", iconName: "FolderKanban", order: 30, minRole: "viewer",
+          children: [
+            { title: "All Projects", iconName: "Folder", path: "/projects", minRole: "viewer" },
+            { title: "WBS Builder", iconName: "GitBranch", path: "/wbs", minRole: "project_manager" },
+            { title: "Schedule", iconName: "Calendar", path: "/schedule", minRole: "viewer" },
+          ],
+        },
+        {
+          title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
+          children: [
+            { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
+            { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
+            { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
+          ],
+        },
+        {
+          title: "Sales", iconName: "TrendingUp", order: 50, minRole: "viewer",
+          children: [
+            { title: "Leads", iconName: "Target", path: "/sales/leads", minRole: "viewer" },
+            { title: "Proposals", iconName: "FileSpreadsheet", path: "/sales/proposals", minRole: "project_manager" },
+            { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
+          ],
+        },
+        documents,
+      ];
+  }
+}
+
+export async function seedNavigationForCompanyType(tenantId: string, companyType: string) {
+  await db.delete(groupPermissions).where(eq(groupPermissions.tenantId, tenantId));
+  await db.delete(rolePermissions).where(eq(rolePermissions.tenantId, tenantId));
+  await db.delete(navigationItems).where(eq(navigationItems.tenantId, tenantId));
+  
+  const template = getNavigationTemplate(companyType);
+  const now = new Date();
+
+  for (const section of template) {
+    const sectionId = randomUUID();
+    await db.insert(navigationItems).values({
+      id: sectionId,
+      tenantId,
+      parentId: null,
+      itemOrder: section.order,
+      itemType: "menu",
+      title: section.title,
+      iconName: section.iconName,
+      path: section.title === "Dashboard" ? "/" : null,
+      component: section.title === "Dashboard" ? "Dashboard" : null,
+      uiSlot: "sidebar",
+      maxChildrenDisplay: section.maxChildren || 5,
+      isCollapsible: true,
+      minRoleRequired: section.minRole,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (section.children.length > 0) {
+      await db.insert(navigationItems).values(
+        section.children.map((child, index) => ({
+          id: randomUUID(),
+          tenantId,
+          parentId: sectionId,
+          itemOrder: index + 1,
+          itemType: "action" as const,
+          title: child.title,
+          iconName: child.iconName,
+          path: child.path,
+          minRoleRequired: child.minRole,
+          createdAt: now,
+          updatedAt: now,
+        }))
+      );
+    }
+  }
 }

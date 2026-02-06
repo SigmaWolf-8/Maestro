@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage, seedNavigationForTenant } from "./storage";
+import { storage, seedNavigationForTenant, seedNavigationForCompanyType } from "./storage";
 import { z } from "zod";
 import { insertProjectSchema, insertWbsNodeSchema, insertTenantUserSchema, type Customer, type VendorContact, type TenantUser } from "@shared/schema";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
@@ -299,6 +299,30 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error seeding navigation:", error);
       res.status(500).json({ error: "Failed to seed navigation" });
+    }
+  });
+
+  app.post("/api/tenants/:id/apply-company-type", async (req, res) => {
+    try {
+      const tenantId = req.params.id;
+      const { companyType } = req.body;
+      const validCompanyTypes = ["construction", "land_development", "holding_company", "payroll_company", "retail", "tech", "consulting", "manufacturing", "healthcare", "real_estate", "general"];
+      if (!companyType || typeof companyType !== "string" || !validCompanyTypes.includes(companyType)) {
+        return res.status(400).json({ error: "Invalid companyType. Must be one of: " + validCompanyTypes.join(", ") });
+      }
+      const tenant = await storage.getTenant(tenantId);
+      if (!tenant) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      const updatedConfig = { ...(tenant.config || {}), companyType };
+      await storage.updateTenant(tenantId, { config: updatedConfig });
+      await seedNavigationForCompanyType(tenantId, companyType);
+      const newNav = await storage.getNavigationItems(tenantId);
+      res.json({ message: "Company type applied successfully", companyType, navCount: newNav.length });
+    } catch (error) {
+      console.error("Error applying company type:", error);
+      res.status(500).json({ error: "Failed to apply company type" });
     }
   });
 
