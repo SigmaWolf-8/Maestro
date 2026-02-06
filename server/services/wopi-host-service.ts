@@ -1,4 +1,5 @@
 import { storage } from "../storage";
+import type { DocumentLock } from "@shared/schema";
 
 export interface WopiFileInfo {
   BaseFileName: string;
@@ -33,7 +34,24 @@ export interface WopiAccessToken {
   permissions: string[];
 }
 
+export interface WopiLockResult {
+  success: boolean;
+  lockId?: string;
+  existingLockId?: string;
+  error?: string;
+  statusCode: number;
+}
+
+export interface WopiFileResult {
+  success: boolean;
+  version?: string;
+  error?: string;
+  statusCode: number;
+}
+
 const accessTokenStore = new Map<string, WopiAccessToken>();
+
+const LOCK_DURATION_MS = 30 * 60 * 1000;
 
 export function generateAccessToken(userId: string, fileId: string, canWrite: boolean): WopiAccessToken {
   const token = `wopi_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
@@ -87,6 +105,264 @@ export async function getFileInfo(documentId: string, userId: string): Promise<W
     BreadcrumbBrandName: "The Maestro",
     BreadcrumbDocName: doc.name || "Untitled",
   };
+}
+
+export async function lockFile(fileId: string, lockId: string, userId: string, tenantId: string): Promise<WopiLockResult> {
+  const existingLock = await storage.getDocumentLock(fileId);
+
+  if (existingLock) {
+    if (existingLock.lockId === lockId) {
+      const refreshed = await storage.updateDocumentLock(existingLock.id, {
+        expiresAt: new Date(Date.now() + LOCK_DURATION_MS),
+      });
+      await logAudit(tenantId, fileId, userId, "lock_refreshed", { lockId });
+      return { success: true, lockId, statusCode: 200 };
+    }
+    return {
+      success: false,
+      existingLockId: existingLock.lockId,
+      error: "File is locked by another session",
+      statusCode: 409,
+    };
+  }
+
+  await storage.createDocumentLock({
+    fileId,
+    lockId,
+    userId,
+    tenantId,
+    expiresAt: new Date(Date.now() + LOCK_DURATION_MS),
+    lockType: "exclusive",
+    isActive: true,
+  });
+
+  await logAudit(tenantId, fileId, userId, "lock_acquired", { lockId });
+  return { success: true, lockId, statusCode: 200 };
+}
+
+export async function unlockFile(fileId: string, lockId: string, userId: string, tenantId: string): Promise<WopiLockResult> {
+  const existingLock = await storage.getDocumentLock(fileId);
+
+  if (!existingLock) {
+    return { success: true, statusCode: 200 };
+  }
+
+  if (existingLock.lockId !== lockId) {
+    return {
+      success: false,
+      existingLockId: existingLock.lockId,
+      error: "Lock ID mismatch",
+      statusCode: 409,
+    };
+  }
+
+  await storage.deleteDocumentLock(fileId);
+  await logAudit(tenantId, fileId, userId, "lock_released", { lockId });
+  return { success: true, statusCode: 200 };
+}
+
+export async function refreshLock(fileId: string, lockId: string, userId: string, tenantId: string): Promise<WopiLockResult> {
+  const existingLock = await storage.getDocumentLock(fileId);
+
+  if (!existingLock) {
+    return {
+      success: false,
+      error: "No lock exists on this file",
+      statusCode: 409,
+    };
+  }
+
+  if (existingLock.lockId !== lockId) {
+    return {
+      success: false,
+      existingLockId: existingLock.lockId,
+      error: "Lock ID mismatch",
+      statusCode: 409,
+    };
+  }
+
+  await storage.updateDocumentLock(existingLock.id, {
+    expiresAt: new Date(Date.now() + LOCK_DURATION_MS),
+  });
+
+  await logAudit(tenantId, fileId, userId, "lock_refreshed", { lockId });
+  return { success: true, lockId, statusCode: 200 };
+}
+
+export async function unlockAndRelock(
+  fileId: string,
+  oldLockId: string,
+  newLockId: string,
+  userId: string,
+  tenantId: string
+): Promise<WopiLockResult> {
+  const existingLock = await storage.getDocumentLock(fileId);
+
+  if (!existingLock) {
+    return {
+      success: false,
+      error: "No lock exists on this file",
+      statusCode: 409,
+    };
+  }
+
+  if (existingLock.lockId !== oldLockId) {
+    return {
+      success: false,
+      existingLockId: existingLock.lockId,
+      error: "Lock ID mismatch",
+      statusCode: 409,
+    };
+  }
+
+  await storage.updateDocumentLock(existingLock.id, {
+    lockId: newLockId,
+    expiresAt: new Date(Date.now() + LOCK_DURATION_MS),
+  });
+
+  await logAudit(tenantId, fileId, userId, "lock_relock", { oldLockId, newLockId });
+  return { success: true, lockId: newLockId, statusCode: 200 };
+}
+
+export async function getLock(fileId: string): Promise<WopiLockResult> {
+  const existingLock = await storage.getDocumentLock(fileId);
+
+  if (!existingLock) {
+    return { success: true, lockId: "", statusCode: 200 };
+  }
+
+  return { success: true, lockId: existingLock.lockId, statusCode: 200 };
+}
+
+export async function putFile(
+  fileId: string,
+  lockId: string | null,
+  content: Buffer,
+  userId: string,
+  tenantId: string
+): Promise<WopiFileResult> {
+  const doc = await storage.getDocument(fileId);
+  if (!doc) {
+    return { success: false, error: "File not found", statusCode: 404 };
+  }
+
+  const existingLock = await storage.getDocumentLock(fileId);
+
+  if (existingLock) {
+    if (!lockId || existingLock.lockId !== lockId) {
+      return {
+        success: false,
+        error: "Lock mismatch — file is locked by another session",
+        statusCode: 409,
+      };
+    }
+  }
+
+  const version = Date.now().toString();
+  await storage.updateDocument(fileId, {
+    originalSizeBytes: content.length,
+    updatedAt: new Date(),
+  });
+
+  await logAudit(tenantId, fileId, userId, "file_updated", {
+    lockId,
+    newSize: content.length,
+    version,
+  });
+
+  return { success: true, version, statusCode: 200 };
+}
+
+export async function deleteFile(fileId: string, lockId: string | null, userId: string, tenantId: string): Promise<WopiFileResult> {
+  const doc = await storage.getDocument(fileId);
+  if (!doc) {
+    return { success: false, error: "File not found", statusCode: 404 };
+  }
+
+  const existingLock = await storage.getDocumentLock(fileId);
+  if (existingLock && lockId !== existingLock.lockId) {
+    return { success: false, error: "File is locked", statusCode: 409 };
+  }
+
+  if (existingLock) {
+    await storage.deleteDocumentLock(fileId);
+  }
+
+  await storage.deleteDocument(fileId);
+  await logAudit(tenantId, fileId, userId, "file_deleted", { lockId });
+
+  return { success: true, statusCode: 200 };
+}
+
+export async function renameFile(
+  fileId: string,
+  lockId: string | null,
+  newName: string,
+  userId: string,
+  tenantId: string
+): Promise<WopiFileResult & { name?: string }> {
+  const doc = await storage.getDocument(fileId);
+  if (!doc) {
+    return { success: false, error: "File not found", statusCode: 404 };
+  }
+
+  const existingLock = await storage.getDocumentLock(fileId);
+  if (existingLock && lockId !== existingLock.lockId) {
+    return { success: false, error: "File is locked", statusCode: 409 };
+  }
+
+  const oldExt = doc.name?.split(".").pop() || "";
+  const newExt = newName.split(".").pop() || "";
+  const finalName = newExt ? newName : `${newName}.${oldExt}`;
+
+  await storage.updateDocument(fileId, {
+    name: finalName,
+    updatedAt: new Date(),
+  });
+
+  await logAudit(tenantId, fileId, userId, "file_renamed", {
+    oldName: doc.name,
+    newName: finalName,
+    lockId,
+  });
+
+  return { success: true, name: finalName, statusCode: 200 };
+}
+
+export async function getShareUrl(fileId: string, userId: string, tenantId: string): Promise<{ url: string } | null> {
+  const doc = await storage.getDocument(fileId);
+  if (!doc) return null;
+
+  const baseUrl = process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : "http://localhost:5000";
+
+  const shareUrl = `${baseUrl}/documents/file-manager?doc=${fileId}`;
+
+  await logAudit(tenantId, fileId, userId, "share_url_generated", { shareUrl });
+
+  return { url: shareUrl };
+}
+
+async function logAudit(
+  tenantId: string,
+  documentId: string,
+  userId: string | null,
+  action: string,
+  details: Record<string, any> = {}
+): Promise<void> {
+  try {
+    await storage.createDocumentAuditLog({
+      tenantId,
+      documentId,
+      userId,
+      action,
+      details,
+      securityMode: "one",
+    });
+  } catch (err) {
+    console.error("WOPI audit log error:", err);
+  }
 }
 
 export function getOfficeOnlineUrl(fileExtension: string, action: "view" | "edit"): string {

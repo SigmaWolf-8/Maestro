@@ -19,6 +19,10 @@ import {
   quotes,
   vendors,
   vendorContacts,
+  documentLocks,
+  documentAuditLogs,
+  wopiSessions,
+  msGraphTokens,
   type Tenant,
   type TenantUser,
   type Project,
@@ -52,6 +56,14 @@ import {
   type InsertVendor,
   type InsertVendorContact,
   type DashboardStats,
+  type DocumentLock,
+  type InsertDocumentLock,
+  type DocumentAuditLog,
+  type InsertDocumentAuditLog,
+  type WopiSession,
+  type InsertWopiSession,
+  type MsGraphToken,
+  type InsertMsGraphToken,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -166,6 +178,30 @@ export interface IStorage {
   createVendorContact(contact: InsertVendorContact): Promise<VendorContact>;
   updateVendorContact(id: string, updates: Partial<VendorContact>): Promise<VendorContact | undefined>;
   deleteVendorContact(id: string): Promise<boolean>;
+
+  // Document Locks (WOPI)
+  getDocumentLock(fileId: string): Promise<DocumentLock | undefined>;
+  getDocumentLockByLockId(lockId: string): Promise<DocumentLock | undefined>;
+  createDocumentLock(lock: InsertDocumentLock): Promise<DocumentLock>;
+  updateDocumentLock(id: string, updates: Partial<DocumentLock>): Promise<DocumentLock | undefined>;
+  deleteDocumentLock(fileId: string): Promise<boolean>;
+  deleteExpiredLocks(): Promise<number>;
+
+  // Document Audit Logs (WOPI)
+  getDocumentAuditLogs(documentId: string): Promise<DocumentAuditLog[]>;
+  createDocumentAuditLog(log: InsertDocumentAuditLog): Promise<DocumentAuditLog>;
+
+  // WOPI Sessions
+  getWopiSession(accessToken: string): Promise<WopiSession | undefined>;
+  getWopiSessionsByDocument(documentId: string): Promise<WopiSession[]>;
+  createWopiSession(session: InsertWopiSession): Promise<WopiSession>;
+  updateWopiSession(id: string, updates: Partial<WopiSession>): Promise<WopiSession | undefined>;
+  deactivateWopiSession(accessToken: string): Promise<boolean>;
+
+  // MS Graph Tokens
+  getMsGraphToken(userId: string, tenantId: string): Promise<MsGraphToken | undefined>;
+  upsertMsGraphToken(token: InsertMsGraphToken): Promise<MsGraphToken>;
+  deleteMsGraphToken(userId: string, tenantId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -998,6 +1034,148 @@ export class DatabaseStorage implements IStorage {
   async deleteVendorContact(id: string): Promise<boolean> {
     await db.delete(vendorContacts).where(eq(vendorContacts.id, id));
     return true;
+  }
+
+  // Document Locks (WOPI)
+  async getDocumentLock(fileId: string): Promise<DocumentLock | undefined> {
+    const [lock] = await db.select().from(documentLocks).where(
+      and(
+        eq(documentLocks.fileId, fileId),
+        eq(documentLocks.isActive, true),
+        sql`${documentLocks.expiresAt} > NOW()`
+      )
+    );
+    return lock || undefined;
+  }
+
+  async getDocumentLockByLockId(lockId: string): Promise<DocumentLock | undefined> {
+    const [lock] = await db.select().from(documentLocks).where(eq(documentLocks.lockId, lockId));
+    return lock || undefined;
+  }
+
+  async createDocumentLock(lock: InsertDocumentLock): Promise<DocumentLock> {
+    const id = randomUUID();
+    const [created] = await db.insert(documentLocks).values({
+      id,
+      ...lock,
+      lockedAt: new Date(),
+    }).returning();
+    return created;
+  }
+
+  async updateDocumentLock(id: string, updates: Partial<DocumentLock>): Promise<DocumentLock | undefined> {
+    const [updated] = await db.update(documentLocks)
+      .set(updates)
+      .where(eq(documentLocks.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteDocumentLock(fileId: string): Promise<boolean> {
+    const result = await db.delete(documentLocks).where(eq(documentLocks.fileId, fileId)).returning();
+    return result.length > 0;
+  }
+
+  async deleteExpiredLocks(): Promise<number> {
+    const result = await db.update(documentLocks)
+      .set({ isActive: false })
+      .where(sql`${documentLocks.expiresAt} < NOW()`)
+      .returning();
+    return result.length;
+  }
+
+  // Document Audit Logs (WOPI)
+  async getDocumentAuditLogs(documentId: string): Promise<DocumentAuditLog[]> {
+    return db.select().from(documentAuditLogs)
+      .where(eq(documentAuditLogs.documentId, documentId))
+      .orderBy(desc(documentAuditLogs.createdAt));
+  }
+
+  async createDocumentAuditLog(log: InsertDocumentAuditLog): Promise<DocumentAuditLog> {
+    const id = randomUUID();
+    const [created] = await db.insert(documentAuditLogs).values({
+      id,
+      ...log,
+      createdAt: new Date(),
+    }).returning();
+    return created;
+  }
+
+  // WOPI Sessions
+  async getWopiSession(accessToken: string): Promise<WopiSession | undefined> {
+    const [session] = await db.select().from(wopiSessions).where(eq(wopiSessions.accessToken, accessToken));
+    return session || undefined;
+  }
+
+  async getWopiSessionsByDocument(documentId: string): Promise<WopiSession[]> {
+    return db.select().from(wopiSessions)
+      .where(and(eq(wopiSessions.documentId, documentId), eq(wopiSessions.isActive, true)));
+  }
+
+  async createWopiSession(session: InsertWopiSession): Promise<WopiSession> {
+    const id = randomUUID();
+    const now = new Date();
+    const [created] = await db.insert(wopiSessions).values({
+      id,
+      ...session,
+      lastAccessedAt: now,
+      createdAt: now,
+    }).returning();
+    return created;
+  }
+
+  async updateWopiSession(id: string, updates: Partial<WopiSession>): Promise<WopiSession | undefined> {
+    const [updated] = await db.update(wopiSessions)
+      .set(updates)
+      .where(eq(wopiSessions.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deactivateWopiSession(accessToken: string): Promise<boolean> {
+    const result = await db.update(wopiSessions)
+      .set({ isActive: false })
+      .where(eq(wopiSessions.accessToken, accessToken))
+      .returning();
+    return result.length > 0;
+  }
+
+  // MS Graph Tokens
+  async getMsGraphToken(userId: string, tenantId: string): Promise<MsGraphToken | undefined> {
+    const [token] = await db.select().from(msGraphTokens).where(
+      and(eq(msGraphTokens.userId, userId), eq(msGraphTokens.tenantId, tenantId), eq(msGraphTokens.isActive, true))
+    );
+    return token || undefined;
+  }
+
+  async upsertMsGraphToken(token: InsertMsGraphToken): Promise<MsGraphToken> {
+    const existing = await this.getMsGraphToken(token.userId!, token.tenantId);
+    if (existing) {
+      const [updated] = await db.update(msGraphTokens)
+        .set({
+          ...token,
+          updatedAt: new Date(),
+        })
+        .where(eq(msGraphTokens.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const id = randomUUID();
+    const now = new Date();
+    const [created] = await db.insert(msGraphTokens).values({
+      id,
+      ...token,
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
+    return created;
+  }
+
+  async deleteMsGraphToken(userId: string, tenantId: string): Promise<boolean> {
+    const result = await db.delete(msGraphTokens).where(
+      and(eq(msGraphTokens.userId, userId), eq(msGraphTokens.tenantId, tenantId))
+    ).returning();
+    return result.length > 0;
   }
 }
 
