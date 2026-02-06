@@ -913,9 +913,17 @@ export class DatabaseStorage implements IStorage {
 
   async createVendor(vendor: InsertVendor): Promise<Vendor> {
     const id = randomUUID();
+    let vendorId = vendor.vendorId;
+    if (!vendorId) {
+      const [maxResult] = await db.select({ maxId: sql<string>`MAX(vendor_id)` }).from(vendors).where(eq(vendors.tenantId, vendor.tenantId));
+      const maxNum = maxResult?.maxId ? parseInt(maxResult.maxId.replace(/^V/, ''), 10) : 0;
+      const nextNum = (isNaN(maxNum) ? 0 : maxNum) + 1;
+      vendorId = `V${String(nextNum).padStart(4, '0')}`;
+    }
     const data = {
       ...vendor,
       id,
+      vendorId,
       arTerms: vendor.arTerms || "DOR - Due on Receipt",
     };
     const [created] = await db.insert(vendors).values(data).returning();
@@ -928,7 +936,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateVendorField(id: string, field: keyof Vendor, value: any): Promise<Vendor | undefined> {
-    const updateData: any = { [field]: value, updatedAt: new Date() };
+    const timestampFields = ['insuranceProofDate', 'wcbComplianceDate', 'insuranceExpiryDate', 'createdAt', 'updatedAt'];
+    let processedValue = value;
+    if (timestampFields.includes(field as string) && typeof value === 'string') {
+      processedValue = new Date(value);
+    } else if (timestampFields.includes(field as string) && value === null) {
+      processedValue = null;
+    }
+    const updateData: any = { [field]: processedValue, updatedAt: new Date() };
     const [updated] = await db.update(vendors).set(updateData).where(eq(vendors.id, id)).returning();
     return updated || undefined;
   }

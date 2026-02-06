@@ -16,8 +16,9 @@ import {
   Truck,
   FileText,
   Send,
-  ChevronLeft,
-  ChevronRight,
+  ShieldCheck,
+  CalendarDays,
+  AlertTriangle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -61,7 +62,6 @@ export default function VendorsForm() {
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [emailData, setEmailData] = useState({ to: "", subject: "", body: "" });
-  const [currentContactIndex, setCurrentContactIndex] = useState(0);
 
   const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
     queryKey: ["/api/vendors"],
@@ -204,22 +204,9 @@ export default function VendorsForm() {
 
   const vendor = vendorData?.vendor;
   const contacts = vendorData?.contacts || [];
-  
-  // Reset contact index when vendor changes or if index is out of bounds
-  const safeContactIndex = contacts.length > 0 ? Math.min(currentContactIndex, contacts.length - 1) : 0;
-  const currentContact = contacts[safeContactIndex] || null;
-  const hasMultipleContacts = contacts.length > 1;
 
-  const navigateContact = (direction: 'prev' | 'next') => {
-    if (direction === 'prev' && safeContactIndex > 0) {
-      setCurrentContactIndex(safeContactIndex - 1);
-    } else if (direction === 'next' && safeContactIndex < contacts.length - 1) {
-      setCurrentContactIndex(safeContactIndex + 1);
-    }
-  };
-
-  const openEmailDialog = () => {
-    const contactEmail = currentContact?.emailAddress?.trim() || "";
+  const openEmailDialog = (contact?: VendorContact | null) => {
+    const contactEmail = contact?.emailAddress?.trim() || "";
     setEmailData({
       to: contactEmail,
       subject: "",
@@ -233,6 +220,20 @@ export default function VendorsForm() {
       });
     }
     setShowEmailDialog(true);
+  };
+
+  const formatDate = (date: string | Date | null | undefined) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-CA");
+  };
+
+  const formatDateForInput = (date: string | Date | null | undefined) => {
+    if (!date) return "";
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().split('T')[0];
   };
 
   return (
@@ -280,7 +281,6 @@ export default function VendorsForm() {
             value={selectedVendorId || ""}
             onValueChange={(value) => {
               setSelectedVendorId(value);
-              setCurrentContactIndex(0);
             }}
           >
             <SelectTrigger id="vendorSelect" data-testid="select-vendor">
@@ -338,7 +338,7 @@ export default function VendorsForm() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 px-4 pb-3 pt-0">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <div>
                       <Label htmlFor="vendorId" className="text-xs">Vendor ID</Label>
                       <Input
@@ -359,6 +359,15 @@ export default function VendorsForm() {
                         onBlur={(e) => handleFieldBlur("company", e.target.value)}
                         className="h-8"
                         data-testid="input-company"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Date Added</Label>
+                      <Input
+                        value={formatDate(vendor.createdAt)}
+                        disabled
+                        className="h-8 text-muted-foreground"
+                        data-testid="text-date-added"
                       />
                     </div>
                   </div>
@@ -535,137 +544,199 @@ export default function VendorsForm() {
               <Card>
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <User className="h-4 w-4" />
-                    <span>Contact {hasMultipleContacts && `(${safeContactIndex + 1}/${contacts.length})`}</span>
-                    {currentContact?.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
-                    <div className="ml-auto flex items-center gap-1">
-                      {hasMultipleContacts && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigateContact('prev')}
-                            disabled={safeContactIndex === 0}
-                            data-testid="button-prev-contact"
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigateContact('next')}
-                            disabled={safeContactIndex === contacts.length - 1}
-                            data-testid="button-next-contact"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                      {currentContact && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={openEmailDialog}
-                          data-testid="button-send-email"
-                        >
-                          <Send className="mr-1 h-3 w-3" />
-                          Email
-                        </Button>
-                      )}
-                    </div>
+                    <ShieldCheck className="h-4 w-4" />
+                    Vendor Compliance
+                    {vendor.holdPayments && (
+                      <Badge variant="destructive" className="text-xs">
+                        <AlertTriangle className="mr-1 h-3 w-3" />
+                        Payments Held
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 px-4 pb-3 pt-0">
-                  {currentContact ? (
-                    <>
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <Label htmlFor="contactFirstName" className="text-xs">First Name</Label>
-                          <Input
-                            id="contactFirstName"
-                            key={`firstName-${currentContact.id}`}
-                            defaultValue={currentContact.firstName || ""}
-                            disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "firstName", e.target.value)}
-                            className="h-8"
-                            data-testid="input-contact-first-name"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="contactLastName" className="text-xs">Last Name</Label>
-                          <Input
-                            id="contactLastName"
-                            key={`lastName-${currentContact.id}`}
-                            defaultValue={currentContact.lastName || ""}
-                            disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "lastName", e.target.value)}
-                            className="h-8"
-                            data-testid="input-contact-last-name"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="contactJobTitle" className="text-xs">Job Title</Label>
-                          <Input
-                            id="contactJobTitle"
-                            key={`jobTitle-${currentContact.id}`}
-                            defaultValue={currentContact.jobTitle || ""}
-                            disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "jobTitle", e.target.value)}
-                            className="h-8"
-                            data-testid="input-contact-job-title"
-                          />
-                        </div>
-                      </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="wcbComplianceDate" className="text-xs">WCB Compliance Date</Label>
+                      <Input
+                        id="wcbComplianceDate"
+                        type="date"
+                        key={`wcbCompliance-${vendor.id}`}
+                        defaultValue={formatDateForInput(vendor.wcbComplianceDate)}
+                        disabled={!editMode}
+                        onBlur={(e) => handleFieldBlur("wcbComplianceDate", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                        className="h-8"
+                        data-testid="input-wcb-compliance-date"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="insuranceExpiryDate" className="text-xs">Insurance Expiry Date</Label>
+                      <Input
+                        id="insuranceExpiryDate"
+                        type="date"
+                        key={`insuranceExpiry-${vendor.id}`}
+                        defaultValue={formatDateForInput(vendor.insuranceExpiryDate)}
+                        disabled={!editMode}
+                        onBlur={(e) => handleFieldBlur("insuranceExpiryDate", e.target.value ? new Date(e.target.value).toISOString() : null)}
+                        className="h-8"
+                        data-testid="input-insurance-expiry-date"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <Checkbox
+                      id="holdPayments"
+                      checked={vendor.holdPayments || false}
+                      disabled={!editMode}
+                      onCheckedChange={(checked) => handleFieldBlur("holdPayments", checked)}
+                      data-testid="checkbox-hold-payments"
+                    />
+                    <Label htmlFor="holdPayments" className="text-xs font-medium">Hold All Vendor Payments</Label>
+                  </div>
+                </CardContent>
+              </Card>
 
-                      <div className="grid grid-cols-3 gap-2">
-                        <div>
-                          <Label htmlFor="contactBusinessPhone" className="text-xs">Business Phone</Label>
-                          <Input
-                            id="contactBusinessPhone"
-                            key={`businessPhone-${currentContact.id}`}
-                            defaultValue={currentContact.businessPhone || ""}
-                            disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "businessPhone", e.target.value)}
-                            className="h-8"
-                            data-testid="input-contact-business-phone"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="contactMobilePhone" className="text-xs">Mobile Phone</Label>
-                          <Input
-                            id="contactMobilePhone"
-                            key={`mobilePhone-${currentContact.id}`}
-                            defaultValue={currentContact.mobilePhone || ""}
-                            disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "mobilePhone", e.target.value)}
-                            className="h-8"
-                            data-testid="input-contact-mobile-phone"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="contactEmail" className="text-xs">Email</Label>
-                          <Input
-                            id="contactEmail"
-                            type="email"
-                            key={`email-${currentContact.id}`}
-                            defaultValue={currentContact.emailAddress || ""}
-                            disabled={!editMode}
-                            onBlur={(e) => handleContactFieldBlur(currentContact.id, "emailAddress", e.target.value)}
-                            className="h-8"
-                            data-testid="input-contact-email"
-                          />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-4 text-muted-foreground">
-                      <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No contact assigned</p>
-                      <Button variant="outline" size="sm" className="mt-2" disabled={!editMode}>
+              <Card className="lg:col-span-2">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <User className="h-4 w-4" />
+                    <span>Contacts ({contacts.length})</span>
+                    <div className="ml-auto flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={!editMode}
+                        onClick={() => {
+                          if (!selectedVendorId) return;
+                          const newContact: Partial<VendorContact> = {
+                            tenantId: vendor.tenantId,
+                            firstName: "",
+                            lastName: "",
+                            jobTitle: "",
+                            businessPhone: "",
+                            emailAddress: "",
+                            isPrimary: contacts.length === 0,
+                          };
+                          apiRequest("POST", `/api/vendors/${selectedVendorId}/contacts`, newContact).then(() => {
+                            refetchData();
+                            toast({ title: "Contact Added", description: "New contact created" });
+                          });
+                        }}
+                        data-testid="button-add-contact"
+                      >
                         <Plus className="mr-1 h-3 w-3" />
                         Add Contact
                       </Button>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-3 pt-0">
+                  {contacts.length > 0 ? (
+                    <div className="max-h-64 overflow-y-auto space-y-3 pr-1" data-testid="contacts-list">
+                      {contacts.map((contact, idx) => (
+                        <div
+                          key={contact.id}
+                          className="rounded-md border p-3 space-y-2"
+                          data-testid={`contact-row-${contact.id}`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-muted-foreground font-medium">
+                              {idx + 1}.
+                            </span>
+                            {contact.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
+                            <span className="text-xs font-medium truncate">
+                              {[contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unnamed Contact'}
+                            </span>
+                            <div className="ml-auto">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEmailDialog(contact)}
+                                data-testid={`button-email-contact-${contact.id}`}
+                              >
+                                <Send className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <Label className="text-xs">First Name</Label>
+                              <Input
+                                key={`firstName-${contact.id}`}
+                                defaultValue={contact.firstName || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "firstName", e.target.value)}
+                                className="h-8"
+                                data-testid={`input-contact-first-name-${contact.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Last Name</Label>
+                              <Input
+                                key={`lastName-${contact.id}`}
+                                defaultValue={contact.lastName || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "lastName", e.target.value)}
+                                className="h-8"
+                                data-testid={`input-contact-last-name-${contact.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Job Title</Label>
+                              <Input
+                                key={`jobTitle-${contact.id}`}
+                                defaultValue={contact.jobTitle || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "jobTitle", e.target.value)}
+                                className="h-8"
+                                data-testid={`input-contact-job-title-${contact.id}`}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <div>
+                              <Label className="text-xs">Business Phone</Label>
+                              <Input
+                                key={`businessPhone-${contact.id}`}
+                                defaultValue={contact.businessPhone || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "businessPhone", e.target.value)}
+                                className="h-8"
+                                data-testid={`input-contact-business-phone-${contact.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Mobile Phone</Label>
+                              <Input
+                                key={`mobilePhone-${contact.id}`}
+                                defaultValue={contact.mobilePhone || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "mobilePhone", e.target.value)}
+                                className="h-8"
+                                data-testid={`input-contact-mobile-phone-${contact.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Email</Label>
+                              <Input
+                                key={`email-${contact.id}`}
+                                type="email"
+                                defaultValue={contact.emailAddress || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "emailAddress", e.target.value)}
+                                className="h-8"
+                                data-testid={`input-contact-email-${contact.id}`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4 text-muted-foreground">
+                      <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No contacts assigned</p>
                     </div>
                   )}
                 </CardContent>
