@@ -1,0 +1,1118 @@
+# The Maestro — Construction ERP
+## Consolidated Architecture, Implementation Roadmap & Repository Structure
+### Capomastro Holdings Ltd. — Theoretical Physics Division
+
+**Document Version:** 2.0  
+**Date:** February 6, 2026  
+**Classification:** Internal — Developer & AI Agent Reference  
+**All Rights Reserved and Preserved; Capomastro Holdings Ltd.
+
+### What Changed in v2.0
+
+| Change | Detail |
+|--------|--------|
+| **Database Decision** | PostgreSQL-native on Replit (Supabase deferred to post-MVP) |
+| **AI Reporting** | Task 1.1 complete — service skeleton, types, API router with mock data |
+| **Microsoft 365** | Task 1.2 complete — Graph API client, MSAL auth, WOPI, email, calendar |
+| **Supabase→Drizzle** | Refactor notes added for Task 1.1 and 1.2 code (replace SupabaseClient imports) |
+| **Task List** | Full phased implementation roadmap with status tracking |
+| **Repository** | Complete file tree with ✅ markers on completed work |
+
+---
+
+## Table of Contents
+
+1. [Strategic Architecture Overview](#1-strategic-architecture-overview)
+2. [Technology Stack & Key Decisions](#2-technology-stack--key-decisions)
+3. [Database Architecture (PostgreSQL-Native)](#3-database-architecture-postgresql-native)
+4. [AI-Powered Reporting Engine](#4-ai-powered-reporting-engine)
+5. [Microsoft 365 Integration Layer](#5-microsoft-365-integration-layer)
+6. [Kong Konnect Gateway](#6-kong-konnect-gateway)
+7. [PlenumNET Security Integration](#7-plenumnet-security-integration)
+8. [Backend Architecture](#8-backend-architecture)
+9. [Frontend Architecture](#9-frontend-architecture)
+10. [Implementation Task List](#10-implementation-task-list)
+11. [Repository Structure](#11-repository-structure)
+12. [CI/CD Pipeline](#12-cicd-pipeline)
+13. [Environment Configuration](#13-environment-configuration)
+14. [Deferred Items & Future Migration](#14-deferred-items--future-migration)
+
+---
+
+## 1. Strategic Architecture Overview
+
+The Maestro is a multi-tenant, all-industry ERP web application with a split frontend/backend architecture. It replaces legacy tools (including MS Access-based reporting) with AI-native analytics, in-browser Office document editing, and post-quantum security via the PlenumNET/SFK infrastructure.
+
+### System Architecture Diagram
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                      End User — Maestro App                      │
+├──────────────────────────────────────────────────────────────────┤
+│  ┌──────────────┐  ┌───────────────┐  ┌───────────────────────┐ │
+│  │ AI Report    │  │ O365 Document │  │ Smart Inbox           │ │
+│  │ Generator    │  │ Editor (WOPI) │  │ (Graph API)           │ │
+│  └──────────────┘  └───────────────┘  └───────────────────────┘ │
+│  ┌──────────────┐  ┌───────────────┐  ┌───────────────────────┐ │
+│  │ WBS Engine   │  │ Procurement   │  │ Finance &             │ │
+│  │ (ltree)      │  │ Module        │  │ Cost Tracking         │ │
+│  └──────────────┘  └───────────────┘  └───────────────────────┘ │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │ HTTPS
+┌───────────────────────────▼──────────────────────────────────────┐
+│                Kong Gateway (Security & Routing)                 │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ JWT Validation │ Rate Limiting │ CORS │ Request Logging    │  │
+│  │ Phase-Rotation Encryption │ Ternary Compression            │  │
+│  │ Femtosecond Timestamping (PlenumNET Custom Plugins)        │  │
+│  └────────────────────────────────────────────────────────────┘  │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │
+    ┌───────────────────────┼───────────────────────────────┐
+    ▼                       ▼                               ▼
+┌──────────────┐    ┌───────────────┐            ┌──────────────────┐
+│ PostgreSQL   │    │ Express.js    │            │ External Services│
+│ (Replit DB)  │    │ (Business     │            │                  │
+│              │    │  Logic)       │            │ • Microsoft Graph│
+│ • Drizzle ORM│    │              │            │ • OpenAI / Ollama│
+│ • RLS Policies│   │ • Domain APIs │            │ • XRPL Ledger    │
+│ • ltree ext  │    │ • AI Service  │            │ • OneDrive       │
+│ • Audit Log  │    │ • WOPI Host   │            │ • Office Online  │
+└──────────────┘    └───────────────┘            └──────────────────┘
+```
+
+---
+
+## 2. Technology Stack & Key Decisions
+
+### Core Stack
+
+| Layer | Technology | Rationale |
+|-------|-----------|-----------|
+| **Frontend** | React 18 + Vite | Fast HMR, tree-shaking, TypeScript-first |
+| **UI Components** | shadcn/ui + Tailwind CSS | Composable, themeable, accessible |
+| **Client State** | TanStack Query v5 (server), Zustand (UI) | Selector-based subscriptions, no context re-render storms |
+| **Routing** | wouter | Lightweight, hook-based |
+| **Forms** | react-hook-form + Zod | Type-safe validation, minimal re-renders |
+| **Backend** | Express.js + TypeScript (strict) | Mature, well-understood, extensible |
+| **ORM** | Drizzle ORM | Type-safe SQL, zero runtime overhead, migration system |
+| **Database** | PostgreSQL (Replit-native) | Proven, extensible, RLS, ltree, JSONB |
+| **Auth** | Azure AD (production) / Replit OIDC (dev) | Single federated IdP, JWT-based |
+| **Gateway** | Kong Konnect | Plugin architecture for PlenumNET security |
+| **AI** | LangChain + OpenAI/Ollama (RAG pipeline) | Natural language → SQL → narrative |
+| **O365** | Microsoft Graph API + WOPI | In-browser editing, email, calendar |
+| **Real-time** | Server-Sent Events (SSE) | One-way push, auto-reconnect, Kong-compatible |
+
+### Key Architectural Decision: PostgreSQL-Native, Supabase-Deferred
+
+**Decision:** Use Replit's built-in PostgreSQL directly with Drizzle ORM. Defer Supabase migration to post-MVP stabilization.
+
+**Rationale:**
+
+- Supabase IS PostgreSQL — migration is a `pg_dump` → `pg_restore` with zero code changes.
+- Drizzle ORM schemas, migrations, and queries work identically on both.
+- Row-Level Security policies written now transfer directly.
+- Eliminates an external dependency during rapid development.
+- The `DATABASE_URL` environment variable pattern ensures the switch is a config change, not a code change.
+
+**Migration Trigger Criteria (for future evaluation):**
+
+- Schema is stable (no weekly migration churn)
+- RLS policies are tested and production-proven
+- Seed data and test fixtures are finalized
+- Team needs managed hosting, built-in Realtime, or Supabase Studio tooling
+
+**Supabase Feature Mapping (for when migration occurs):**
+
+| Supabase Feature | Current Equivalent | Migration Effort |
+|---|---|---|
+| Auth (Azure AD) | JWT + Azure AD OAuth2 flow | Low — swap auth provider config |
+| Realtime subscriptions | SSE from Express server | Low — swap client listener |
+| Row-Level Security | Same Postgres RLS policies | **Zero** — identical SQL |
+| Dashboard/Studio | Drizzle Studio / pgAdmin | Cosmetic |
+| Edge Functions | Express API routes | Medium — optional, no requirement |
+| Storage (S3-backed) | OneDrive via Graph API | N/A — different strategy |
+
+---
+
+## 3. Database Architecture (PostgreSQL-Native)
+
+### Schema Overview (Consolidated)
+
+The schema is optimized from the original 18-table design down to a streamlined set with JSONB for flexible metadata, ltree for hierarchical WBS, and partitioned audit logging.
+
+```sql
+-- Core Extensions Required
+CREATE EXTENSION IF NOT EXISTS "ltree";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- For fuzzy text search
+```
+
+### Table Summary
+
+| Table | Purpose | Key Features |
+|-------|---------|-------------|
+| `tenants` | Multi-tenant root | Branding JSONB, subscription tier |
+| `users` | User accounts | Azure AD identity mapping |
+| `tenant_memberships` | User↔Tenant link | Role enum, permissions JSONB override, group_ids array |
+| `user_groups` | Named permission groups | Per-tenant, JSONB permissions |
+| `projects` | Construction projects | Budget, schedule, status, currency |
+| `wbs_nodes` | Work Breakdown Structure | **ltree path**, cost tracking, schedule |
+| `wbs_master_codes` | WBS template library | Industry-standard code definitions |
+| `documents` | Document registry | **meta JSONB** (replaces document_meta_tags), OneDrive refs |
+| `customers` | Client/customer CRM | Contact info, billing |
+| `vendors` | Supplier management | Contact info, categories |
+| `vendor_contacts` | Vendor contact people | Per-vendor contacts |
+| `quotes` | Quotations | Line items, status workflow |
+| `navigation_items` | Dynamic menu config | Per-tenant customizable navigation |
+| `notifications` | Multi-channel notifications | In-app, email, push |
+| `audit_log` | Immutable audit trail | **Partitioned by month**, JSONB changes |
+| `ai_report_audit_log` | AI query audit | Prompt, generated SQL, security mode |
+| `ms_graph_tokens` | O365 token cache | Per-user, encrypted refresh tokens |
+| `sessions` | Auth sessions (dev/compat) | JWT makes this optional in production |
+
+### Row-Level Security Pattern
+
+```sql
+-- Enable RLS on all tenant-scoped tables
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON projects
+  USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
+
+-- Express middleware sets context per request:
+-- SET app.current_tenant_id = '<tenant-uuid>';
+```
+
+### WBS Engine (ltree)
+
+```sql
+CREATE TABLE wbs_nodes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id),
+  project_id uuid NOT NULL REFERENCES projects(id),
+  parent_id uuid REFERENCES wbs_nodes(id),
+  path ltree NOT NULL,              -- e.g., '1.2.3.4'
+  code text NOT NULL,               -- Display code: '03.02.01'
+  title text NOT NULL,
+  level smallint GENERATED ALWAYS AS (nlevel(path)) STORED,
+  budgeted_cost numeric(15,2) DEFAULT 0,
+  actual_cost numeric(15,2) DEFAULT 0,
+  planned_start date,
+  planned_end date,
+  actual_start date,
+  actual_end date,
+  percent_complete numeric(5,2) DEFAULT 0,
+  template_code_id uuid REFERENCES wbs_master_codes(id),
+  meta jsonb DEFAULT '{}',
+  sort_order integer DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX idx_wbs_path ON wbs_nodes USING GIST (path);
+CREATE INDEX idx_wbs_project ON wbs_nodes (project_id, path);
+```
+
+### Audit Log (Partitioned)
+
+```sql
+CREATE TABLE audit_log (
+  id bigserial,
+  tenant_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  action text NOT NULL,
+  entity_type text NOT NULL,
+  entity_id uuid NOT NULL,
+  changes jsonb,
+  ip_address inet,
+  user_agent text,
+  created_at timestamptz DEFAULT now()
+) PARTITION BY RANGE (created_at);
+
+-- Monthly partitions (created by migration or cron)
+CREATE TABLE audit_log_2026_02 PARTITION OF audit_log
+  FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+```
+
+---
+
+## 4. AI-Powered Reporting Engine
+
+### Overview
+
+Replaces MS Access-based reporting with a **Retrieval-Augmented Generation (RAG)** pipeline. Users ask questions in natural language; the system generates SQL, executes it, and produces narratives, charts, and recommendations.
+
+### Architecture
+
+```
+User Query ("Show me cost overruns for Q1")
+    │
+    ▼
+┌──────────────────────────┐
+│  AI Report Service        │
+│  (ai-report-service.ts)  │
+│                          │
+│  1. Validate query       │
+│  2. Audit log (pending)  │
+│  3. NL → SQL (LangChain) │
+│  4. Execute SQL          │
+│  5. Results → Narrative  │
+│  6. Results → Charts     │
+│  7. Security enforcement │
+│  8. Audit log (complete) │
+└──────────────────────────┘
+    │
+    ▼
+┌──────────────────────────┐
+│  Response                │
+│  • Executive summary     │
+│  • Key findings          │
+│  • Visualizations        │
+│  • Recommendations       │
+│  • XRPL witness (Mode φ)│
+└──────────────────────────┘
+```
+
+### Security Modes for AI Queries
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| **Mode φ (phi)** | Query + results witnessed to XRPL, femtosecond timestamps | Financial audits, regulatory |
+| **Mode 1** | Strong post-quantum encryption, nanosecond timestamps | Enterprise daily use |
+| **Mode 0** | Standard encryption, microsecond timestamps | Legacy/compatibility |
+
+### Implementation Status
+
+| Component | File | Status |
+|-----------|------|--------|
+| Type definitions | `shared/types/ai-report.ts` | ✅ **COMPLETE** (Task 1.1) |
+| Core service skeleton | `server/services/ai-report-service.ts` | ✅ **COMPLETE** (Task 1.1) |
+| API router | `server/api/ai-report/router.ts` | ✅ **COMPLETE** (Task 1.1) |
+| Frontend chat UI | `client/src/components/reports/ai-report-chat.tsx` | ⬜ Pending (Task 2.1) |
+| Frontend report hook | `client/src/hooks/use-ai-report.ts` | ⬜ Pending (Task 2.1) |
+| LLM integration | `server/utils/query-to-sql-chain.ts` | ⬜ Pending (Task 3.1) |
+| PlenumNET middleware | `server/middleware/plenumnet-security.ts` | ⬜ Pending (Task 3.2) |
+
+### ⚠️ Refactor Note: Supabase → Drizzle ORM
+
+The Task 1.1 code as originally written imports `SupabaseClient` and references `this.supabase.from('ai_report_audit_log')`. Per the **PostgreSQL-Native** decision (Section 2), these must be refactored before integration:
+
+| Original (Supabase) | Replacement (Drizzle ORM) |
+|---|---|
+| `import { SupabaseClient } from '@supabase/supabase-js'` | `import { db } from '../db'` |
+| `this.supabase.from('audit_log').insert({...})` | `await db.insert(auditLog).values({...})` |
+| `config.supabase: SupabaseClient` | `config.db: DrizzleInstance` |
+| `process.env.SUPABASE_URL` | `process.env.DATABASE_URL` (already PostgreSQL) |
+
+The Replit AI Agent should apply this refactor when integrating the service into the Express app. The business logic, types, mock data, and security mode handling remain unchanged.
+
+### Current Capabilities (Mock Mode)
+
+The Task 1.1 implementation provides:
+
+- Full TypeScript type safety across client/server boundary
+- Mock data for all common construction query patterns (cost overruns, schedule, vendors)
+- Security mode handling with XRPL witnessing placeholders
+- Comprehensive error handling with typed error codes
+- Audit logging framework
+- Health check and tenant usage statistics endpoints
+- Zod-validated API endpoints
+
+### Key Design Note — SQL Safety
+
+The AI service generates SQL from natural language. Safety rails:
+
+1. **Input validation** — harmful patterns (DROP, DELETE, INSERT, UPDATE) rejected at prompt level
+2. **Tenant scoping** — all generated SQL includes `WHERE tenant_id = ?` (enforced by service, backed by RLS)
+3. **Read-only execution** — AI queries execute through a read-only database role
+4. **Audit trail** — every query logged with prompt, generated SQL, execution time, security mode
+5. **Query timeout** — 30-second default, configurable per tenant
+
+---
+
+## 5. Microsoft 365 Integration Layer
+
+### Overview
+
+Full O365 integration via Microsoft Graph API providing: Azure AD SSO, OneDrive document storage, in-browser Office editing (WOPI), email automation, calendar integration, and a "Smart Inbox" that surfaces project-relevant emails within the ERP.
+
+### Integration Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│             Microsoft 365 Ecosystem              │
+│                                                 │
+│  Azure AD ──── OneDrive ──── Office Online      │
+│      │              │              │             │
+│      │         Graph API      WOPI Protocol     │
+│      │              │              │             │
+└──────┼──────────────┼──────────────┼─────────────┘
+       │              │              │
+       ▼              ▼              ▼
+┌──────────────────────────────────────────────────┐
+│              Maestro Backend                      │
+│                                                  │
+│  Auth Service    MS Graph Client    WOPI Host    │
+│  (Azure AD      (ms-graph-         (wopi-       │
+│   OAuth2)        client.ts)         router.ts)  │
+└──────────────────────────────────────────────────┘
+```
+
+### Feature Matrix
+
+| Feature | API | Implementation |
+|---------|-----|----------------|
+| **SSO Login** | Azure AD OAuth2 / OIDC | JWT tokens with tenant claims |
+| **File Storage** | OneDrive (Graph API) | Upload, download, list, metadata |
+| **In-App Editing** | WOPI Protocol | Office Online iframe for Word/Excel/PowerPoint |
+| **Email Send** | Graph API (Mail.Send) | Invoices, notifications, project updates |
+| **Email Read** | Graph API (Mail.Read) | Smart Inbox filtered by project/vendor |
+| **Calendar** | Graph API (Calendars.ReadWrite) | Meetings, inspections, milestones |
+| **Large File Upload** | Graph API Upload Sessions | Chunked upload for files > 4MB |
+
+### WOPI Document Editing Flow
+
+```
+1. User clicks "Edit in Word" on a document
+2. Frontend requests WOPI action URL from backend
+3. Backend generates signed WOPI access token
+4. Frontend opens Office Online iframe with WOPI URL
+5. Office Online (Microsoft servers) calls YOUR WOPI endpoints:
+   - GET  /wopi/files/:id           → CheckFileInfo (metadata)
+   - GET  /wopi/files/:id/contents  → GetFile (bytes)
+   - POST /wopi/files/:id/contents  → PutFile (save)
+   - POST /wopi/files/:id           → Lock/Unlock
+6. Your WOPI host proxies to OneDrive via Graph API
+7. Kong gateway enforces auth + PlenumNET encryption on all WOPI traffic
+```
+
+### Implementation Status
+
+| Component | File | Status |
+|-----------|------|--------|
+| Type definitions | `shared/types/ms-graph.ts` | ✅ **COMPLETE** (Task 1.2) |
+| Graph API client | `server/integrations/ms-graph-client.ts` | ✅ **COMPLETE** (Task 1.2) |
+| API router | `server/api/ms-graph/router.ts` | ✅ **COMPLETE** (Task 1.2) |
+| WOPI host endpoints | `server/api/documents/wopi-router.ts` | ⬜ Pending (Task 1.3) |
+| WOPI host service | `server/services/wopi-host-service.ts` | ⬜ Pending (Task 1.3) |
+| Office Online embed | `client/src/components/documents/office-online-embed.tsx` | ⬜ Pending (Task 2.2) |
+| Smart Inbox view | `client/src/pages/documents/smart-inbox.tsx` | ⬜ Pending (Task 2.3) |
+| Smart Inbox router | `server/api/documents/smart-inbox-router.ts` | ⬜ Pending (Task 2.3) |
+
+### ⚠️ Refactor Note: Supabase → Drizzle ORM
+
+The Task 1.2 code as originally written imports `SupabaseClient` for token caching and references `this.supabase.from('ms_graph_tokens')`. Per the **PostgreSQL-Native** decision (Section 2), these must be refactored:
+
+| Original (Supabase) | Replacement (Drizzle ORM) |
+|---|---|
+| `import { SupabaseClient } from '@supabase/supabase-js'` | `import { db } from '../db'` |
+| `this.supabase.from('ms_graph_tokens').select(...)` | `await db.select().from(msGraphTokens).where(...)` |
+| `this.supabase.from('ms_graph_tokens').upsert(...)` | `await db.insert(msGraphTokens).values({...}).onConflictDoUpdate(...)` |
+| Constructor param `supabase?: SupabaseClient` | Constructor param `db?: DrizzleInstance` |
+| `createClient(SUPABASE_URL, SUPABASE_KEY)` | Already handled via `DATABASE_URL` |
+
+The factory function `createMsGraphClient()` signature updates accordingly. All MSAL auth, Graph API calls, WOPI, and error handling remain unchanged.
+
+### Current Capabilities (Task 1.2 Complete)
+
+The MS Graph client provides:
+
+- **MSAL authentication** with client credentials and user-delegated token flows
+- **Token caching** — in-memory LRU + database persistence (via `ms_graph_tokens` table)
+- **Automatic token refresh** with retry on 401
+- **Rate limit handling** — automatic retry on 429 with `Retry-After` header
+- **OneDrive operations** — list, get metadata, download, upload (small + large file sessions)
+- **Email operations** — send (user-delegated + app-only), read with OData filtering
+- **Calendar operations** — create events, list calendar view
+- **WOPI support** — CheckFileInfo generation, action URL construction
+- **Error normalization** — all Graph errors mapped to typed `MsGraphErrorCode` enum
+- **PlenumNET integration** — security mode headers on all requests
+- **Health check** — connection test endpoint with feature status
+
+### Graph API Permissions Required
+
+```
+Application (app-only):
+  • User.Read.All
+  • Mail.Send
+  • Files.ReadWrite.All
+
+Delegated (per-user):
+  • User.Read
+  • Files.ReadWrite
+  • Mail.ReadWrite
+  • Mail.Send
+  • Calendars.ReadWrite
+  • offline_access (for refresh tokens)
+```
+
+---
+
+## 6. Kong Konnect Gateway
+
+### Plugin Architecture
+
+All security concerns live in Kong plugins, not in Express application code. The Express backend is a pure business logic server.
+
+| Concern | Plugin Type | Notes |
+|---------|-------------|-------|
+| JWT verification | Built-in (jwt) | Validates tokens, injects claims |
+| Rate limiting | Built-in (rate-limiting) | Per-tenant, configurable tiers |
+| CORS | Built-in (cors) | Allowed origins per environment |
+| Request logging | Built-in (file-log) | Structured JSON logs |
+| Phase-rotation encryption | **Custom** (Lua/Go) | PlenumNET Mode φ/1/0 |
+| Ternary compression | **Custom** (Lua/Go) | Bijective ternary encoding |
+| Femtosecond timestamping | **Custom** (Lua/Go) | HPTP-based timing headers |
+
+### Service Definitions
+
+```yaml
+# kong/kong.yml (decK declarative format)
+_format_version: "3.0"
+
+services:
+  - name: maestro-api
+    url: http://localhost:3000/api
+    routes:
+      - name: api-routes
+        paths: ["/api"]
+        strip_path: false
+    plugins:
+      - name: jwt
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
+
+  - name: maestro-wopi
+    url: http://localhost:3000/wopi
+    routes:
+      - name: wopi-routes
+        paths: ["/wopi"]
+    plugins:
+      - name: jwt
+      - name: phase-rotation  # Custom PlenumNET plugin
+
+  - name: maestro-ai-report
+    url: http://localhost:3000/api/ai-report
+    routes:
+      - name: ai-report-routes
+        paths: ["/api/ai-report"]
+    plugins:
+      - name: jwt
+      - name: rate-limiting
+        config:
+          minute: 30  # AI queries are expensive
+      - name: ternary-compression  # Custom PlenumNET plugin
+
+  - name: maestro-events
+    url: http://localhost:3000/api/events
+    routes:
+      - name: event-stream-routes
+        paths: ["/api/events"]
+    plugins:
+      - name: jwt
+```
+
+---
+
+## 7. PlenumNET Security Integration
+
+### How PlenumNET Maps to ERP Operations
+
+| ERP Operation | Security Mode | PlenumNET Feature |
+|--------------|--------------|-------------------|
+| Financial reports | Mode φ+ | Femtosecond timestamps + XRPL witnessing |
+| Document editing | Mode φ | Phase-rotation encryption |
+| API calls (general) | Mode 1 | Post-quantum encryption, constant-time ops |
+| Legacy system compat | Mode 0 | AES-256 with ternary key schedule |
+| AI report queries | Configurable | Per-query security mode selection |
+
+### Integration Points
+
+1. **Kong Plugins** — enforce encryption/compression/timestamping at the gateway
+2. **AI Report Service** — security mode parameter on every query, XRPL witnessing for Mode φ
+3. **Document Operations** — phase-rotation encryption on WOPI traffic
+4. **Audit Trail** — femtosecond timestamps on critical operations, timing certificates
+
+### Current Status
+
+PlenumNET integration is **framework-ready** — the type system, interfaces, and placeholder hooks are in place. Actual implementation depends on:
+
+- HPTP protocol client (Task 4.1)
+- Kong custom plugin development (Task 4.2)
+- PlenumNET security middleware (Task 3.2)
+
+---
+
+## 8. Backend Architecture
+
+### Domain-Driven Service Modules
+
+```
+server/
+├── index.ts                      # Server entry point
+│
+├── api/                          # ── Domain Routers (HTTP layer) ──
+│   ├── auth/
+│   │   ├── router.ts             # Auth endpoints
+│   │   ├── azure-strategy.ts     # Azure AD OAuth2
+│   │   ├── replit-strategy.ts    # Replit OIDC (dev only)
+│   │   └── token-service.ts      # JWT issue/verify/refresh
+│   ├── tenants/
+│   │   ├── router.ts             # Tenant CRUD + branding
+│   │   └── onboarding.ts         # Onboarding wizard API
+│   ├── projects/
+│   │   ├── router.ts             # Project CRUD
+│   │   ├── wbs-router.ts         # WBS node operations
+│   │   └── schedule-router.ts    # Schedule/Gantt data
+│   ├── documents/
+│   │   ├── router.ts             # Document CRUD
+│   │   ├── wopi-router.ts        # WOPI host endpoints
+│   │   └── smart-inbox-router.ts # Smart Inbox (email)
+│   ├── procurement/
+│   │   ├── vendor-router.ts
+│   │   ├── quote-router.ts
+│   │   └── po-router.ts
+│   ├── customers/
+│   │   └── router.ts
+│   ├── finance/
+│   │   ├── invoice-router.ts
+│   │   ├── payment-router.ts
+│   │   └── budget-router.ts
+│   ├── ai-report/
+│   │   └── router.ts             # AI report generation ✅
+│   ├── ms-graph/
+│   │   └── router.ts             # Direct Graph API access ✅
+│   ├── admin/
+│   │   ├── user-router.ts
+│   │   ├── role-router.ts
+│   │   ├── audit-router.ts
+│   │   └── settings-router.ts
+│   └── events/
+│       └── router.ts             # SSE stream endpoint
+│
+├── middleware/                    # ── Express Middleware ──
+│   ├── auth.ts                   # JWT verification
+│   ├── tenant.ts                 # Tenant isolation (sets RLS context)
+│   ├── validate.ts               # Zod request body validation
+│   ├── rate-limit.ts             # Per-tenant rate limiting
+│   ├── audit.ts                  # Audit trail capture
+│   ├── error-handler.ts          # Global error handler
+│   ├── request-id.ts             # Unique request ID (tracing)
+│   └── plenumnet-security.ts     # PlenumNET mode enforcement
+│
+├── services/                     # ── Business Logic (no HTTP) ──
+│   ├── ai-report-service.ts      # AI report generation ✅
+│   ├── permission-service.ts     # Role/permission computation
+│   ├── wbs-service.ts            # WBS tree operations (ltree)
+│   ├── document-service.ts       # Document lifecycle
+│   ├── wopi-host-service.ts      # WOPI protocol implementation
+│   ├── notification-service.ts   # Multi-channel notifications
+│   ├── event-bus.ts              # In-process pub/sub for SSE
+│   ├── audit-service.ts          # Audit log writer
+│   └── report-service.ts         # Traditional report generation
+│
+├── integrations/                 # ── External Service Clients ──
+│   ├── ms-graph-client.ts        # Microsoft Graph API ✅
+│   ├── onedrive.ts               # OneDrive convenience wrappers
+│   └── office-online.ts          # Office Online action URLs
+│
+├── db/                           # ── Database ──
+│   ├── index.ts                  # Drizzle connection
+│   ├── schema.ts                 # Drizzle ORM models
+│   ├── migrations/               # Drizzle migration files
+│   └── seed.ts                   # Development seed data
+│
+├── kong/                         # ── Kong Admin Client ──
+│   ├── client.ts                 # Kong Admin API (health/config only)
+│   └── types.ts
+│
+└── utils/                        # ── Utilities ──
+    ├── logger.ts                 # Structured logging (pino)
+    ├── errors.ts                 # Custom error classes
+    ├── pagination.ts             # Pagination helpers
+    ├── crypto.ts                 # Token/hash utilities
+    └── query-to-sql-chain.ts     # LangChain NL→SQL (future)
+```
+
+### Three-Layer State Model (Backend)
+
+| Layer | Responsibility | Pattern |
+|-------|---------------|---------|
+| **API Routers** | HTTP handling, validation, response formatting | Express Router + Zod |
+| **Services** | Business logic, authorization, orchestration | Pure TypeScript classes, no HTTP awareness |
+| **DB/Integrations** | Data access, external API calls | Drizzle ORM, Graph API client |
+
+---
+
+## 9. Frontend Architecture
+
+### Three-Layer State Model (Frontend)
+
+| Layer | Tool | What Lives Here |
+|-------|------|-----------------|
+| **Server State** | TanStack Query v5 | All API data (projects, users, documents, WBS) |
+| **App State** | Zustand (single store) | Theme, sidebar, active tenant, branding, notifications |
+| **Form State** | react-hook-form + Zod | Per-form validation, dirty tracking, submission |
+
+### Component Organization
+
+```
+client/src/
+├── components/
+│   ├── ui/                    # shadcn/ui primitives
+│   ├── layout/                # App shell, sidebar, header, breadcrumbs
+│   ├── branding/              # Tenant logo, theme provider, color picker
+│   ├── data-table/            # Reusable sortable/filterable table
+│   ├── wbs/                   # WBS tree, node, Gantt, form
+│   ├── documents/             # Viewer, upload, list, tags, Office embed
+│   ├── reports/               # AI report chat, visualizations
+│   └── shared/                # Loading, error boundary, empty state, dialogs
+│
+├── pages/
+│   ├── auth/                  # Login, callback, tenant select
+│   ├── dashboard/             # Main dashboard + widgets
+│   ├── projects/              # Project list, detail, WBS, schedule, costs
+│   ├── procurement/           # Vendors, quotes, POs
+│   ├── customers/             # CRM
+│   ├── finance/               # Invoices, payments, budgets, reports
+│   ├── documents/             # Document center, Smart Inbox
+│   ├── admin/                 # Users, roles, branding, audit log, templates
+│   └── onboarding/            # Tenant setup wizard
+│
+├── hooks/                     # use-auth, use-tenant, use-permissions, use-sse
+├── stores/                    # app-store, tenant-store, notification-store
+├── lib/                       # api-client, query-client, query-keys, formatters
+└── types/                     # api, forms, routes
+```
+
+### Real-Time Updates (SSE)
+
+```typescript
+// SSE listener invalidates TanStack Query cache
+const evtSource = new EventSource('/api/events/stream');
+evtSource.addEventListener('project.updated', (e) => {
+  const data = JSON.parse(e.data);
+  queryClient.invalidateQueries({ queryKey: ['projects', data.id] });
+});
+evtSource.addEventListener('document.saved', (e) => {
+  const data = JSON.parse(e.data);
+  queryClient.invalidateQueries({ queryKey: ['documents', data.id] });
+});
+```
+
+---
+
+## 10. Implementation Task List
+
+### Status Legend
+
+| Symbol | Meaning |
+|--------|---------|
+| ✅ | Complete — code written and reviewed |
+| 🔄 | In Progress |
+| ⬜ | Not Started |
+
+### Phase 1: Core AI & O365 Service Setup
+
+| # | Task | Key Files | Status |
+|---|------|-----------|--------|
+| 1.1 | **AI Report Service Skeleton** | `shared/types/ai-report.ts`, `server/services/ai-report-service.ts`, `server/api/ai-report/router.ts` | ✅ **COMPLETE** |
+| 1.2 | **O365 Graph API Client** | `shared/types/ms-graph.ts`, `server/integrations/ms-graph-client.ts`, `server/api/ms-graph/router.ts` | ✅ **COMPLETE** |
+| 1.3 | **WOPI Host Endpoints** | `server/api/documents/wopi-router.ts`, `server/services/wopi-host-service.ts` | ⬜ |
+
+### Phase 2: Frontend Integration & UI
+
+| # | Task | Key Files | Status |
+|---|------|-----------|--------|
+| 2.1 | **AI Report Chat Interface** | `client/src/components/reports/ai-report-chat.tsx`, `client/src/hooks/use-ai-report.ts` | ⬜ |
+| 2.2 | **Office Online Embed Component** | `client/src/components/documents/office-online-embed.tsx` | ⬜ |
+| 2.3 | **Smart Inbox View** | `client/src/pages/documents/smart-inbox.tsx`, `server/api/documents/smart-inbox-router.ts` | ⬜ |
+
+### Phase 3: Advanced AI & PlenumNET Integration
+
+| # | Task | Key Files | Status |
+|---|------|-----------|--------|
+| 3.1 | **LLM Integration for Report Generation** | `server/services/ai-report-service.ts` (modify), `server/utils/query-to-sql-chain.ts` | ⬜ |
+| 3.2 | **PlenumNET Security Middleware** | `server/middleware/plenumnet-security.ts` | ⬜ |
+
+### Phase 4: Critical Infrastructure
+
+| # | Task | Key Files | Status |
+|---|------|-----------|--------|
+| 4.1 | **HPTP Protocol Client** | `plenum-net/timing-service/src/hptp-client.ts`, `plenum-net/timing-service/src/clock-driver.ts` | ⬜ |
+| 4.2 | **Kong Configuration for New Services** | `kong/services/*.yaml`, `kong/routes/*.yaml` | ⬜ |
+
+### Phase 5: Deployment & Documentation
+
+| # | Task | Key Files | Status |
+|---|------|-----------|--------|
+| 5.1 | **Docker & K8s Manifests** | `infrastructure/docker/*.yml`, `infrastructure/kubernetes/*.yaml` | ⬜ |
+| 5.2 | **User Documentation** | `docs/user-guides/*.md`, `docs/integrations/*.md` | ⬜ |
+
+### Recommended Execution Order
+
+```
+1.3  WOPI Host Endpoints         (unlocks in-app editing)
+2.1  AI Report Chat Interface    (unlocks AI reporting for users)
+2.2  Office Online Embed         (unlocks "Edit in Word" button)
+2.3  Smart Inbox View            (unlocks email-in-ERP)
+4.2  Kong Configuration          (secures all new endpoints)
+3.1  LLM Integration             (replaces mock AI with real intelligence)
+3.2  PlenumNET Security MW       (enforces security modes)
+4.1  HPTP Protocol               (enables femtosecond timing)
+5.1  Docker/K8s                  (enables production deployment)
+5.2  Documentation               (enables onboarding)
+```
+
+---
+
+## 11. Repository Structure
+
+**Repository:** `capomastro/the-maestro-erp`
+
+```
+the-maestro-erp/
+│
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml                    # Lint, typecheck, test on PR
+│   │   ├── cd-staging.yml            # Deploy to staging on merge to develop
+│   │   ├── cd-production.yml         # Deploy to production on release tag
+│   │   ├── kong-sync.yml             # Sync Kong config on kong/ changes
+│   │   ├── db-migrate.yml            # Run Drizzle migrations
+│   │   └── security-scan.yml         # Dependency audit + SAST
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.md
+│   │   ├── feature_request.md
+│   │   └── change_order.md
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   ├── CODEOWNERS
+│   └── dependabot.yml
+│
+├── client/                           # ─── FRONTEND ───
+│   ├── public/
+│   │   ├── favicon.ico
+│   │   ├── manifest.json             # PWA manifest
+│   │   └── sw.js                     # Service worker
+│   ├── src/
+│   │   ├── main.tsx
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   ├── components/
+│   │   │   ├── ui/                   # shadcn/ui primitives
+│   │   │   ├── layout/              # app-shell, sidebar, header
+│   │   │   ├── branding/            # tenant-logo, theme-provider
+│   │   │   ├── data-table/          # reusable table components
+│   │   │   ├── wbs/                 # wbs-tree, wbs-node, wbs-gantt
+│   │   │   ├── documents/           # document-viewer, upload, office-online-embed
+│   │   │   ├── reports/             # ai-report-chat, visualizations
+│   │   │   └── shared/              # loading, error-boundary, confirm-dialog
+│   │   ├── pages/
+│   │   │   ├── auth/                # login, callback, tenant-select
+│   │   │   ├── dashboard/           # index + widgets/
+│   │   │   ├── projects/            # index, [id]/(overview,wbs,schedule,costs), new
+│   │   │   ├── procurement/         # vendors/, quotes/, purchase-orders/
+│   │   │   ├── customers/           # index, [id]
+│   │   │   ├── finance/             # invoices/, payments/, budgets/, reports/
+│   │   │   ├── documents/           # index, [id], smart-inbox
+│   │   │   ├── admin/               # users, roles, branding, audit-log, templates
+│   │   │   └── onboarding/          # step-company, step-branding, step-users
+│   │   ├── hooks/                   # use-auth, use-tenant, use-permissions, use-sse
+│   │   ├── stores/                  # app-store, tenant-store, notification-store
+│   │   ├── lib/                     # api-client, query-client, query-keys, formatters
+│   │   └── types/                   # api, forms, routes
+│   ├── components.json
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   └── vite.config.ts
+│
+├── server/                           # ─── BACKEND ───
+│   ├── index.ts
+│   ├── api/
+│   │   ├── auth/                    # router, azure-strategy, token-service
+│   │   ├── tenants/                 # router, branding, onboarding
+│   │   ├── projects/                # router, wbs-router, schedule-router
+│   │   ├── documents/               # router, wopi-router, smart-inbox-router
+│   │   ├── procurement/             # vendor-router, quote-router, po-router
+│   │   ├── customers/               # router
+│   │   ├── finance/                 # invoice-router, payment-router, budget-router
+│   │   ├── ai-report/               # router ✅
+│   │   ├── ms-graph/                # router ✅
+│   │   ├── admin/                   # user-router, role-router, audit-router
+│   │   └── events/                  # router (SSE)
+│   ├── middleware/                   # auth, tenant, validate, rate-limit, audit, error-handler
+│   ├── services/                    # ai-report ✅, permissions, wbs, document, wopi, notifications
+│   ├── integrations/                # ms-graph-client ✅, onedrive, office-online
+│   ├── db/
+│   │   ├── index.ts
+│   │   ├── schema.ts
+│   │   ├── migrations/
+│   │   └── seed.ts
+│   ├── kong/                        # client (admin only), types
+│   └── utils/                       # logger, errors, pagination, crypto
+│
+├── shared/                           # ─── SHARED ───
+│   ├── schema.ts                    # Drizzle table definitions
+│   ├── types.ts                     # Shared interfaces
+│   ├── types/
+│   │   ├── ai-report.ts             # ✅ AI reporting types
+│   │   └── ms-graph.ts              # ✅ Microsoft Graph types
+│   ├── validators.ts                # Shared Zod schemas
+│   ├── constants.ts
+│   └── permissions.ts               # Permission definitions
+│
+├── kong/                             # ─── KONG KONNECT ───
+│   ├── kong.yml                     # Declarative config (decK)
+│   ├── plugins/
+│   │   ├── phase-rotation/          # handler.lua, schema.lua
+│   │   ├── ternary-compression/     # handler.lua, schema.lua
+│   │   └── femtosecond-timestamp/   # handler.lua, schema.lua
+│   ├── services/
+│   │   ├── maestro-api.yml
+│   │   ├── maestro-wopi.yml
+│   │   ├── maestro-ai-report.yml
+│   │   └── maestro-events.yml
+│   ├── routes/
+│   │   ├── api-routes.yml
+│   │   ├── wopi-routes.yml
+│   │   ├── ai-report-routes.yml
+│   │   └── event-routes.yml
+│   ├── environments/
+│   │   ├── development.yml
+│   │   ├── staging.yml
+│   │   └── production.yml
+│   └── scripts/
+│       ├── sync.sh
+│       ├── diff.sh
+│       └── validate.sh
+│
+├── infrastructure/                   # ─── DEPLOYMENT ───
+│   ├── docker/
+│   │   ├── Dockerfile.client
+│   │   ├── Dockerfile.server
+│   │   ├── docker-compose.yml
+│   │   └── docker-compose.prod.yml
+│   └── kubernetes/                  # (Future)
+│       ├── namespace.yml
+│       ├── deployment.yml
+│       ├── service.yml
+│       └── ingress.yml
+│
+├── docs/                             # ─── DOCUMENTATION ───
+│   ├── architecture.md
+│   ├── api-reference.md
+│   ├── database-schema.md
+│   ├── kong-setup.md
+│   ├── m365-integration.md
+│   ├── wbs-guide.md
+│   ├── deployment.md
+│   ├── development.md
+│   ├── plenumnet-integration.md
+│   ├── security.md
+│   └── user-guides/
+│       ├── ai-reporting.md
+│       └── getting-started.md
+│
+├── tests/                            # ─── TESTS ───
+│   ├── unit/
+│   │   └── services/
+│   ├── integration/
+│   │   ├── api/
+│   │   └── db/
+│   ├── e2e/
+│   │   └── playwright.config.ts
+│   └── fixtures/
+│
+├── scripts/                          # ─── UTILITY SCRIPTS ───
+│   ├── setup.sh
+│   ├── dev.sh
+│   ├── migrate.sh
+│   ├── seed.sh
+│   ├── build.sh
+│   ├── test.sh
+│   └── kong-sync.sh
+│
+├── .env.example
+├── .eslintrc.cjs
+├── .prettierrc
+├── .gitignore
+├── drizzle.config.ts
+├── package.json
+├── tsconfig.json
+├── tsconfig.client.json
+├── tsconfig.server.json
+├── LICENSE
+└── README.md
+```
+
+---
+
+## 12. CI/CD Pipeline
+
+```
+┌─────────────┐     ┌──────────────┐     ┌──────────────────┐
+│  Developer   │────▶│   GitHub     │────▶│  GitHub Actions  │
+│  pushes code │     │  Repository  │     │                  │
+└─────────────┘     └──────────────┘     │  1. Lint + Type  │
+                                          │  2. Unit Tests   │
+                                          │  3. Integration  │
+                                          │  4. Build        │
+                                          │  5. Security Scan│
+                                          └────────┬─────────┘
+                                                   │
+                                    ┌──────────────┼──────────────┐
+                                    ▼              ▼              ▼
+                              ┌──────────┐  ┌──────────┐  ┌──────────┐
+                              │ Staging  │  │  Kong    │  │   DB     │
+                              │ Deploy   │  │  Sync    │  │ Migrate  │
+                              └──────────┘  └──────────┘  └──────────┘
+                                    │
+                                    ▼ (manual approval)
+                              ┌──────────┐
+                              │Production│
+                              │ Deploy   │
+                              └──────────┘
+```
+
+### Branch Strategy
+
+| Branch | Purpose | Deploys To |
+|--------|---------|-----------|
+| `main` | Production-ready code | Production (on release tag) |
+| `develop` | Integration branch | Staging (on merge) |
+| `feature/*` | Feature development | PR preview (optional) |
+| `hotfix/*` | Production fixes | Production (on merge to main) |
+
+---
+
+## 13. Environment Configuration
+
+```env
+# ─── Application ───
+NODE_ENV=development
+PORT=3000
+APP_URL=https://maestro.capomastro.com
+
+# ─── Database (PostgreSQL-Native) ───
+DATABASE_URL=postgresql://user:pass@localhost:5432/maestro
+DATABASE_POOL_SIZE=20
+# Note: When migrating to Supabase, only this URL changes.
+# All Drizzle schemas, migrations, and RLS policies transfer as-is.
+
+# ─── Authentication ───
+AUTH_PROVIDER=azure                   # azure | replit
+JWT_SECRET=<random-256-bit-key>
+JWT_EXPIRY=900                        # 15 minutes
+
+# ─── Microsoft 365 / Azure AD ───
+AZURE_AD_CLIENT_ID=<client-id>
+AZURE_AD_CLIENT_SECRET=<client-secret>
+AZURE_AD_TENANT_ID=<tenant-id>
+AZURE_AD_REDIRECT_URI=https://maestro.capomastro.com/api/auth/callback
+
+# ─── Microsoft Graph (OneDrive/Office/Email) ───
+MS_GRAPH_CLIENT_ID=<client-id>
+MS_GRAPH_CLIENT_SECRET=<client-secret>
+MS_GRAPH_TENANT_ID=<tenant-id>
+MS_GRAPH_REDIRECT_URI=https://maestro.capomastro.com/api/auth/ms-callback
+MS_GRAPH_SCOPES=User.Read,Files.ReadWrite,Mail.ReadWrite,Mail.Send,Calendars.ReadWrite
+
+# ─── AI Reporting ───
+AI_LLM_PROVIDER=openai               # openai | ollama | mock
+OPENAI_API_KEY=<api-key>             # Only if provider=openai
+OLLAMA_BASE_URL=http://localhost:11434 # Only if provider=ollama
+AI_MAX_QUERY_LENGTH=1000
+AI_QUERY_TIMEOUT_MS=30000
+
+# ─── Kong Konnect ───
+KONG_ADMIN_URL=https://admin.kong.capomastro.com
+KONG_ADMIN_TOKEN=<admin-token>
+KONG_PROXY_URL=https://api.kong.capomastro.com
+
+# ─── PlenumNET ───
+PLENUMNET_DEFAULT_SECURITY_MODE=one   # phi | one | zero
+PLENUMNET_XRPL_ACCOUNT=<r-address>
+PLENUMNET_XRPL_SECRET=<secret>
+ENABLE_PLENUMNET=false                # Toggle for when ready
+
+# ─── Replit (dev only) ───
+REPLIT_DOMAINS=<auto-populated>
+REPL_ID=<auto-populated>
+
+# ─── Feature Flags ───
+ENABLE_SSE=true
+ENABLE_WOPI=true
+ENABLE_AI_REPORTS=true
+ENABLE_SMART_INBOX=true
+ENABLE_MOCK_AI_DATA=true              # Use mock data in AI reports
+```
+
+---
+
+## 14. Deferred Items & Future Migration
+
+### Supabase Migration
+
+```
+Target: After MVP stabilization (Phase 3+)
+Prerequisites:
+  - Stable schema (no weekly migration churn)
+  - RLS policies tested and production-proven
+  - Seed data and test fixtures finalized
+  - Team needs managed hosting, Realtime, or Studio tooling
+Migration path:
+  1. pg_dump from Replit PostgreSQL
+  2. Create Supabase project
+  3. pg_restore into Supabase
+  4. Update DATABASE_URL environment variable
+  5. Verify all queries, RLS policies, ltree operations
+  6. Switch auth to Supabase Auth (optional)
+  7. Switch SSE to Supabase Realtime (optional)
+```
+
+### Additional Future Enhancements
+
+| Enhancement | Priority | Phase |
+|------------|----------|-------|
+| Multi-currency support (ISO 4217) | High | MVP+ |
+| Mobile PWA with offline field reporting | High | MVP+ |
+| Tenant onboarding wizard | Medium | Phase 2 |
+| Traditional report builder (parameterized SQL → PDF/Excel) | Medium | Phase 3 |
+| Equipment tracking module | Low | Phase 4 |
+| HR/payroll module | Low | Phase 4 |
+| Intercompany transaction reconciliation | Medium | Phase 3 |
+| PlenumNET full femtosecond timing | Low | Phase 5 |
+
+---
+
+### Replit AI Agent — Git Push Instructions
+
+```bash
+# 1. Ensure git is initialized with correct remote
+git remote set-url origin https://github.com/capomastro/the-maestro-erp.git
+
+# 2. Work on develop branch
+git checkout develop || git checkout -b develop
+
+# 3. Stage and commit completed work
+git add -A
+git commit -m "feat(ai-report,ms-graph): complete Tasks 1.1 and 1.2
+
+- AI Report Service: types, service skeleton, API router (mock mode)
+- MS Graph Client: MSAL auth, token management, OneDrive, email, calendar, WOPI
+- Shared type definitions for both services
+- PostgreSQL-native architecture (Supabase deferred)"
+
+# 4. Push
+git push -u origin develop
+
+# 5. Next task branch
+git checkout -b feature/wopi-host develop
+```
+
+---
+
+*All Rights Reserved and Preserved; Capomastro Holdings Ltd.*

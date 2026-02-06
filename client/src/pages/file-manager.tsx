@@ -61,6 +61,7 @@ import {
 import type { Document, WbsMasterCode, DocumentMetaTag } from "@shared/schema";
 import { wbsDimensionDefinitions } from "@shared/schema";
 import { MicrosoftConfigModal } from "@/components/microsoft-config-modal";
+import { OfficeOnlineEmbed } from "@/components/documents/office-online-embed";
 
 // Icon mapping for dimensions
 const dimensionIcons: Record<string, any> = {
@@ -697,6 +698,7 @@ export default function FileManagerPage() {
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [dimensionSearch, setDimensionSearch] = useState("");
   const [isFullscreenViewerOpen, setIsFullscreenViewerOpen] = useState(false);
+  const [showInlineEditor, setShowInlineEditor] = useState(false);
   
   // Upload form state
   const [uploadForm, setUploadForm] = useState({
@@ -1231,6 +1233,7 @@ export default function FileManagerPage() {
                       onClick={() => {
                         setSelectedDocument(doc);
                         setDecryptedContent(null);
+                        setShowInlineEditor(false);
                       }}
                       data-testid={`document-item-${doc.id}`}
                     >
@@ -1280,7 +1283,18 @@ export default function FileManagerPage() {
                         </p>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {isOfficeFormat(selectedDocument.name) && !(selectedDocument.isEncrypted && !decryptedContent) && (
+                        <Button
+                          variant={showInlineEditor ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShowInlineEditor(!showInlineEditor)}
+                          data-testid="button-inline-editor"
+                        >
+                          <FileCheck className="h-4 w-4 mr-2" />
+                          {showInlineEditor ? "Close Editor" : "Office Editor"}
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -1346,9 +1360,17 @@ export default function FileManagerPage() {
                 
                 <Separator />
                 
-                <CardContent className="flex-1 overflow-auto p-4">
-                  {selectedDocument.isEncrypted && !decryptedContent ? (
-                    <div className="h-full flex items-center justify-center">
+                <CardContent className="flex-1 overflow-auto p-0">
+                  {showInlineEditor && isOfficeFormat(selectedDocument.name) ? (
+                    <div className="h-full" data-testid="container-inline-editor">
+                      <OfficeOnlineEmbed
+                        documentId={selectedDocument.id}
+                        documentName={selectedDocument.name}
+                        onClose={() => setShowInlineEditor(false)}
+                      />
+                    </div>
+                  ) : selectedDocument.isEncrypted && !decryptedContent ? (
+                    <div className="h-full flex items-center justify-center p-4">
                       <div className="text-center">
                         <Lock className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                         <h3 className="text-lg font-medium mb-2">Encrypted Document</h3>
@@ -1364,10 +1386,12 @@ export default function FileManagerPage() {
                       </div>
                     </div>
                   ) : (
-                    <DocumentContentViewer 
-                      document={selectedDocument}
-                      content={decryptedContent || selectedDocument.plainContent}
-                    />
+                    <div className="p-4 h-full">
+                      <DocumentContentViewer 
+                        document={selectedDocument}
+                        content={decryptedContent || selectedDocument.plainContent}
+                      />
+                    </div>
                   )}
                 </CardContent>
               </>

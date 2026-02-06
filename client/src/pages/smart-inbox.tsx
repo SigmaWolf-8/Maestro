@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSettings } from "@/components/settings-provider";
 import {
   Mail,
   Search,
   Paperclip,
-  Star,
   Clock,
-  Filter,
   FolderKanban,
   Truck,
   DollarSign,
@@ -23,7 +23,29 @@ import {
   Loader2,
   Inbox,
   RefreshCw,
+  Sparkles,
+  Calendar,
+  Hammer,
+  MapPin,
+  Building2,
+  Layers,
+  Grid3x3,
+  Cog,
+  Settings2,
+  Box,
+  Layers3,
+  Package,
+  Tag,
 } from "lucide-react";
+import { wbsDimensionDefinitions } from "@shared/schema";
+
+interface WbsTag {
+  dimensionType: string;
+  wbsCodeId: string | null;
+  codeName: string;
+  codeValue: string;
+  confidence: number;
+}
 
 interface SmartEmail {
   id: string;
@@ -37,6 +59,7 @@ interface SmartEmail {
   relatedProject: string | null;
   hasAttachment: boolean;
   labels: string[];
+  wbsTags?: WbsTag[];
 }
 
 interface InboxResponse {
@@ -58,6 +81,22 @@ const CATEGORY_CONFIG: Record<string, { icon: typeof Mail; label: string; color:
   customer: { icon: Users, label: "Customers", color: "text-purple-500" },
 };
 
+const dimensionIcons: Record<string, typeof Tag> = {
+  phase: Calendar,
+  trade: Hammer,
+  location: MapPin,
+  building: Building2,
+  level: Layers,
+  zone: Grid3x3,
+  system: Cog,
+  subsystem: Settings2,
+  element_type: Box,
+  material: Layers3,
+  work_package: Package,
+  cost_code: DollarSign,
+  responsibility: Users,
+};
+
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
@@ -70,6 +109,72 @@ function formatRelativeTime(dateString: string): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString();
+}
+
+function getConfidenceColor(confidence: number): string {
+  if (confidence >= 0.8) return "text-green-600 dark:text-green-400";
+  if (confidence >= 0.6) return "text-amber-600 dark:text-amber-400";
+  return "text-muted-foreground";
+}
+
+function WbsTagsPanel({ tags }: { tags: WbsTag[] }) {
+  if (!tags || tags.length === 0) return null;
+
+  return (
+    <Card data-testid="card-wbs-tags">
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-medium">AI-Suggested WBS Tags</span>
+          <Badge variant="outline" className="text-[9px]">
+            {tags.length} dimension{tags.length !== 1 ? "s" : ""}
+          </Badge>
+        </div>
+        <div className="grid grid-cols-1 gap-1.5">
+          {tags.map((tag, i) => {
+            const dimDef = wbsDimensionDefinitions.find(d => d.key === tag.dimensionType);
+            const DimIcon = dimensionIcons[tag.dimensionType] || Tag;
+            const confidencePercent = Math.round(tag.confidence * 100);
+
+            return (
+              <Tooltip key={i}>
+                <TooltipTrigger asChild>
+                  <div
+                    className="flex items-center gap-2 py-1 px-2 rounded-md bg-muted/50"
+                    data-testid={`wbs-tag-${tag.dimensionType}`}
+                  >
+                    <DimIcon className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="text-[10px] text-muted-foreground w-20 truncate shrink-0">
+                      {dimDef?.label || tag.dimensionType}
+                    </span>
+                    <Badge variant="secondary" className="text-[9px] truncate">
+                      {tag.codeName}
+                    </Badge>
+                    <span className={`text-[9px] ml-auto shrink-0 ${getConfidenceColor(tag.confidence)}`}>
+                      {confidencePercent}%
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left">
+                  <p className="text-xs">
+                    <strong>{dimDef?.label}:</strong> {tag.codeName}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {dimDef?.description} | Confidence: {confidencePercent}%
+                  </p>
+                  {tag.wbsCodeId && (
+                    <p className="text-[10px] text-muted-foreground">
+                      Matched to WBS Master Code: {tag.codeValue}
+                    </p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function SmartInboxPage() {
@@ -217,6 +322,12 @@ export default function SmartInboxPage() {
                         {email.hasAttachment && (
                           <Paperclip className="h-3 w-3 text-muted-foreground shrink-0" />
                         )}
+                        {email.wbsTags && email.wbsTags.length > 0 && (
+                          <Badge variant="outline" className="text-[9px] py-0 gap-0.5">
+                            <Sparkles className="h-2 w-2" />
+                            {email.wbsTags.length} WBS
+                          </Badge>
+                        )}
                         {email.relatedProject && (
                           <Badge variant="outline" className="text-[9px] py-0">
                             {email.relatedProject.length > 15
@@ -238,85 +349,91 @@ export default function SmartInboxPage() {
             </div>
 
             {selectedEmail && (
-              <div className="flex-1 overflow-auto p-4" data-testid="container-email-detail">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="text-sm font-semibold" data-testid="text-email-subject">
-                        {selectedEmail.subject}
-                      </h2>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {selectedEmail.importance === "high" && (
-                          <Badge variant="destructive" className="text-[10px]">High Priority</Badge>
-                        )}
-                        {selectedEmail.labels.map((label, i) => (
-                          <Badge key={i} variant="outline" className="text-[10px]">{label}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSelectedEmail(null)}
-                      data-testid="button-close-detail"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <span className="text-xs font-medium text-primary">
-                            {selectedEmail.from.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="text-xs font-medium">{selectedEmail.from.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{selectedEmail.from.email}</p>
+              <div className="flex-1 overflow-auto" data-testid="container-email-detail">
+                <ScrollArea className="h-full">
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h2 className="text-sm font-semibold" data-testid="text-email-subject">
+                          {selectedEmail.subject}
+                        </h2>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {selectedEmail.importance === "high" && (
+                            <Badge variant="destructive" className="text-[10px]">High Priority</Badge>
+                          )}
+                          {selectedEmail.labels.map((label, i) => (
+                            <Badge key={i} variant="outline" className="text-[10px]">{label}</Badge>
+                          ))}
                         </div>
                       </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(selectedEmail.receivedAt).toLocaleString()}
-                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setSelectedEmail(null)}
+                        data-testid="button-close-detail"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </div>
 
-                  <Separator />
+                    <Separator />
 
-                  {selectedEmail.relatedProject && (
-                    <Card>
-                      <CardContent className="p-2 flex items-center gap-2">
-                        <FolderKanban className="h-3.5 w-3.5 text-primary" />
-                        <span className="text-xs">Related Project: <strong>{selectedEmail.relatedProject}</strong></span>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  <div className="text-sm leading-relaxed" data-testid="text-email-body">
-                    <p>{selectedEmail.preview}</p>
-                    <p className="mt-3 text-muted-foreground text-xs">
-                      This is a preview from the Microsoft Graph API integration. 
-                      Full email content will be available once Microsoft 365 credentials are connected.
-                    </p>
-                  </div>
-
-                  {selectedEmail.hasAttachment && (
-                    <Card>
-                      <CardContent className="p-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            Attachments will appear here with Microsoft 365 integration
-                          </span>
+                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-xs font-medium text-primary">
+                              {selectedEmail.from.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-medium">{selectedEmail.from.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{selectedEmail.from.email}</p>
+                          </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
+                        <span className="text-[10px] text-muted-foreground">
+                          {new Date(selectedEmail.receivedAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {selectedEmail.relatedProject && (
+                      <Card>
+                        <CardContent className="p-2 flex items-center gap-2">
+                          <FolderKanban className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-xs">Related Project: <strong>{selectedEmail.relatedProject}</strong></span>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {selectedEmail.wbsTags && selectedEmail.wbsTags.length > 0 && (
+                      <WbsTagsPanel tags={selectedEmail.wbsTags} />
+                    )}
+
+                    <div className="text-sm leading-relaxed" data-testid="text-email-body">
+                      <p>{selectedEmail.preview}</p>
+                      <p className="mt-3 text-muted-foreground text-xs">
+                        This is a preview from the Microsoft Graph API integration. 
+                        Full email content will be available once Microsoft 365 credentials are connected.
+                      </p>
+                    </div>
+
+                    {selectedEmail.hasAttachment && (
+                      <Card>
+                        <CardContent className="p-2">
+                          <div className="flex items-center gap-2">
+                            <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              Attachments will appear here with Microsoft 365 integration
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                </ScrollArea>
               </div>
             )}
           </div>
