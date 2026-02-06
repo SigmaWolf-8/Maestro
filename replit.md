@@ -41,7 +41,8 @@ Backend routes extracted from monolithic routes.ts into domain-specific routers 
 The main `server/routes.ts` mounts 10 routers and sets up auth. Each router exports a `create*Router()` factory. Shared `getDefaultTenantId()` exported from `tenants.ts`.
 
 ### Backend Services (v3.2.1)
-7 domain services under `server/services/`:
+8 domain services under `server/services/`:
+- `document-service.ts` - Document orchestration layer: upload with Kong encryption, CRUD with lock checking, decrypt/re-encrypt, meta-tag management, WOPI token generation, version info, bulk operations, search/filter, tenant statistics, audit logging
 - `tax-service.ts` - Canadian tax calculations for 13 provinces (GST/HST/PST/QST regimes, rates in basis points)
 - `pricing-config-service.ts` - DB-driven key-value pricing configuration with PUBLIC/PRIVATE visibility
 - `subscription-service.ts` - Plan management, subscription CRUD, billing calculations with locked pricing
@@ -49,6 +50,13 @@ The main `server/routes.ts` mounts 10 routers and sets up auth. Each router expo
 - `usage-tracking-service.ts` - Usage metrics recording, limit checking, summary aggregation
 - `ledger-witness-service.ts` - Algorand (primary) / Hedera (fallback) distributed ledger witnessing
 - `tenant-onboarding-service.ts` - Automated tenant provisioning with default subscription setup
+
+### CI/CD Pipeline
+4 GitHub Actions workflows under `.github/workflows/`:
+- `ci.yml` - TypeScript type-check, Vite build, schema validation on push/PR to main/develop
+- `deploy.yml` - Pre-deploy validation + Replit deployment trigger on push to main
+- `db-migration.yml` - Auto-detects schema changes in PRs, comments migration checklist
+- `security.yml` - Weekly dependency audit + secret leak scanning
 
 ### Database Schema
 Comprises 28 tables including core entities like `tenants`, `projects`, `wbs_nodes`, `documents`, `customers`, and `vendors`, WOPI/document-specific tables such as `document_locks` and `wopi_sessions`, and billing tables: `subscription_plans`, `tenant_subscriptions`, `subscription_invoices`, `pricing_config`, `stripe_sync`, `usage_metrics`.

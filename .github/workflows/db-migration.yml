@@ -1,0 +1,70 @@
+name: Database Migration Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "shared/schema.ts"
+      - "shared/schema/**"
+      - "drizzle.config.ts"
+
+jobs:
+  migration-check:
+    name: Schema Change Review
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate schema compiles
+        run: npx tsc --noEmit --skipLibCheck shared/schema.ts
+
+      - name: Detect schema changes
+        run: |
+          echo "=== Schema Change Detection ==="
+          echo ""
+          echo "Changed files in shared/schema*:"
+          git diff --name-only ${{ github.event.pull_request.base.sha }} -- shared/schema.ts shared/schema/
+          echo ""
+          echo "IMPORTANT: Schema changes require manual migration review."
+          echo "Run 'npx drizzle-kit push' in the Replit workspace after merge."
+          echo ""
+          echo "Checklist:"
+          echo "  - [ ] New tables have proper FK constraints"
+          echo "  - [ ] Insert schemas created with createInsertSchema()"  
+          echo "  - [ ] Types exported ($inferSelect, $inferInsert)"
+          echo "  - [ ] Storage interface (IStorage) updated"
+          echo "  - [ ] DatabaseStorage implementation added"
+          echo "  - [ ] Barrel exports updated in shared/schema/"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `### Database Schema Change Detected
+            
+            This PR modifies the database schema. Please verify:
+            
+            - [ ] New tables have proper foreign key constraints
+            - [ ] Insert schemas created with \`createInsertSchema()\`
+            - [ ] Types exported (\`$inferSelect\`, \`$inferInsert\`)
+            - [ ] \`IStorage\` interface updated in \`server/storage.ts\`
+            - [ ] \`DatabaseStorage\` implementation added
+            - [ ] Barrel exports updated in \`shared/schema/\`
+            - [ ] Run \`npx drizzle-kit push\` after merge
+            
+            *Automated by Maestro CI/CD*`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

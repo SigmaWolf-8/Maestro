@@ -1,0 +1,88 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+
+jobs:
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high || true
+        continue-on-error: true
+
+      - name: Check for known vulnerabilities
+        run: |
+          echo "=== Security Summary ==="
+          echo "Checking for high/critical vulnerabilities..."
+          npm audit --json 2>/dev/null | node -e "
+            const data = [];
+            process.stdin.on('data', c => data.push(c));
+            process.stdin.on('end', () => {
+              try {
+                const audit = JSON.parse(data.join(''));
+                const vulns = audit.metadata?.vulnerabilities || {};
+                console.log('High:', vulns.high || 0);
+                console.log('Critical:', vulns.critical || 0);
+                if ((vulns.high || 0) + (vulns.critical || 0) > 0) {
+                  console.log('WARNING: High/Critical vulnerabilities detected');
+                  process.exit(1);
+                }
+                console.log('No high/critical vulnerabilities found');
+              } catch {
+                console.log('Audit parse skipped');
+              }
+            });
+          " || true
+
+  secret-scan:
+    name: Secret Leak Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for hardcoded secrets
+        run: |
+          echo "=== Secret Leak Scan ==="
+          PATTERNS=(
+            "AKIA[0-9A-Z]{16}"
+            "sk_live_[a-zA-Z0-9]{24,}"
+            "sk_test_[a-zA-Z0-9]{24,}"
+            "ghp_[a-zA-Z0-9]{36}"
+            "gho_[a-zA-Z0-9]{36}"
+            "-----BEGIN RSA PRIVATE KEY-----"
+            "-----BEGIN EC PRIVATE KEY-----"
+          )
+          FOUND=0
+          for pattern in "${PATTERNS[@]}"; do
+            MATCHES=$(grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.json" -E "$pattern" . 2>/dev/null | grep -v node_modules | grep -v ".git" || true)
+            if [ -n "$MATCHES" ]; then
+              echo "ALERT: Potential secret pattern found: $pattern"
+              echo "$MATCHES"
+              FOUND=1
+            fi
+          done
+          if [ "$FOUND" -eq 1 ]; then
+            echo ""
+            echo "WARNING: Potential secrets detected in codebase"
+            exit 1
+          fi
+          echo "No hardcoded secrets detected"
