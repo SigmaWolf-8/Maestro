@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Users, Mail, Phone, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Search, Users, Mail, Phone, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Printer } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -104,6 +106,67 @@ export default function ContactsDirectoryPage() {
     }
   };
 
+  const handlePrintReport = useCallback(() => {
+    if (!contacts.length) return;
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "letter" });
+
+    const categoryLabel = category === "all" ? "All Categories" :
+      category.charAt(0).toUpperCase() + category.slice(1) + "s";
+    const title = `Contacts Directory - ${categoryLabel}`;
+    const dateStr = new Date().toLocaleDateString("en-US", {
+      year: "numeric", month: "long", day: "numeric",
+    });
+
+    doc.setFontSize(16);
+    doc.text(title, 14, 15);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${dateStr}  |  ${total} records  |  Sorted by: ${sortBy} (${sortDirection})`, 14, 22);
+    doc.setTextColor(0);
+
+    const tableData = contacts.map((c) => [
+      c.category,
+      c.fullName || "-",
+      c.company || "-",
+      c.jobTitle || "-",
+      c.email || "-",
+      c.phone || "-",
+    ]);
+
+    autoTable(doc, {
+      startY: 27,
+      head: [["Type", "Name", "Company", "Title", "Email", "Phone"]],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [44, 62, 80], textColor: 255, fontStyle: "bold", fontSize: 8 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: {
+        0: { cellWidth: 22 },
+        1: { cellWidth: 45 },
+        2: { cellWidth: 45 },
+        3: { cellWidth: 40 },
+        4: { cellWidth: 55 },
+        5: { cellWidth: 35 },
+      },
+      margin: { left: 14, right: 14 },
+      didDrawPage: (data: { pageNumber: number }) => {
+        const pageCount = doc.getNumberOfPages();
+        doc.setFontSize(7);
+        doc.setTextColor(150);
+        doc.text(
+          `Page ${data.pageNumber} of ${pageCount}`,
+          doc.internal.pageSize.getWidth() - 14,
+          doc.internal.pageSize.getHeight() - 8,
+          { align: "right" }
+        );
+        doc.text("The Maestro - Construction ERP", 14, doc.internal.pageSize.getHeight() - 8);
+      },
+    });
+
+    doc.save(`contacts-directory-${new Date().toISOString().split("T")[0]}.pdf`);
+  }, [contacts, category, total, sortBy, sortDirection]);
+
   const sortableColumns: { field: SortField; label: string; className?: string }[] = [
     { field: "category", label: "Type", className: "w-[60px]" },
     { field: "name", label: "Name" },
@@ -125,12 +188,35 @@ export default function ContactsDirectoryPage() {
             Unified list of customers, vendors, and employees.
           </p>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {total} contacts found
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            {total} contacts found
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrintReport}
+            disabled={!contacts.length || isLoading}
+            data-testid="button-print-report"
+          >
+            <Printer className="h-4 w-4 mr-1.5" />
+            Print Report
+          </Button>
         </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
+        <Select value={category} onValueChange={(v) => { setCategory(v); setPage(0); }}>
+          <SelectTrigger className="w-32 h-9" data-testid="select-category">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="customer">Customers</SelectItem>
+            <SelectItem value="vendor">Vendors</SelectItem>
+            <SelectItem value="employee">Employees</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -144,17 +230,6 @@ export default function ContactsDirectoryPage() {
             data-testid="input-directory-search"
           />
         </div>
-        <Select value={category} onValueChange={(v) => { setCategory(v); setPage(0); }}>
-          <SelectTrigger className="w-32 h-9" data-testid="select-category">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="customer">Customers</SelectItem>
-            <SelectItem value="vendor">Vendors</SelectItem>
-            <SelectItem value="employee">Employees</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="border rounded-md overflow-hidden">
