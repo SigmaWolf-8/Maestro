@@ -326,150 +326,6 @@ export default function VendorsForm() {
             </Card>
           ) : vendor ? (
             <div className="space-y-3">
-              <Card>
-                <CardHeader className="py-2 px-3">
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <User className="h-3.5 w-3.5" />
-                    <span>Contacts ({contacts.length})</span>
-                    <div className="ml-auto flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        disabled={!editMode}
-                        onClick={() => {
-                          if (!selectedVendorId) return;
-                          const newContact: Partial<VendorContact> = {
-                            tenantId: vendor.tenantId,
-                            firstName: "",
-                            lastName: "",
-                            jobTitle: "",
-                            businessPhone: "",
-                            emailAddress: "",
-                            isPrimary: contacts.length === 0,
-                          };
-                          apiRequest("POST", `/api/vendors/${selectedVendorId}/contacts`, newContact).then(() => {
-                            refetchData();
-                            toast({ title: "Contact Added", description: "New contact created" });
-                          });
-                        }}
-                        data-testid="button-add-contact"
-                      >
-                        <Plus className="mr-1 h-3 w-3" />
-                        Add Contact
-                      </Button>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-3 pb-2 pt-0">
-                  {contacts.length > 0 ? (
-                    <div className="space-y-1.5" data-testid="contacts-list">
-                      {contacts.map((contact, idx) => (
-                        <div
-                          key={contact.id}
-                          className="rounded-md border px-2 py-1.5 space-y-1"
-                          data-testid={`contact-row-${contact.id}`}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-muted-foreground font-medium">
-                              {idx + 1}.
-                            </span>
-                            {contact.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
-                            <span className="text-xs font-medium truncate">
-                              {[contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unnamed Contact'}
-                            </span>
-                            <div className="ml-auto">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openEmailDialog(contact)}
-                                data-testid={`button-email-contact-${contact.id}`}
-                              >
-                                <Send className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-6 gap-1.5">
-                            <div>
-                              <Label className="text-xs">First Name</Label>
-                              <Input
-                                key={`firstName-${contact.id}`}
-                                defaultValue={contact.firstName || ""}
-                                disabled={!editMode}
-                                onBlur={(e) => handleContactFieldBlur(contact.id, "firstName", e.target.value)}
-                                className="h-7 text-xs"
-                                data-testid={`input-contact-first-name-${contact.id}`}
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Last Name</Label>
-                              <Input
-                                key={`lastName-${contact.id}`}
-                                defaultValue={contact.lastName || ""}
-                                disabled={!editMode}
-                                onBlur={(e) => handleContactFieldBlur(contact.id, "lastName", e.target.value)}
-                                className="h-7 text-xs"
-                                data-testid={`input-contact-last-name-${contact.id}`}
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Job Title</Label>
-                              <Input
-                                key={`jobTitle-${contact.id}`}
-                                defaultValue={contact.jobTitle || ""}
-                                disabled={!editMode}
-                                onBlur={(e) => handleContactFieldBlur(contact.id, "jobTitle", e.target.value)}
-                                className="h-7 text-xs"
-                                data-testid={`input-contact-job-title-${contact.id}`}
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Business Phone</Label>
-                              <Input
-                                key={`businessPhone-${contact.id}`}
-                                defaultValue={contact.businessPhone || ""}
-                                disabled={!editMode}
-                                onBlur={(e) => handleContactFieldBlur(contact.id, "businessPhone", e.target.value)}
-                                className="h-7 text-xs"
-                                data-testid={`input-contact-business-phone-${contact.id}`}
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Mobile Phone</Label>
-                              <Input
-                                key={`mobilePhone-${contact.id}`}
-                                defaultValue={contact.mobilePhone || ""}
-                                disabled={!editMode}
-                                onBlur={(e) => handleContactFieldBlur(contact.id, "mobilePhone", e.target.value)}
-                                className="h-7 text-xs"
-                                data-testid={`input-contact-mobile-phone-${contact.id}`}
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Email</Label>
-                              <Input
-                                key={`email-${contact.id}`}
-                                type="email"
-                                defaultValue={contact.emailAddress || ""}
-                                disabled={!editMode}
-                                onBlur={(e) => handleContactFieldBlur(contact.id, "emailAddress", e.target.value)}
-                                className="h-7 text-xs"
-                                data-testid={`input-contact-email-${contact.id}`}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-3 text-muted-foreground">
-                      <User className="h-6 w-6 mx-auto mb-1 opacity-50" />
-                      <p className="text-xs">No contacts assigned</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                 <Card>
                   <CardHeader className="py-2 px-3">
@@ -826,6 +682,150 @@ export default function VendorsForm() {
                   </Card>
                 </div>
               </div>
+
+              <Card>
+                <CardHeader className="py-1.5 px-3">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <User className="h-3.5 w-3.5" />
+                    <span>Contacts ({contacts.length})</span>
+                    <div className="ml-auto flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        disabled={!editMode}
+                        onClick={() => {
+                          if (!selectedVendorId) return;
+                          const newContact: Partial<VendorContact> = {
+                            tenantId: vendor.tenantId,
+                            firstName: "",
+                            lastName: "",
+                            jobTitle: "",
+                            businessPhone: "",
+                            emailAddress: "",
+                            isPrimary: contacts.length === 0,
+                          };
+                          apiRequest("POST", `/api/vendors/${selectedVendorId}/contacts`, newContact).then(() => {
+                            refetchData();
+                            toast({ title: "Contact Added", description: "New contact created" });
+                          });
+                        }}
+                        data-testid="button-add-contact"
+                      >
+                        <Plus className="mr-1 h-3 w-3" />
+                        Add Contact
+                      </Button>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-2 pt-0">
+                  {contacts.length > 0 ? (
+                    <div className="space-y-0.5" data-testid="contacts-list">
+                      {contacts.map((contact, idx) => (
+                        <div
+                          key={contact.id}
+                          className="rounded-md border px-2 py-1"
+                          data-testid={`contact-row-${contact.id}`}
+                        >
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-xs font-semibold text-foreground">
+                              {idx + 1}.
+                            </span>
+                            {contact.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
+                            <span className="text-xs font-semibold text-foreground truncate">
+                              {[contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unnamed Contact'}
+                            </span>
+                            <div className="ml-auto" style={{ visibility: 'visible' }}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEmailDialog(contact)}
+                                data-testid={`button-email-contact-${contact.id}`}
+                              >
+                                <Send className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-6 gap-1">
+                            <div>
+                              <Label className="text-xs text-foreground font-medium">First Name</Label>
+                              <Input
+                                key={`firstName-${contact.id}`}
+                                defaultValue={contact.firstName || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "firstName", e.target.value)}
+                                className="h-6 text-xs"
+                                data-testid={`input-contact-first-name-${contact.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-foreground font-medium">Last Name</Label>
+                              <Input
+                                key={`lastName-${contact.id}`}
+                                defaultValue={contact.lastName || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "lastName", e.target.value)}
+                                className="h-6 text-xs"
+                                data-testid={`input-contact-last-name-${contact.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-foreground font-medium">Job Title</Label>
+                              <Input
+                                key={`jobTitle-${contact.id}`}
+                                defaultValue={contact.jobTitle || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "jobTitle", e.target.value)}
+                                className="h-6 text-xs"
+                                data-testid={`input-contact-job-title-${contact.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-foreground font-medium">Business Phone</Label>
+                              <Input
+                                key={`businessPhone-${contact.id}`}
+                                defaultValue={contact.businessPhone || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "businessPhone", e.target.value)}
+                                className="h-6 text-xs"
+                                data-testid={`input-contact-business-phone-${contact.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-foreground font-medium">Mobile Phone</Label>
+                              <Input
+                                key={`mobilePhone-${contact.id}`}
+                                defaultValue={contact.mobilePhone || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "mobilePhone", e.target.value)}
+                                className="h-6 text-xs"
+                                data-testid={`input-contact-mobile-phone-${contact.id}`}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs text-foreground font-medium">Email</Label>
+                              <Input
+                                key={`email-${contact.id}`}
+                                type="email"
+                                defaultValue={contact.emailAddress || ""}
+                                disabled={!editMode}
+                                onBlur={(e) => handleContactFieldBlur(contact.id, "emailAddress", e.target.value)}
+                                className="h-6 text-xs"
+                                data-testid={`input-contact-email-${contact.id}`}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-2 text-muted-foreground">
+                      <User className="h-5 w-5 mx-auto mb-1 opacity-50" />
+                      <p className="text-xs">No contacts assigned</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           ) : (
             <Card>
