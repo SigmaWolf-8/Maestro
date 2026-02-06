@@ -47,6 +47,16 @@ import {
   PlanRoomPage,
   DocumentReportsPage,
   ArchivesPage,
+  LeadsPage,
+  ProposalsPage,
+  ContractsPage,
+  CRMPage,
+  SalesPipelinePage,
+  CampaignsPage,
+  ReferralsPage,
+  SocialMediaPage,
+  BrandingPage,
+  MarketingAnalyticsPage,
 } from "@/pages/placeholder";
 
 const mockUser = {
@@ -85,6 +95,18 @@ function Router() {
       <Route path="/finance/invoicing" component={InvoicingPage} />
       <Route path="/finance/expenses" component={ExpensesPage} />
       <Route path="/finance/reports" component={FinanceReportsPage} />
+      
+      <Route path="/sales/leads" component={LeadsPage} />
+      <Route path="/sales/proposals" component={ProposalsPage} />
+      <Route path="/sales/contracts" component={ContractsPage} />
+      <Route path="/sales/crm" component={CRMPage} />
+      <Route path="/sales/pipeline" component={SalesPipelinePage} />
+      
+      <Route path="/marketing/campaigns" component={CampaignsPage} />
+      <Route path="/marketing/referrals" component={ReferralsPage} />
+      <Route path="/marketing/social" component={SocialMediaPage} />
+      <Route path="/marketing/branding" component={BrandingPage} />
+      <Route path="/marketing/analytics" component={MarketingAnalyticsPage} />
       
       <Route path="/documents" component={FileManagerPage} />
       <Route path="/documents/files" component={FileManagerPage} />

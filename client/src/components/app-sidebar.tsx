@@ -33,6 +33,16 @@ import {
   FileCode,
   FileBarChart,
   Archive,
+  TrendingUp,
+  Megaphone,
+  Target,
+  Handshake,
+  FileSpreadsheet,
+  Share2,
+  Presentation,
+  Mail,
+  Globe,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
@@ -95,6 +105,16 @@ const iconMap: Record<string, LucideIcon> = {
   FileCode,
   FileBarChart,
   Archive,
+  TrendingUp,
+  Megaphone,
+  Target,
+  Handshake,
+  FileSpreadsheet,
+  Share2,
+  Presentation,
+  Mail,
+  Globe,
+  Palette,
 };
 
 interface NavigationTree extends NavigationItem {
@@ -404,22 +424,25 @@ function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
     );
   }
 
-  if (item.path) {
-    return (
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={active || false}
-          data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
-        >
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild={!!item.path}
+        isActive={active || false}
+        data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+      >
+        {item.path ? (
           <Link href={item.path}>
             <Icon className="h-4 w-4" />
             <span>{item.title}</span>
           </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    );
-  }
-
-  return null;
+        ) : (
+          <>
+            <Icon className="h-4 w-4" />
+            <span>{item.title}</span>
+          </>
+        )}
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
 }

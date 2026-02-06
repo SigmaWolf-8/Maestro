@@ -112,3 +112,43 @@ export function DocumentReportsPage() {
 export function ArchivesPage() {
   return <PlaceholderPage title="Archives" section="Documents" description="Access archived documents and projects." />;
 }
+
+export function LeadsPage() {
+  return <PlaceholderPage title="Leads" section="Sales" description="Track and manage prospective client leads." />;
+}
+
+export function ProposalsPage() {
+  return <PlaceholderPage title="Proposals" section="Sales" description="Create and manage project proposals and bids." />;
+}
+
+export function ContractsPage() {
+  return <PlaceholderPage title="Contracts" section="Sales" description="Manage construction contracts and agreements." />;
+}
+
+export function CRMPage() {
+  return <PlaceholderPage title="CRM" section="Sales" description="Customer relationship management and interactions." />;
+}
+
+export function SalesPipelinePage() {
+  return <PlaceholderPage title="Pipeline" section="Sales" description="View and manage sales pipeline and deal stages." />;
+}
+
+export function CampaignsPage() {
+  return <PlaceholderPage title="Campaigns" section="Marketing" description="Plan and execute marketing campaigns." />;
+}
+
+export function ReferralsPage() {
+  return <PlaceholderPage title="Referrals" section="Marketing" description="Track referral sources and programs." />;
+}
+
+export function SocialMediaPage() {
+  return <PlaceholderPage title="Social Media" section="Marketing" description="Manage social media presence and content." />;
+}
+
+export function BrandingPage() {
+  return <PlaceholderPage title="Branding" section="Marketing" description="Brand assets, guidelines, and materials." />;
+}
+
+export function MarketingAnalyticsPage() {
+  return <PlaceholderPage title="Analytics" section="Marketing" description="Marketing performance metrics and analytics." />;
+}
