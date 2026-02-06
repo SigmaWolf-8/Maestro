@@ -301,7 +301,7 @@ export function AppSidebar({
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu style={{ fontFamily: "'Great Vibes', cursive", fontSize: '110%' }}>
+            <SidebarMenu style={{ fontFamily: "'Great Vibes', cursive", fontSize: '120%' }}>
               {navigationTree.map((item) => (
                 <NavMenuItem
                   key={item.id}
@@ -324,7 +324,7 @@ export function AppSidebar({
                 asChild
                 isActive={isActive("/settings")}
                 data-testid="nav-settings"
-                style={{ fontSize: '80%' }}
+                style={{ fontSize: '70%' }}
               >
                 <Link href="/settings">
                   <Settings className="h-3.5 w-3.5" />
