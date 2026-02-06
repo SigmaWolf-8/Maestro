@@ -513,3 +513,70 @@ export interface VendorWithContacts {
   contacts: VendorContact[];
   primaryContact: VendorContact | null;
 }
+
+export const documentLocks = pgTable("document_locks", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  fileId: varchar("file_id", { length: 36 }).notNull().references(() => documents.id),
+  lockId: text("lock_id").notNull(),
+  userId: varchar("user_id", { length: 36 }).references(() => tenantUsers.id),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  lockedAt: timestamp("locked_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  lockType: text("lock_type").notNull().default("exclusive"),
+  isActive: boolean("is_active").default(true)
+});
+
+export const documentAuditLogs = pgTable("document_audit_logs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  documentId: varchar("document_id", { length: 36 }).notNull().references(() => documents.id),
+  userId: varchar("user_id", { length: 36 }).references(() => tenantUsers.id),
+  action: text("action").notNull(),
+  details: jsonb("details").default({}),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  securityMode: text("security_mode").default("one"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const wopiSessions = pgTable("wopi_sessions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  documentId: varchar("document_id", { length: 36 }).notNull().references(() => documents.id),
+  userId: varchar("user_id", { length: 36 }).references(() => tenantUsers.id),
+  accessToken: text("access_token").notNull(),
+  tokenExpiresAt: timestamp("token_expires_at").notNull(),
+  sessionType: text("session_type").notNull().default("edit"),
+  isActive: boolean("is_active").default(true),
+  lastAccessedAt: timestamp("last_accessed_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const msGraphTokens = pgTable("ms_graph_tokens", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  userId: varchar("user_id", { length: 36 }).references(() => tenantUsers.id),
+  tokenType: text("token_type").notNull().default("user_delegated"),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at").notNull(),
+  scopes: text("scopes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertDocumentLockSchema = createInsertSchema(documentLocks).omit({ id: true, lockedAt: true });
+export const insertDocumentAuditLogSchema = createInsertSchema(documentAuditLogs).omit({ id: true, createdAt: true });
+export const insertWopiSessionSchema = createInsertSchema(wopiSessions).omit({ id: true, createdAt: true, lastAccessedAt: true });
+export const insertMsGraphTokenSchema = createInsertSchema(msGraphTokens).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type InsertDocumentLock = z.infer<typeof insertDocumentLockSchema>;
+export type InsertDocumentAuditLog = z.infer<typeof insertDocumentAuditLogSchema>;
+export type InsertWopiSession = z.infer<typeof insertWopiSessionSchema>;
+export type InsertMsGraphToken = z.infer<typeof insertMsGraphTokenSchema>;
+
+export type DocumentLock = typeof documentLocks.$inferSelect;
+export type DocumentAuditLog = typeof documentAuditLogs.$inferSelect;
+export type WopiSession = typeof wopiSessions.$inferSelect;
+export type MsGraphToken = typeof msGraphTokens.$inferSelect;

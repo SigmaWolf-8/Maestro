@@ -1,0 +1,42 @@
+_format_version: "3.0"
+
+services:
+  - name: maestro-api
+    url: http://localhost:3000/api
+    connect_timeout: 10000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    tags:
+      - maestro
+      - api
+    plugins:
+      - name: jwt
+        config:
+          key_claim_name: iss
+          claims_to_verify:
+            - exp
+      - name: rate-limiting
+        config:
+          minute: 100
+          hour: 5000
+          policy: local
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+            - X-Security-Mode
+            - X-Tenant-Id
+            - X-PlenumNET-Security-Mode
+          credentials: true
+          max_age: 3600

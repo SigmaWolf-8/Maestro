@@ -1,0 +1,24 @@
+_format_version: "3.0"
+
+services:
+  - name: maestro-ai-report
+    url: http://localhost:3000/api/ai-report
+    connect_timeout: 5000
+    read_timeout: 60000
+    write_timeout: 10000
+    retries: 1
+    tags:
+      - maestro
+      - ai
+      - reports
+    plugins:
+      - name: jwt
+        config:
+          key_claim_name: iss
+          claims_to_verify:
+            - exp
+      - name: rate-limiting
+        config:
+          minute: 30
+          hour: 500
+          policy: local

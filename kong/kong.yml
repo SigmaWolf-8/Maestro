@@ -1,0 +1,84 @@
+_format_version: "3.0"
+
+services:
+  - name: maestro-api
+    url: http://localhost:3000/api
+    routes:
+      - name: api-routes
+        paths: ["/api"]
+        strip_path: false
+    plugins:
+      - name: jwt
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
+      - name: cors
+        config:
+          origins:
+            - "*"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - PATCH
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+            - X-Security-Mode
+            - X-Tenant-Id
+          credentials: true
+          max_age: 3600
+
+  - name: maestro-wopi
+    url: http://localhost:3000/wopi
+    routes:
+      - name: wopi-routes
+        paths: ["/wopi"]
+    plugins:
+      - name: jwt
+      - name: cors
+        config:
+          origins:
+            - "https://*.officeapps.live.com"
+            - "https://*.office.com"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+            - X-WOPI-Override
+            - X-WOPI-Lock
+            - X-WOPI-OldLock
+            - X-WOPI-ItemVersion
+          credentials: true
+      - name: rate-limiting
+        config:
+          minute: 200
+          policy: local
+
+  - name: maestro-ai-report
+    url: http://localhost:3000/api/ai-report
+    routes:
+      - name: ai-report-routes
+        paths: ["/api/ai-report"]
+    plugins:
+      - name: jwt
+      - name: rate-limiting
+        config:
+          minute: 30
+          policy: local
+
+  - name: maestro-events
+    url: http://localhost:3000/api/events
+    routes:
+      - name: event-stream-routes
+        paths: ["/api/events"]
+    plugins:
+      - name: jwt

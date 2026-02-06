@@ -1,0 +1,91 @@
+_format_version: "3.0"
+
+routes:
+  - name: documents-secure-crud
+    service: maestro-api
+    paths:
+      - /api/documents
+    methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+    plugins:
+      - name: jwt
+        config:
+          key_claim_name: iss
+      - name: rate-limiting
+        config:
+          minute: 100
+          policy: local
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - "X-PlenumNET-Security-Mode:one"
+
+  - name: documents-wopi-secure
+    service: maestro-wopi
+    paths:
+      - /wopi/files
+    methods:
+      - GET
+      - POST
+      - PUT
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "https://*.officeapps.live.com"
+            - "https://*.office.com"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+            - X-WOPI-Override
+            - X-WOPI-Lock
+            - X-WOPI-OldLock
+      - name: rate-limiting
+        config:
+          minute: 200
+          policy: local
+
+  - name: documents-upload-secure
+    service: maestro-api
+    paths:
+      - /api/documents/upload
+    methods:
+      - POST
+    plugins:
+      - name: jwt
+      - name: request-size-limiting
+        config:
+          allowed_payload_size: 100
+      - name: rate-limiting
+        config:
+          minute: 20
+          policy: local
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              - "X-PlenumNET-Security-Mode:phi"
+
+  - name: documents-smart-inbox
+    service: maestro-api
+    paths:
+      - /api/smart-inbox
+    methods:
+      - GET
+      - POST
+    plugins:
+      - name: jwt
+      - name: rate-limiting
+        config:
+          minute: 60
+          policy: local

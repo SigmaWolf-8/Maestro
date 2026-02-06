@@ -1,0 +1,46 @@
+_format_version: "3.0"
+
+services:
+  - name: maestro-wopi
+    url: http://localhost:3000/wopi
+    connect_timeout: 10000
+    read_timeout: 60000
+    write_timeout: 60000
+    retries: 2
+    tags:
+      - maestro
+      - wopi
+      - office-online
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "https://*.officeapps.live.com"
+            - "https://*.office.com"
+          methods:
+            - GET
+            - POST
+            - PUT
+            - DELETE
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+            - X-WOPI-Override
+            - X-WOPI-Lock
+            - X-WOPI-OldLock
+            - X-WOPI-ItemVersion
+          exposed_headers:
+            - X-WOPI-Lock
+            - X-WOPI-LockFailureReason
+            - X-WOPI-ItemVersion
+          credentials: true
+          max_age: 86400
+      - name: rate-limiting
+        config:
+          minute: 300
+          hour: 10000
+          policy: local
+      - name: request-size-limiting
+        config:
+          allowed_payload_size: 100

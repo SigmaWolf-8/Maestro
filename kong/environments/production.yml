@@ -1,0 +1,30 @@
+_format_version: "3.0"
+
+environment: production
+upstream_url: https://maestro.capomastro.com
+kong_admin_url: https://admin.kong.capomastro.com
+
+overrides:
+  rate_limiting:
+    minute: 100
+    hour: 5000
+  cors:
+    origins:
+      - "https://maestro.capomastro.com"
+      - "https://*.maestro.capomastro.com"
+      - "https://*.officeapps.live.com"
+      - "https://*.office.com"
+  jwt:
+    enabled: true
+    claims_to_verify:
+      - exp
+      - nbf
+  plenumnet:
+    enabled: true
+    default_mode: "one"
+
+logging:
+  level: warn
+  format: json
+  include_request_body: false
+  include_response_body: false

@@ -1,0 +1,44 @@
+_format_version: "3.0"
+
+routes:
+  - name: wopi-file-info
+    service: maestro-wopi
+    paths:
+      - /wopi/files
+    methods:
+      - GET
+    strip_path: false
+    tags:
+      - wopi
+
+  - name: wopi-file-contents
+    service: maestro-wopi
+    paths:
+      - "~/wopi/files/.+/contents$"
+    methods:
+      - GET
+      - POST
+    strip_path: false
+    tags:
+      - wopi
+
+  - name: wopi-file-operations
+    service: maestro-wopi
+    paths:
+      - "~/wopi/files/.+/(lock|unlock|refreshlock|unlockAndRelock|delete|rename|shareurl)$"
+    methods:
+      - GET
+      - POST
+    strip_path: false
+    tags:
+      - wopi
+
+  - name: wopi-discovery
+    service: maestro-wopi
+    paths:
+      - /wopi/discovery
+    methods:
+      - GET
+    strip_path: false
+    tags:
+      - wopi

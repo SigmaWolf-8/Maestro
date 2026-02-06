@@ -1,0 +1,24 @@
+_format_version: "3.0"
+
+environment: development
+upstream_url: http://localhost:3000
+kong_admin_url: http://localhost:8001
+
+overrides:
+  rate_limiting:
+    minute: 1000
+    hour: 50000
+  cors:
+    origins:
+      - "*"
+  jwt:
+    enabled: false
+  plenumnet:
+    enabled: false
+    default_mode: "zero"
+
+logging:
+  level: debug
+  format: json
+  include_request_body: true
+  include_response_body: true

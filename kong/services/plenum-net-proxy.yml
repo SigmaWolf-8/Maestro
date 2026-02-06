@@ -1,0 +1,57 @@
+_format_version: "3.0"
+
+services:
+  - name: plenum-net-tpu
+    url: http://localhost:9090/tpu
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: tpu-routes
+        paths: ["/plenumnet/tpu"]
+        strip_path: true
+        methods:
+          - POST
+    plugins:
+      - name: jwt
+        config:
+          key_claim_name: iss
+      - name: rate-limiting
+        config:
+          minute: 50
+          policy: local
+      - name: request-size-limiting
+        config:
+          allowed_payload_size: 10
+
+  - name: plenum-net-timing
+    url: http://localhost:9091/timing
+    connect_timeout: 2000
+    read_timeout: 5000
+    routes:
+      - name: timing-routes
+        paths: ["/plenumnet/timing"]
+        strip_path: true
+        methods:
+          - GET
+          - POST
+    plugins:
+      - name: jwt
+
+  - name: plenum-net-witness
+    url: http://localhost:9092/witness
+    connect_timeout: 10000
+    read_timeout: 60000
+    routes:
+      - name: witness-routes
+        paths: ["/plenumnet/witness"]
+        strip_path: true
+        methods:
+          - POST
+    plugins:
+      - name: jwt
+      - name: rate-limiting
+        config:
+          minute: 10
+          policy: local

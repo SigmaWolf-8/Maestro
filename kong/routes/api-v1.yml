@@ -1,0 +1,31 @@
+_format_version: "3.0"
+
+routes:
+  - name: api-v1-routes
+    service: maestro-api
+    paths:
+      - /api
+    strip_path: false
+    methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    tags:
+      - api
+      - v1
+
+  - name: api-health
+    service: maestro-api
+    paths:
+      - /api/health
+    strip_path: false
+    methods:
+      - GET
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 30
+          policy: local

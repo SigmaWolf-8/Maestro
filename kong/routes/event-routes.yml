@@ -1,0 +1,13 @@
+_format_version: "3.0"
+
+routes:
+  - name: sse-stream
+    service: maestro-events
+    paths:
+      - /api/events/stream
+    methods:
+      - GET
+    strip_path: false
+    tags:
+      - sse
+      - events

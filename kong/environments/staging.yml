@@ -1,0 +1,26 @@
+_format_version: "3.0"
+
+environment: staging
+upstream_url: https://staging.maestro.capomastro.com
+kong_admin_url: https://admin-staging.kong.capomastro.com
+
+overrides:
+  rate_limiting:
+    minute: 200
+    hour: 10000
+  cors:
+    origins:
+      - "https://staging.maestro.capomastro.com"
+      - "https://*.officeapps.live.com"
+      - "https://*.office.com"
+  jwt:
+    enabled: true
+  plenumnet:
+    enabled: true
+    default_mode: "one"
+
+logging:
+  level: info
+  format: json
+  include_request_body: false
+  include_response_body: false

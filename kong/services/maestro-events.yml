@@ -1,0 +1,17 @@
+_format_version: "3.0"
+
+services:
+  - name: maestro-events
+    url: http://localhost:3000/api/events
+    connect_timeout: 5000
+    read_timeout: 300000
+    write_timeout: 10000
+    retries: 1
+    tags:
+      - maestro
+      - sse
+      - events
+    plugins:
+      - name: jwt
+        config:
+          key_claim_name: iss

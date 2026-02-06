@@ -1,0 +1,34 @@
+_format_version: "3.0"
+
+routes:
+  - name: ai-report-generate
+    service: maestro-ai-report
+    paths:
+      - /api/ai/report
+    methods:
+      - POST
+    strip_path: false
+    tags:
+      - ai
+      - reports
+
+  - name: ai-report-prompts
+    service: maestro-ai-report
+    paths:
+      - /api/ai/quick-prompts
+    methods:
+      - GET
+    strip_path: false
+    tags:
+      - ai
+      - reports
+
+  - name: ai-report-health
+    service: maestro-ai-report
+    paths:
+      - /api/ai/health
+    methods:
+      - GET
+    strip_path: false
+    tags:
+      - ai

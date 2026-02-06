@@ -1,0 +1,52 @@
+_format_version: "3.0"
+
+plenumnet_security_policies:
+  mode_phi:
+    description: "Maximum security - XRPL witnessing + femtosecond timestamps"
+    encryption: "phase-rotation"
+    compression: "ternary-bijective"
+    timestamping: "femtosecond"
+    xrpl_witnessing: true
+    applicable_operations:
+      - financial_reports
+      - audit_log_entries
+      - contract_documents
+      - regulatory_submissions
+    kong_plugins:
+      - phase-rotation
+      - ternary-compression
+      - femtosecond-timestamp
+
+  mode_one:
+    description: "Enterprise daily use - post-quantum encryption"
+    encryption: "post-quantum-lattice"
+    compression: "ternary-standard"
+    timestamping: "nanosecond"
+    xrpl_witnessing: false
+    applicable_operations:
+      - document_editing
+      - api_calls
+      - project_updates
+      - wbs_operations
+    kong_plugins:
+      - phase-rotation
+      - ternary-compression
+
+  mode_zero:
+    description: "Legacy compatibility - AES-256"
+    encryption: "aes-256-gcm"
+    compression: "gzip"
+    timestamping: "microsecond"
+    xrpl_witnessing: false
+    applicable_operations:
+      - legacy_imports
+      - bulk_data_transfers
+      - development_testing
+    kong_plugins: []
+
+header_mappings:
+  security_mode_header: "X-PlenumNET-Security-Mode"
+  timestamp_header: "X-PlenumNET-Timestamp"
+  witness_hash_header: "X-PlenumNET-Witness-Hash"
+  encryption_mode_header: "X-PlenumNET-Encryption"
+  ternary_encoding_header: "X-PlenumNET-Ternary-Encoding"
