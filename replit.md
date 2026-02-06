@@ -30,8 +30,11 @@ The project is organized into `client/` (React frontend), `server/` (Express bac
 - **File Manager:** Sophisticated document management system with drag-and-drop uploads, 13-dimensional WBS filtering/meta-tagging, and a large document viewer.
 - **User Group Security:** Provides granular, form-level access control with user group management and a permissions matrix (View, Create, Edit, Delete).
 
+### Email Configuration (Per-User)
+Email sending is configured per user (not per tenant). Each user sets up their own SMTP credentials (email/password/host/port) in their Profile page. The email send endpoint (`/api/email/send`) checks the authenticated user's personal email config first, then falls back to Microsoft 365 OAuth if available. User email config is stored in the `users.config` jsonb column under `emailSettings`. API endpoints: `GET/POST/DELETE /api/auth/email-config` (all require authentication).
+
 ### UI/UX and Design System
-The application features a professional aesthetic with a default teal construction theme, full dark mode support, and customizable branding per tenant. UI patterns include cards with hover effects, semantic status badges, responsive grid layouts, and modal dialogs. Navigation follows a 5-section architecture (Dashboard, Projects, People & Contacts, Finance, Documents) with database-driven, tenant-specific configuration.
+The application features a professional aesthetic with a default teal construction theme, full dark mode support, and customizable branding per tenant. UI patterns include cards with hover effects, semantic status badges, responsive grid layouts, and modal dialogs. Navigation follows a 7-section architecture (Dashboard, People, Projects, Finance, Sales, Marketing, Documents) with database-driven, tenant-specific configuration.
 
 ## External Dependencies
 

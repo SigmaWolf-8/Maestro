@@ -960,70 +960,72 @@ export async function registerRoutes(
 
   // ==================== EMAIL API (AutoSendEmail from VBA) ====================
 
-  // Send email via SMTP or Microsoft 365
   app.post("/api/email/send", validateBody(emailSendSchema), async (req, res) => {
     try {
       const { to, subject, body, cc } = req.body;
-      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
-      
-      // First check for SMTP configuration in tenant config
-      const tenant = await storage.getTenant(tenantId);
-      const smtpConfig = tenant?.config?.smtp;
-      
-      if (smtpConfig?.email && smtpConfig?.password) {
-        // Use SMTP (simple email/password)
-        console.log("Sending email via SMTP:", { to, subject, from: smtpConfig.email });
-        
-        const transporter = nodemailer.createTransport({
-          host: smtpConfig.host || "smtp.office365.com",
-          port: smtpConfig.port || 587,
-          secure: false,
-          auth: {
-            user: smtpConfig.email,
-            pass: smtpConfig.password,
-          },
-        });
-        
-        await transporter.sendMail({
-          from: smtpConfig.email,
-          to: to,
-          cc: cc,
-          subject: subject,
-          html: body,
-        });
-        
-        return res.json({ 
-          success: true, 
-          message: "Email sent successfully"
-        });
-      }
-      
-      // Check if user has Microsoft 365 session (OAuth)
+
+      // Check authenticated user's personal email config first
       const session = req.session as any;
-      const accessToken = session?.microsoft?.accessToken;
-      
-      if (accessToken) {
-        console.log("Sending email via Microsoft 365 Graph API:", { to, subject });
-        
-        const result = await microsoftGraph.sendEmail(accessToken, { to, subject, body, cc });
-        
-        if (result.success) {
-          return res.json({ 
-            success: true, 
-            message: "Email sent successfully via Microsoft 365"
+      const userId = session?.passport?.user?.claims?.sub;
+
+      if (userId) {
+        const { authStorage } = await import("./replit_integrations/auth/storage");
+        const authUser = await authStorage.getUser(userId);
+        const userConfig = (authUser?.config as any) || {};
+        const userEmail = userConfig.emailSettings;
+
+        if (userEmail?.email && userEmail?.password) {
+          console.log("Sending email via user SMTP:", { to, subject, from: userEmail.email });
+
+          const transporter = nodemailer.createTransport({
+            host: userEmail.host || "smtp.office365.com",
+            port: userEmail.port || 587,
+            secure: false,
+            auth: {
+              user: userEmail.email,
+              pass: userEmail.password,
+            },
           });
-        } else {
-          return res.status(500).json({ 
-            error: "Failed to send email", 
-            message: result.error 
+
+          await transporter.sendMail({
+            from: userEmail.email,
+            to,
+            cc,
+            subject,
+            html: body,
+          });
+
+          return res.json({
+            success: true,
+            message: "Email sent successfully",
           });
         }
       }
-      
-      // No email configuration found
-      return res.status(401).json({ 
-        error: "Email not configured", 
-        message: "Please configure your email settings in Settings to send emails"
+
+      // Fallback: Check if user has Microsoft 365 session (OAuth)
+      const accessToken = session?.microsoft?.accessToken;
+
+      if (accessToken) {
+        console.log("Sending email via Microsoft 365 Graph API:", { to, subject });
+
+        const result = await microsoftGraph.sendEmail(accessToken, { to, subject, body, cc });
+
+        if (result.success) {
+          return res.json({
+            success: true,
+            message: "Email sent successfully via Microsoft 365",
+          });
+        } else {
+          return res.status(500).json({
+            error: "Failed to send email",
+            message: result.error,
+          });
+        }
+      }
+
+      return res.status(401).json({
+        error: "Email not configured",
+        message: "Please configure your email settings in your Profile to send emails",
       });
     } catch (error: any) {
       console.error("Error sending email:", error);

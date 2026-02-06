@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, Building2, Briefcase, Save, LogOut, RefreshCw } from "lucide-react";
+import { User, Mail, Building2, Briefcase, Save, LogOut, RefreshCw, Lock, Server, Hash, Trash2, CheckCircle2, XCircle } from "lucide-react";
 
 export default function Profile() {
   const { user, isLoading, logout } = useAuth();
@@ -21,6 +22,22 @@ export default function Profile() {
   const [jobTitle, setJobTitle] = useState("");
   const [department, setDepartment] = useState("");
 
+  const [smtpEmail, setSmtpEmail] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpHost, setSmtpHost] = useState("smtp.office365.com");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const { data: emailConfig, refetch: refetchEmailConfig } = useQuery<{
+    configured: boolean;
+    email: string | null;
+    host: string;
+    port: number;
+  }>({
+    queryKey: ["/api/auth/email-config"],
+    enabled: !!user,
+  });
+
   useEffect(() => {
     if (user) {
       setFirstName(user.firstName || "");
@@ -28,6 +45,16 @@ export default function Profile() {
       setEmail(user.email || "");
     }
   }, [user]);
+
+  useEffect(() => {
+    if (emailConfig) {
+      if (emailConfig.email && !smtpEmail) {
+        setSmtpEmail(emailConfig.email);
+      }
+      setSmtpHost(emailConfig.host || "smtp.office365.com");
+      setSmtpPort(String(emailConfig.port || 587));
+    }
+  }, [emailConfig]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string }) => {
@@ -51,6 +78,66 @@ export default function Profile() {
 
   const handleSave = () => {
     updateProfileMutation.mutate({ firstName, lastName });
+  };
+
+  const saveEmailMutation = useMutation({
+    mutationFn: async (data: { email: string; password: string; host: string; port: number }) => {
+      return apiRequest("POST", "/api/auth/email-config", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/email-config"] });
+      setSmtpPassword("");
+      toast({
+        title: "Email Settings Saved",
+        description: "Your email configuration has been saved. You can now send emails from your account.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save email settings.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeEmailMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", "/api/auth/email-config");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/email-config"] });
+      setSmtpEmail("");
+      setSmtpPassword("");
+      toast({
+        title: "Email Settings Removed",
+        description: "Your email configuration has been cleared.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove email settings.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveEmail = () => {
+    if (!smtpEmail.trim() || !smtpPassword.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter both email address and password.",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveEmailMutation.mutate({
+      email: smtpEmail.trim(),
+      password: smtpPassword.trim(),
+      host: smtpHost.trim(),
+      port: parseInt(smtpPort, 10) || 587,
+    });
   };
 
   if (isLoading) {
@@ -194,6 +281,142 @@ export default function Profile() {
             >
               <Save className="h-4 w-4 mr-2" />
               {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <CardTitle className="text-lg">Email Settings</CardTitle>
+              <CardDescription>Configure your personal email to send messages from the app</CardDescription>
+            </div>
+            {emailConfig?.configured ? (
+              <Badge variant="secondary" data-testid="badge-email-status">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Connected
+              </Badge>
+            ) : (
+              <Badge variant="outline" data-testid="badge-email-status">
+                <XCircle className="h-3 w-3 mr-1" />
+                Not configured
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {emailConfig?.configured && (
+            <div className="border rounded-md p-3 bg-muted/30 flex items-center justify-between gap-4 flex-wrap">
+              <div className="text-sm">
+                <span className="text-muted-foreground">Currently using: </span>
+                <span className="font-medium" data-testid="text-current-email">{emailConfig.email}</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => removeEmailMutation.mutate()}
+                disabled={removeEmailMutation.isPending}
+                data-testid="button-remove-email"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                {removeEmailMutation.isPending ? "Removing..." : "Remove"}
+              </Button>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">
+              Enter your Microsoft 365 or other SMTP email credentials. Emails you send from the app will come from this address.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="smtpEmail">Email Address</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="smtpEmail"
+                  type="email"
+                  value={smtpEmail}
+                  onChange={(e) => setSmtpEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  className="pl-10"
+                  data-testid="input-smtp-email"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="smtpPassword">Password / App Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="smtpPassword"
+                  type="password"
+                  value={smtpPassword}
+                  onChange={(e) => setSmtpPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="pl-10"
+                  data-testid="input-smtp-password"
+                />
+              </div>
+            </div>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="text-muted-foreground"
+            data-testid="button-toggle-advanced"
+          >
+            {showAdvanced ? "Hide advanced settings" : "Show advanced settings"}
+          </Button>
+
+          {showAdvanced && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="smtpHost">SMTP Server</Label>
+                <div className="relative">
+                  <Server className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="smtpHost"
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                    placeholder="smtp.office365.com"
+                    className="pl-10"
+                    data-testid="input-smtp-host"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="smtpPort">Port</Label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="smtpPort"
+                    type="number"
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(e.target.value)}
+                    placeholder="587"
+                    className="pl-10"
+                    data-testid="input-smtp-port"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-2">
+            <Button
+              onClick={handleSaveEmail}
+              disabled={saveEmailMutation.isPending || !smtpEmail.trim() || !smtpPassword.trim()}
+              data-testid="button-save-email"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saveEmailMutation.isPending ? "Saving..." : "Save Email Settings"}
             </Button>
           </div>
         </CardContent>

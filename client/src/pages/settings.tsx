@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save, Mail, Link, Unlink, Loader2 } from "lucide-react";
+import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const colorPresets = [
@@ -144,128 +144,6 @@ export default function Settings() {
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyEmail, setNewCompanyEmail] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isConnectingM365, setIsConnectingM365] = useState(false);
-  const [m365ClientId, setM365ClientId] = useState("");
-  const [m365ClientSecret, setM365ClientSecret] = useState("");
-  const [m365TenantId, setM365TenantId] = useState("common");
-  const [isSavingM365Config, setIsSavingM365Config] = useState(false);
-  const [showM365Config, setShowM365Config] = useState(false);
-  
-  // Simple SMTP email/password
-  const [smtpEmail, setSmtpEmail] = useState("");
-  const [smtpPassword, setSmtpPassword] = useState("");
-  const [isSavingSmtpConfig, setIsSavingSmtpConfig] = useState(false);
-
-  // SMTP status (simple email/password)
-  const { data: smtpStatus, refetch: refetchSmtpStatus } = useQuery<{ configured: boolean; email?: string }>({
-    queryKey: ["/api/smtp/status", activeTenant?.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/smtp/status?tenantId=${activeTenant?.id || ""}`);
-      return res.json();
-    },
-    enabled: !!activeTenant,
-  });
-
-  // Microsoft 365 connection status
-  const { data: m365Status, refetch: refetchM365Status } = useQuery<{ connected: boolean; email?: string; configured?: boolean; tenantConfigured?: boolean }>({
-    queryKey: ["/api/microsoft/status", activeTenant?.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/microsoft/status?tenantId=${activeTenant?.id || ""}`);
-      return res.json();
-    },
-    enabled: !!activeTenant,
-  });
-
-  const handleConnectM365 = () => {
-    if (!activeTenant) return;
-    setIsConnectingM365(true);
-    // Redirect to Microsoft OAuth
-    window.location.href = `/api/microsoft/connect?tenantId=${activeTenant.id}`;
-  };
-
-  const handleDisconnectM365 = async () => {
-    try {
-      await apiRequest("POST", "/api/microsoft/disconnect");
-      refetchM365Status();
-      toast({
-        title: "Disconnected",
-        description: "Microsoft 365 account has been disconnected.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to disconnect Microsoft 365 account.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSaveSmtpConfig = async () => {
-    if (!activeTenant || !smtpEmail.trim() || !smtpPassword.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter both email and password.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsSavingSmtpConfig(true);
-    try {
-      await apiRequest("POST", `/api/tenants/${activeTenant.id}/smtp-config`, {
-        email: smtpEmail.trim(),
-        password: smtpPassword.trim(),
-      });
-      refetchSmtpStatus();
-      setSmtpPassword(""); // Clear password from form
-      toast({
-        title: "Email Settings Saved",
-        description: "Your email configuration has been saved. You can now send emails.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save email configuration.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingSmtpConfig(false);
-    }
-  };
-
-  const handleSaveM365Config = async () => {
-    if (!activeTenant || !m365ClientId.trim() || !m365ClientSecret.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter both Client ID and Client Secret.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setIsSavingM365Config(true);
-    try {
-      await apiRequest("POST", `/api/tenants/${activeTenant.id}/microsoft-config`, {
-        clientId: m365ClientId.trim(),
-        clientSecret: m365ClientSecret.trim(),
-        tenantId: m365TenantId.trim() || "common",
-      });
-      refetchM365Status();
-      setShowM365Config(false);
-      toast({
-        title: "Configuration Saved",
-        description: "Microsoft 365 credentials have been saved. You can now connect your account.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save Microsoft 365 configuration.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingM365Config(false);
-    }
-  };
 
   useEffect(() => {
     if (branding) {
@@ -869,7 +747,7 @@ export default function Settings() {
         </Card>
       </div>
 
-      {/* Email Configuration Section */}
+      {/* Email Configuration Section - now per-user */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -877,162 +755,19 @@ export default function Settings() {
             Email Configuration
           </CardTitle>
           <CardDescription>
-            Enter your email and password to send emails from the app
+            Email settings are now configured per user in your Profile
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* SMTP Status */}
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="space-y-1">
-              {smtpStatus?.configured ? (
-                <p className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  Email configured: {smtpStatus.email}
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Enter your Microsoft 365 email and password to send emails.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Simple Email/Password Form */}
-          <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-            <div className="space-y-1">
-              <h4 className="text-sm font-medium">Email Account</h4>
-              <p className="text-xs text-muted-foreground">
-                Use your Microsoft 365 email. For security, you may need to use an App Password.
-              </p>
-            </div>
-            
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="smtpEmail">Email Address</Label>
-                <Input
-                  id="smtpEmail"
-                  type="email"
-                  value={smtpEmail}
-                  onChange={(e) => setSmtpEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  data-testid="input-smtp-email"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="smtpPassword">Password / App Password</Label>
-                <Input
-                  id="smtpPassword"
-                  type="password"
-                  value={smtpPassword}
-                  onChange={(e) => setSmtpPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  data-testid="input-smtp-password"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button 
-                onClick={handleSaveSmtpConfig} 
-                disabled={isSavingSmtpConfig || !smtpEmail.trim() || !smtpPassword.trim()}
-                data-testid="button-save-smtp-config"
-              >
-                {isSavingSmtpConfig ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Save Email Settings
-              </Button>
-            </div>
-          </div>
-
-          {/* Advanced: Microsoft 365 OAuth (collapsed by default) */}
-          <div className="pt-4 border-t">
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setShowM365Config(!showM365Config)}
-              className="text-muted-foreground"
-              data-testid="button-toggle-m365-config"
-            >
-              {showM365Config ? "Hide Advanced OAuth Setup" : "Advanced: OAuth Setup (optional)"}
+        <CardContent>
+          <div className="border rounded-md p-4 bg-muted/30 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Each user now configures their own email account so emails are sent from their personal address.
+              Go to your Profile page to set up your email credentials.
+            </p>
+            <Button variant="outline" size="sm" asChild data-testid="button-go-to-profile-email">
+              <a href="/profile">Go to Profile Settings</a>
             </Button>
           </div>
-
-          {showM365Config && (
-            <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-              <div className="space-y-1">
-                <h4 className="text-sm font-medium">Microsoft 365 OAuth (Advanced)</h4>
-                <p className="text-xs text-muted-foreground">
-                  For enterprise setups using Azure AD. Most users can use simple email/password above.
-                </p>
-              </div>
-              
-              {m365Status?.connected && (
-                <p className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
-                  <Check className="h-4 w-4" />
-                  Connected as {m365Status.email}
-                </p>
-              )}
-              
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="m365ClientId">Application (Client) ID</Label>
-                  <Input
-                    id="m365ClientId"
-                    value={m365ClientId}
-                    onChange={(e) => setM365ClientId(e.target.value)}
-                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                    data-testid="input-m365-client-id"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="m365TenantId">Directory (Tenant) ID</Label>
-                  <Input
-                    id="m365TenantId"
-                    value={m365TenantId}
-                    onChange={(e) => setM365TenantId(e.target.value)}
-                    placeholder="common (or your tenant ID)"
-                    data-testid="input-m365-tenant-id"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="m365ClientSecret">Client Secret</Label>
-                <Input
-                  id="m365ClientSecret"
-                  type="password"
-                  value={m365ClientSecret}
-                  onChange={(e) => setM365ClientSecret(e.target.value)}
-                  placeholder="Enter your client secret value"
-                  data-testid="input-m365-client-secret"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Create a secret in Azure Portal → Certificates & secrets → New client secret
-                </p>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowM365Config(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSaveM365Config} 
-                  disabled={isSavingM365Config || !m365ClientId.trim() || !m365ClientSecret.trim()}
-                  data-testid="button-save-m365-config"
-                >
-                  {isSavingM365Config ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Save Credentials
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
