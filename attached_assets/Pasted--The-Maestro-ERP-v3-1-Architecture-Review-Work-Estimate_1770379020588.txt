@@ -1,0 +1,281 @@
+# The Maestro ERP — v3.1 Architecture Review & Work Estimate
+
+## Capomastro Holdings Ltd. — Theoretical Physics Division
+**Analysis Date:** February 6, 2026
+**Repo:** `github.com/SigmaWolf-8/Maestro` (main branch, 5 commits)
+**Baseline:** v1.0 Gap Analysis (3-commit snapshot)
+**All Rights Reserved and Preserved; Capomastro Holdings Ltd.**
+
+---
+
+## Executive Summary
+
+Between commit 3 and commit 5, **29 new files** were added across 6 new directories, closing every major gap identified in the v1.0 analysis. The repository now contains approximately **26,500 lines of code** across **~100 custom files** plus 48 vendored shadcn/ui components. The architecture document and codebase are now in **strong alignment (~88%)**, up from ~65% at v1.0 review.
+
+---
+
+## 1. v3.0 → v3.1 DELTA — What Changed
+
+### 1.1 New Files Added (29 files, ~2,090 lines)
+
+| Directory | Files | Lines | Gap Closed |
+|-----------|-------|-------|------------|
+| `kong/` (gateway configs) | 18 | ~778 | ❌ 0% → ✅ 100% |
+| `scripts/` (deploy/dev/tools) | 6 | ~422 | ❌ 20% → ✅ 100% |
+| `shared/schema/` (barrel exports) | 6 | ~125 | ⚠️ 70% → ✅ 95% |
+| `shared/types/integrations/` | 1 | 118 | ❌ 0% → ✅ 100% |
+| `server/integrations/` | 1 | 314 | ❌ 0% → ✅ 100% |
+| `client/src/lib/integrations/` | 3 | 265 | ❌ 0% → ✅ 100% |
+
+### 1.2 Modified Files
+
+| File | Before | After | Change |
+|------|--------|-------|--------|
+| `shared/schema.ts` | 515 lines (17 tables) | 582 lines (21 tables) | +67 lines, 4 new tables |
+
+### 1.3 New Tables in Schema
+
+| Table | Purpose | Fields | Status |
+|-------|---------|--------|--------|
+| `document_locks` | WOPI file locking | fileId, lockId, userId, expiresAt, lockType, isActive | ✅ Complete |
+| `document_audit_logs` | Document audit trail | documentId, action, details, ipAddress, securityMode | ✅ Complete |
+| `wopi_sessions` | Active WOPI editing sessions | accessToken, tokenExpiresAt, sessionType, isActive | ✅ Complete |
+| `ms_graph_tokens` | Persistent MS Graph auth | accessToken, refreshToken, expiresAt, scopes | ✅ Complete |
+
+### 1.4 New Kong Gateway Infrastructure (18 files)
+
+```
+kong/
+├── kong.yml                          # 84 lines — Master declarative config (4 services)
+├── wopi-bridge.yaml                  # 82 lines — WOPI host with full CORS for Office Online
+├── plenum-net-policy.yaml            # 52 lines — 3 security modes (phi/one/zero)
+├── plugins/
+│   └── jwt-ternary-validator.lua     # 81 lines — Custom Kong plugin for ternary tokens
+├── services/
+│   ├── maestro-api.yml               # 42 lines
+│   ├── maestro-wopi.yml              # 46 lines — WOPI with 60s read timeout, 100MB limit
+│   ├── maestro-ai-report.yml         # 24 lines
+│   ├── maestro-events.yml            # 17 lines
+│   └── plenum-net-proxy.yml          # 57 lines — TPU, Timing, Witness services
+├── routes/
+│   ├── api-v1.yml                    # 31 lines
+│   ├── documents-secure.yml          # 91 lines — 4 secure routes incl. Smart Inbox
+│   ├── wopi-routes.yml               # 44 lines — File info, contents, operations, discovery
+│   ├── ai-report-routes.yml          # 34 lines
+│   └── event-routes.yml              # 13 lines
+└── environments/
+    ├── development.yml               # 24 lines
+    ├── staging.yml                   # 26 lines
+    └── production.yml                # 30 lines — capomastro.com domain
+```
+
+### 1.5 New PlenumNET Integration Stack
+
+| Layer | File | Lines | Function |
+|-------|------|-------|----------|
+| **Server** | `server/integrations/plenum-net-core-client.ts` | 314 | Full PlenumNetCoreClient class: TPU encode/decode, phase rotation, femtosecond timestamps, XRPL witnessing, health check, Express middleware |
+| **Types** | `shared/types/integrations/plenum-net.ts` | 118 | SecurityMode, TorsionFieldCoordinate (13D), WitnessReceipt, PhaseRotationConfig, TORSION_FIELD_DIMENSIONS mapping |
+| **Context** | `client/src/lib/integrations/plenum-net/context.tsx` | 67 | React context provider with security mode state |
+| **Hooks** | `client/src/lib/integrations/plenum-net/hooks.ts` | 71 | usePlenumNetSecurity, usePlenumNetHealth, useWitnessDocument, useSecurityModeForOperation |
+
+### 1.6 New WOPI Client Hooks
+
+| File | Lines | Function |
+|------|-------|----------|
+| `client/src/lib/integrations/ms-graph/wopi-hooks.ts` | 127 | useWopiToken, useWopiLockStatus, useWopiLock, useOfficeOnlineEmbed, Office document type detection |
+
+### 1.7 New Scripts & DevOps
+
+| File | Lines | Function |
+|------|-------|----------|
+| `scripts/deploy/deploy-to-replit.sh` | 33 | 5-step deployment: env check → deps → migrate → build → start |
+| `scripts/deploy/migrate-db.sh` | 21 | Schema introspect + push |
+| `scripts/deploy/setup-kong.sh` | 43 | Kong connectivity check → decK sync → service verification |
+| `scripts/dev/seed-db.ts` | 99 | Seed tenant, user, project, 17 WBS dimension codes |
+| `scripts/tools/validate-wopi.mjs` | 102 | Tests all 12 WOPI endpoints with timing |
+| `scripts/tools/generate-ternary-test-data.mjs` | 124 | Binary→ternary conversion, security mode test vectors |
+
+---
+
+## 2. UPDATED ALIGNMENT SCORECARD
+
+### v1.0 → v3.1 Comparison
+
+| Category | v1.0 Score | v3.1 Score | Change |
+|----------|-----------|-----------|--------|
+| **Root Config Files** | ✅ 100% | ✅ 100% | — |
+| **Server Core** | ✅ 95% | ✅ 95% | — (routes.ts still monolithic) |
+| **Shared Schema Tables** | ⚠️ 70% | ✅ 95% | **+25%** (4 WOPI/token tables added) |
+| **Schema Modularization** | ❌ 0% | ✅ 90% | **+90%** (barrel export files) |
+| **Client Pages** | ✅ 95% | ✅ 95% | — |
+| **Client Components** | ⚠️ 60% | ✅ 85% | **+25%** (integration hooks) |
+| **Server Services** | ⚠️ 50% | ⚠️ 65% | **+15%** (PlenumNET client) |
+| **Kong Directory** | ❌ 0% | ✅ 100% | **+100%** (18 files) |
+| **PlenumNET Integration** | ❌ 0% | ✅ 95% | **+95%** (full stack) |
+| **Scripts Directory** | ⚠️ 20% | ✅ 100% | **+80%** (6 files) |
+| **CI/CD Pipeline** | ❌ 0% | ⚠️ 50% | **+50%** (scripts exist, no GitHub Actions) |
+| **WOPI Completeness** | ⚠️ 40% | ⚠️ 70% | **+30%** (tables + hooks + validator) |
+
+**Overall Architecture Alignment: ~65% → ~88%**
+
+### Remaining Gaps (v3.1)
+
+| Gap | Impact | Priority |
+|-----|--------|----------|
+| `server/routes.ts` still monolithic (2,924 lines) | Maintainability | 🟡 MED |
+| No `DocumentService.ts` orchestration layer | Architecture | 🟡 MED |
+| WOPI endpoints in routes.ts still basic (3 of 12 in server code) | Feature | 🟡 MED |
+| No `.github/workflows/` CI/CD | DevOps | 🟠 LOW |
+| Schema barrel files re-export from monolith (not true split) | Structure | 🟠 LOW |
+
+---
+
+## 3. COMPLETE CODEBASE — Line Count Inventory
+
+### 3.1 Server Layer
+
+| File | Lines | Domain |
+|------|-------|--------|
+| `server/routes.ts` | 2,924 | All ~85 API endpoints |
+| `server/storage.ts` | 1,982 | Drizzle ORM storage abstraction |
+| `server/microsoft-graph.ts` | 451 | MS Graph OAuth + OneDrive |
+| `server/services/ai-report-service.ts` | 352 | AI report generation |
+| `server/integrations/plenum-net-core-client.ts` | 314 | PlenumNET full client |
+| `server/kong-service.ts` | 164 | Local Kong simulation |
+| `server/services/wopi-host-service.ts` | 128 | WOPI token + file info |
+| `server/index.ts` | 106 | Express bootstrap |
+| `server/vite.ts` | 58 | Dev mode HMR |
+| `server/static.ts` | 19 | Production static files |
+| `server/db.ts` | 14 | DB connection |
+| `server/replit_integrations/auth/` (4 files) | 324 | OpenID Connect auth |
+| **Server Subtotal** | **6,836** | |
+
+### 3.2 Shared Layer
+
+| File | Lines | Domain |
+|------|-------|--------|
+| `shared/schema.ts` | 582 | 21 Drizzle tables + types |
+| `shared/schema/` (6 barrel files) | 125 | Domain re-exports |
+| `shared/types/integrations/plenum-net.ts` | 118 | PlenumNET type definitions |
+| `shared/types/ai-report.ts` | 80 | AI report types |
+| `shared/models/auth.ts` | 30 | Auth models |
+| **Shared Subtotal** | **935** | |
+
+### 3.3 Client Layer
+
+| Category | Files | Lines |
+|----------|-------|-------|
+| **Pages** (21 pages) | 21 | 12,808 |
+| **Components** (12 custom) | 12 | 1,829 |
+| **Hooks** (4 files) | 4 | 325 |
+| **Lib** (3 files) | 3 | 80 |
+| **Integrations** (3 files) | 3 | 265 |
+| **App + Main** | 2 | 262 |
+| **shadcn/ui** (~48 vendored) | ~48 | ~1,920 |
+| **CSS** | 1 | 328 |
+| **Client Subtotal** | **~94** | **~17,817** |
+
+### 3.4 Infrastructure Layer
+
+| Category | Files | Lines |
+|----------|-------|-------|
+| **Kong configs** (18 files) | 18 | 778 |
+| **Scripts** (6 files) | 6 | 422 |
+| **Root configs** (package.json, vite, ts, etc.) | ~8 | ~534 |
+| **Infra Subtotal** | **~32** | **~1,734** |
+
+### 3.5 Grand Total
+
+| Category | Files | Lines |
+|----------|-------|-------|
+| Server | 15 | 6,836 |
+| Shared | 12 | 935 |
+| Client (custom) | ~46 | ~15,897 |
+| Client (vendored shadcn) | ~48 | ~1,920 |
+| Infrastructure | ~32 | 1,734 |
+| **GRAND TOTAL** | **~153** | **~27,322** |
+| **Custom code** (excl. vendored) | **~105** | **~25,402** |
+
+---
+
+## 4. WORK ESTIMATE — Effort Completed
+
+### 4.1 Methodology
+
+Estimation uses industry-standard metrics for a senior full-stack TypeScript developer working on a Replit-hosted construction ERP with multi-tenant architecture. Lines of code are weighted by complexity, not treated uniformly. Rates assume a solo developer or small team with AI-assisted development.
+
+### 4.2 Module-by-Module Estimate
+
+| Module | Lines | Complexity | Est. Hours | Notes |
+|--------|-------|------------|------------|-------|
+| **Database Schema Design** (21 tables, Drizzle ORM, FK relationships, JSONB configs, insert schemas, type exports) | 582 | HIGH | 30-40 | Multi-tenant schema with 13D WBS dimensions, WOPI tables, MS Access migration schema |
+| **Storage Layer** (Drizzle queries, CRUD for 21 tables) | 1,982 | HIGH | 40-55 | Complex queries with joins, filtering, tenant scoping |
+| **API Routes** (85 endpoints, validation, error handling) | 2,924 | HIGH | 55-75 | Every domain: tenants, projects, WBS, docs, vendors, customers, email, Kong, MS365, WOPI, Smart Inbox |
+| **Microsoft 365 Integration** (OAuth, OneDrive, email, sync) | 451 | VERY HIGH | 25-35 | OAuth 2.0 with CSRF, token refresh, 50MB upload, file sync |
+| **AI Report Service** | 352 | HIGH | 15-20 | Report generation pipeline with prompt engineering |
+| **PlenumNET Client** (server + types + client hooks + context) | 570 | VERY HIGH | 25-35 | TPU encode/decode, phase rotation, XRPL witnessing, Express middleware, React context/hooks |
+| **Kong Gateway Configs** (18 files, custom Lua plugin) | 778 | HIGH | 20-30 | Declarative YAML, WOPI CORS, rate limiting, environment configs, JWT ternary validator |
+| **WOPI Service + Hooks** (server + client) | 255 | VERY HIGH | 15-20 | Token generation, file info, Office Online embed, lock management hooks |
+| **Replit Auth Integration** | 324 | MEDIUM | 10-15 | OpenID Connect, session management |
+| **Client Pages** (21 pages, full CRUD UIs) | 12,808 | HIGH | 120-160 | Dashboard, WBS tree, document management, vendor/customer forms, settings, permissions |
+| **Client Components & Hooks** | 2,234 | MEDIUM | 25-35 | Sidebar, tab system, theme, settings provider, toast, auth hooks |
+| **Client Integrations** | 265 | HIGH | 10-15 | PlenumNET context/hooks, WOPI hooks, MS Graph hooks |
+| **shadcn/ui Setup** (~48 components) | ~1,920 | LOW | 8-12 | Vendored but configured, themed, integrated |
+| **CSS & Theming** | 328 | MEDIUM | 8-12 | Custom theme, dark mode, brand variables |
+| **Scripts & DevOps** | 422 | MEDIUM | 10-15 | Deploy, migrate, seed, WOPI validator, ternary test data |
+| **Root Config & Build** | 534 | MEDIUM | 8-12 | TypeScript, Vite, Tailwind, PostCSS, Drizzle config |
+| **Architecture Documentation** | ~1,400 | HIGH | 20-30 | v1.0 → v3.1 evolution, 15 sections, detailed specifications |
+
+### 4.3 Summary Estimate
+
+| Category | Low | High | Midpoint |
+|----------|-----|------|----------|
+| Backend (schema + storage + routes + services) | 165 | 225 | **195 hrs** |
+| Integrations (MS365 + PlenumNET + Kong + WOPI) | 85 | 120 | **103 hrs** |
+| Frontend (pages + components + integrations) | 163 | 222 | **193 hrs** |
+| Infrastructure (scripts + config + docs) | 46 | 69 | **58 hrs** |
+| **TOTAL** | **459** | **636** | **549 hrs** |
+
+### 4.4 Calendar Equivalents
+
+| Metric | Value |
+|--------|-------|
+| **Total estimated hours** | 459–636 (midpoint: 549) |
+| **Full-time equivalent** (40 hrs/week) | 11.5–15.9 weeks (midpoint: ~14 weeks) |
+| **Calendar months** (with overhead) | ~3.5–5 months |
+| **Solo developer rate** ($125/hr CAD) | $57,375–$79,500 |
+| **Comparable market rate** ($150/hr CAD) | $68,850–$95,400 |
+
+### 4.5 Complexity Multipliers Applied
+
+These estimates account for:
+- Multi-tenant architecture (tenant scoping on every query)
+- 13-dimensional WBS system (unique to construction ERP)
+- MS Access VBA migration (reverse-engineering legacy forms)
+- Microsoft 365 OAuth integration (complex token management)
+- WOPI protocol compliance (Office Online Server standards)
+- PlenumNET post-quantum security framework (novel infrastructure)
+- Kong gateway configuration (production-grade API security)
+- 21 full-featured client pages with CRUD, filtering, and real-time state
+
+---
+
+## 5. WHAT'S NEXT — Remaining v3.1 Recommendations
+
+### Short-Term (Close Remaining Gaps)
+
+1. **Extract `server/routes.ts`** into domain routers (~4-6 hours)
+2. **Create `DocumentService.ts`** orchestrating WOPI + Graph + Kong (~6-8 hours)
+3. **Implement remaining WOPI endpoints** in server code (PutFile, Lock, Unlock, RefreshLock, DeleteFile, RenameFile) (~10-15 hours)
+4. **True schema split** — migrate table definitions into domain files instead of re-exporting (~3-4 hours)
+
+### Medium-Term
+
+5. Add `.github/workflows/` CI/CD pipeline (~4-6 hours)
+6. Connect PlenumNET client to live TPU/Timing/Witness services when available
+7. Production Kong deployment with `setup-kong.sh`
+
+---
+
+*Generated by comparative analysis of `github.com/SigmaWolf-8/Maestro` commits 3→5*
+*All Rights Reserved and Preserved; Capomastro Holdings Ltd.*
