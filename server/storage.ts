@@ -1459,9 +1459,17 @@ function getNavigationTemplate(companyType: string): NavSection[] {
     title: "Documents", iconName: "FolderArchive", order: 70, minRole: "viewer",
     children: [
       { title: "File Manager", iconName: "Files", path: "/documents/files", minRole: "viewer" },
+      { title: "Smart Inbox", iconName: "Mail", path: "/documents/smart-inbox", minRole: "viewer" },
       { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
       { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
       { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
+    ],
+  };
+
+  const intelligence: NavSection = {
+    title: "Intelligence", iconName: "Sparkles", order: 65, minRole: "viewer",
+    children: [
+      { title: "AI Analytics", iconName: "BarChart3", path: "/ai/reports", minRole: "viewer" },
     ],
   };
 
@@ -1519,9 +1527,11 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "Analytics", iconName: "Presentation", path: "/marketing/analytics", minRole: "project_manager" },
           ],
         },
+        intelligence,
         { ...documents, children: [
           { title: "File Manager", iconName: "Files", path: "/documents/files", minRole: "viewer" },
           { title: "Plan Room", iconName: "Map", path: "/documents/plans", minRole: "viewer" },
+          { title: "Smart Inbox", iconName: "Mail", path: "/documents/smart-inbox", minRole: "viewer" },
           { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
           { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
           { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
@@ -1571,9 +1581,11 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "Pipeline", iconName: "TrendingUp", path: "/sales/pipeline", minRole: "project_manager" },
           ],
         },
+        intelligence,
         { ...documents, children: [
           { title: "File Manager", iconName: "Files", path: "/documents/files", minRole: "viewer" },
           { title: "Plan Room", iconName: "Map", path: "/documents/plans", minRole: "viewer" },
+          { title: "Smart Inbox", iconName: "Mail", path: "/documents/smart-inbox", minRole: "viewer" },
           { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
           { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
           { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
@@ -1598,6 +1610,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
           ],
         },
+        intelligence,
         documents,
       ];
 
@@ -1620,6 +1633,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
           ],
         },
+        intelligence,
         documents,
       ];
 
@@ -1661,6 +1675,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "Analytics", iconName: "Presentation", path: "/marketing/analytics", minRole: "project_manager" },
           ],
         },
+        intelligence,
         documents,
       ];
 
@@ -1700,6 +1715,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "Pipeline", iconName: "TrendingUp", path: "/sales/pipeline", minRole: "project_manager" },
           ],
         },
+        intelligence,
         documents,
       ];
 
@@ -1740,6 +1756,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
           ],
         },
+        intelligence,
         documents,
       ];
 
@@ -1781,6 +1798,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
           ],
         },
+        intelligence,
         documents,
       ];
 
@@ -1811,6 +1829,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
           ],
         },
+        intelligence,
         documents,
       ];
 
@@ -1861,8 +1880,10 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "Analytics", iconName: "Presentation", path: "/marketing/analytics", minRole: "project_manager" },
           ],
         },
+        intelligence,
         { ...documents, children: [
           { title: "File Manager", iconName: "Files", path: "/documents/files", minRole: "viewer" },
+          { title: "Smart Inbox", iconName: "Mail", path: "/documents/smart-inbox", minRole: "viewer" },
           { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
           { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
           { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
@@ -1906,6 +1927,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
             { title: "CRM", iconName: "Contact", path: "/sales/crm", minRole: "viewer" },
           ],
         },
+        intelligence,
         documents,
       ];
   }

@@ -33,8 +33,26 @@ The project is organized into `client/` (React frontend), `server/` (Express bac
 ### Email Configuration (Per-User)
 Email sending is configured per user (not per tenant). Each user sets up their own SMTP credentials (email/password/host/port) in their Profile page. The email send endpoint (`/api/email/send`) checks the authenticated user's personal email config first, then falls back to Microsoft 365 OAuth if available. User email config is stored in the `users.config` jsonb column under `emailSettings`. API endpoints: `GET/POST/DELETE /api/auth/email-config` (all require authentication).
 
+### AI Analytics & Intelligence
+- **AI Report Service** (`server/services/ai-report-service.ts`): Pattern-based intent detection engine that processes natural language queries, classifies them into report categories (project_overview, budget_analysis, vendor_performance, wbs_progress, schedule_status, cost_variance), and generates narrative analysis with chart data and data tables. Uses actual database queries against projects, vendors, customers, and WBS nodes. Ready for OpenAI API key integration for true LLM responses.
+- **AI Reports Page** (`client/src/pages/ai-reports.tsx`): Chat-based interface with quick prompts, suggestion bubbles for follow-up queries, and responsive Recharts visualizations (Bar, Pie, Area, Line charts). Uses `useAIReport` hook for conversation management.
+- **Types** defined in `shared/types/ai-report.ts`: AIReportQuery, AIReportResponse, ChartData, TableData, QuickPrompt interfaces.
+- **API Endpoints**: `POST /api/ai/report` (generate report), `GET /api/ai/quick-prompts` (predefined prompts).
+
+### WOPI Host & Office Online Integration
+- **WOPI Host Service** (`server/services/wopi-host-service.ts`): Implements WOPI protocol endpoints for Office Online integration. Generates access tokens with document-bound security (10hr TTL), provides CheckFileInfo and GetFile endpoints, and maps Office Online editor URLs.
+- **Office Online Embed** (`client/src/components/documents/office-online-embed.tsx`): Document editor wrapper component with fullscreen toggle, WOPI token handling, and Office document type detection. Ready for Microsoft 365 credentials connection.
+- **API Endpoints**: `GET /api/wopi/files/:id` (CheckFileInfo), `GET /api/wopi/files/:id/contents` (GetFile), `POST /api/wopi/token/:documentId` (generate token). Token-document binding enforced for multi-tenant security.
+
+### Smart Inbox
+- **Smart Inbox Page** (`client/src/pages/smart-inbox.tsx`): Email interface surfacing project-relevant emails within the ERP. Features category filtering (project/vendor/finance/customer), search, email detail view with project linking, and Microsoft Graph integration placeholders.
+- **API Endpoint**: `GET /api/smart-inbox` with filter/search parameters. Generates contextual mock emails linked to actual projects, vendors, and customers from the database.
+
+### Navigation
+Navigation follows an 8-section architecture (Dashboard, People, Projects, Finance, Sales, Marketing, Intelligence, Documents) with database-driven, tenant-specific configuration. The "Intelligence" section (order 65) contains AI Analytics. The "Documents" section includes Smart Inbox.
+
 ### UI/UX and Design System
-The application features a professional aesthetic with a default teal construction theme, full dark mode support, and customizable branding per tenant. UI patterns include cards with hover effects, semantic status badges, responsive grid layouts, and modal dialogs. Navigation follows a 7-section architecture (Dashboard, People, Projects, Finance, Sales, Marketing, Documents) with database-driven, tenant-specific configuration.
+The application features a professional aesthetic with a default teal construction theme, full dark mode support, and customizable branding per tenant. UI patterns include cards with hover effects, semantic status badges, responsive grid layouts, and modal dialogs.
 
 ## External Dependencies
 

@@ -1,0 +1,1013 @@
+I'll proceed with Task 1.1: Implement the AI Report Service Skeleton. This creates the foundational structure for your natural language reporting system.
+
+## **Task 1.1: AI Report Service Skeleton Implementation**
+
+### **File 1: `shared/types/ai-report.ts`**
+```typescript
+/**
+ * AI Reporting Types - Shared between client and server
+ * All Rights Reserved and Preserved; Capomastro Holdings Ltd.
+ */
+
+/**
+ * Security context for AI report generation
+ * Maps to PlenumNET security modes φ, 1, and 0
+ */
+export enum AiReportSecurityMode {
+  PHI = 'phi',      // Quantum-resistant with femtosecond timing
+  ONE = 'one',      // Strong post-quantum security
+  ZERO = 'zero'     // Standard encryption (legacy compatibility)
+}
+
+/**
+ * AI Report Query - What the user asks for
+ */
+export interface AiReportQuery {
+  id: string;                      // Unique query identifier
+  tenantId: string;                // Tenant isolation
+  userId: string;                  // User who made the query
+  prompt: string;                  // Natural language query (e.g., "Show me cost overruns for projects in Q1")
+  
+  // Security context
+  securityMode: AiReportSecurityMode;
+  requiresWitnessing: boolean;     // Whether this query needs XRPL witnessing (Mode φ)
+  
+  // Query context
+  context?: {
+    projectId?: string;           // Project-specific query
+    dateRange?: {                 // Time period for analysis
+      start: Date;
+      end: Date;
+    };
+    costCenters?: string[];       // Specific cost centers to analyze
+    wbsCodes?: string[];          // WBS codes to filter by
+  };
+  
+  // Metadata
+  timestamp: Date;                 // When query was made
+  metadata?: Record<string, any>;  // Additional context
+}
+
+/**
+ * Data Point for charts and visualizations
+ */
+export interface AiReportDataPoint {
+  label: string;                   // X-axis label or category
+  value: number;                   // Primary value
+  secondaryValue?: number;         // Secondary value (e.g., budget vs actual)
+  category?: string;               // Grouping category
+  metadata?: Record<string, any>;  // Additional data
+}
+
+/**
+ * Visualization Configuration
+ */
+export interface AiReportVisualization {
+  type: 'bar' | 'line' | 'pie' | 'table' | 'gauge' | 'scatter';
+  title: string;
+  data: AiReportDataPoint[];
+  config?: {
+    xAxisLabel?: string;
+    yAxisLabel?: string;
+    colors?: string[];
+    showLegend?: boolean;
+    stacked?: boolean;
+  };
+}
+
+/**
+ * SQL Query generated from natural language (for audit purposes)
+ */
+export interface AiGeneratedSql {
+  rawSql: string;                  // The generated SQL query
+  validated: boolean;              // Whether SQL was validated for safety
+  executionTimeMs?: number;        // How long the query took
+  rowCount?: number;               // Number of rows returned
+}
+
+/**
+ * AI Report Response - The complete report
+ */
+export interface AiReportResponse {
+  queryId: string;                 // Reference to original query
+  tenantId: string;
+  
+  // Core content
+  narrative: string;               // AI-generated narrative summary
+  executiveSummary: string;        // One-paragraph executive summary
+  keyFindings: string[];           // Bullet points of key findings
+  
+  // Data visualizations
+  visualizations: AiReportVisualization[];
+  
+  // Underlying data
+  generatedSql?: AiGeneratedSql;   // SQL that was executed (for audit)
+  rawDataPreview?: any[];          // Sample of raw data (first 10 rows)
+  
+  // Recommendations
+  recommendations?: {
+    text: string;
+    priority: 'high' | 'medium' | 'low';
+    actionItems?: string[];
+  }[];
+  
+  // Security & Audit
+  securityMode: AiReportSecurityMode;
+  witnessTxHash?: string;          // XRPL transaction hash for witnessed reports (Mode φ)
+  timingCertificate?: string;      // Femtosecond timing certificate
+  
+  // Metadata
+  generatedAt: Date;
+  generationTimeMs: number;
+  modelUsed?: string;              // Which LLM was used (e.g., "gpt-4", "claude-3")
+  confidenceScore?: number;        // AI confidence in the analysis (0-1)
+  
+  // Pagination for large reports
+  pagination?: {
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  };
+}
+
+/**
+ * Report Generation Options
+ */
+export interface AiReportOptions {
+  includeRawData?: boolean;        // Include raw data in response
+  maxVisualizations?: number;      // Limit number of charts
+  language?: string;               // Output language
+  detailLevel?: 'summary' | 'detailed' | 'executive';
+  format?: 'interactive' | 'pdf' | 'excel';
+}
+
+/**
+ * Error types for AI reporting
+ */
+export class AiReportError extends Error {
+  constructor(
+    message: string,
+    public code: AiReportErrorCode,
+    public queryId?: string,
+    public tenantId?: string
+  ) {
+    super(message);
+    this.name = 'AiReportError';
+  }
+}
+
+export enum AiReportErrorCode {
+  INVALID_QUERY = 'INVALID_QUERY',
+  NO_DATA_FOUND = 'NO_DATA_FOUND',
+  SQL_GENERATION_FAILED = 'SQL_GENERATION_FAILED',
+  DATABASE_ERROR = 'DATABASE_ERROR',
+  LLM_UNAVAILABLE = 'LLM_UNAVAILABLE',
+  TENANT_QUOTA_EXCEEDED = 'TENANT_QUOTA_EXCEEDED',
+  SECURITY_VIOLATION = 'SECURITY_VIOLATION',
+  WITNESSING_FAILED = 'WITNESSING_FAILED',
+  TIMING_SYNC_FAILED = 'TIMING_SYNC_FAILED'
+}
+
+/**
+ * Audit log entry for AI report queries
+ */
+export interface AiReportAuditLog {
+  id: string;
+  queryId: string;
+  tenantId: string;
+  userId: string;
+  prompt: string;
+  generatedSql?: string;
+  securityMode: AiReportSecurityMode;
+  status: 'success' | 'error' | 'pending';
+  errorCode?: AiReportErrorCode;
+  responseTimeMs: number;
+  timestamp: Date;
+  ipAddress?: string;
+  userAgent?: string;
+}
+```
+
+### **File 2: `server/services/ai-report-service.ts`**
+```typescript
+/**
+ * AI Report Service - Core service for natural language reporting
+ * All Rights Reserved and Preserved; Capomastro Holdings Ltd.
+ */
+
+import { 
+  AiReportQuery, 
+  AiReportResponse, 
+  AiReportOptions, 
+  AiReportError, 
+  AiReportErrorCode,
+  AiReportSecurityMode,
+  AiReportVisualization,
+  AiGeneratedSql
+} from '../../shared/types/ai-report';
+
+// Import Supabase client type
+import { SupabaseClient } from '@supabase/supabase-js';
+
+// Database schema types (from your shared schema)
+import { Database } from '../../shared/schema';
+
+/**
+ * Configuration for the AI Report Service
+ */
+export interface AiReportServiceConfig {
+  supabase: SupabaseClient<Database>;
+  defaultSecurityMode?: AiReportSecurityMode;
+  enableMockData?: boolean;
+  maxQueryLength?: number;
+  queryTimeoutMs?: number;
+}
+
+/**
+ * Main AI Report Service Class
+ */
+export class AiReportService {
+  private supabase: SupabaseClient<Database>;
+  private config: Required<AiReportServiceConfig>;
+  
+  // Mock data for development (will be replaced with real AI/LLM integration)
+  private mockProjects = [
+    { id: 'proj-001', name: 'Downtown Tower', budget: 5000000, actualCost: 5200000, status: 'over-budget' },
+    { id: 'proj-002', name: 'Riverfront Condos', budget: 3200000, actualCost: 3000000, status: 'under-budget' },
+    { id: 'proj-003', name: 'Highway Bridge', budget: 8500000, actualCost: 9000000, status: 'over-budget' },
+    { id: 'proj-004', name: 'School Renovation', budget: 2100000, actualCost: 2100000, status: 'on-budget' },
+  ];
+  
+  private mockCostCodes = [
+    { code: '03-01', description: 'Concrete Foundation', budget: 450000, actual: 480000 },
+    { code: '03-02', description: 'Structural Steel', budget: 1200000, actual: 1300000 },
+    { code: '03-03', description: 'Electrical', budget: 350000, actual: 320000 },
+    { code: '03-04', description: 'Plumbing', budget: 280000, actual: 310000 },
+    { code: '03-05', description: 'Finishes', budget: 600000, actual: 550000 },
+  ];
+
+  constructor(config: AiReportServiceConfig) {
+    this.supabase = config.supabase;
+    
+    // Set default configuration
+    this.config = {
+      defaultSecurityMode: AiReportSecurityMode.ONE,
+      enableMockData: process.env.NODE_ENV === 'development',
+      maxQueryLength: 1000,
+      queryTimeoutMs: 30000,
+      ...config
+    };
+  }
+
+  /**
+   * Main entry point: Generate a report from a natural language query
+   */
+  async generateReport(
+    query: Omit<AiReportQuery, 'id' | 'timestamp'>,
+    options?: AiReportOptions
+  ): Promise<AiReportResponse> {
+    const startTime = Date.now();
+    const queryId = this.generateQueryId();
+    const fullQuery: AiReportQuery = {
+      ...query,
+      id: queryId,
+      timestamp: new Date()
+    };
+
+    try {
+      // 1. Validate the query
+      this.validateQuery(fullQuery);
+
+      // 2. Log the query for audit
+      await this.logQuery(fullQuery, 'pending');
+
+      // 3. Generate SQL from natural language (mock for now)
+      const generatedSql = await this.generateSqlFromPrompt(fullQuery);
+      
+      // 4. Execute query and get data
+      const data = await this.executeQuery(fullQuery, generatedSql);
+      
+      // 5. Generate narrative and visualizations
+      const narrative = await this.generateNarrative(fullQuery, data);
+      const visualizations = await this.generateVisualizations(fullQuery, data);
+      
+      // 6. Apply security mode requirements (witnessing for Mode φ)
+      const securityData = await this.applySecurityRequirements(fullQuery, {
+        queryId,
+        narrative,
+        visualizations,
+        generatedSql
+      });
+
+      // 7. Construct final response
+      const response = await this.constructResponse(
+        fullQuery,
+        data,
+        narrative,
+        visualizations,
+        generatedSql,
+        securityData,
+        options,
+        Date.now() - startTime
+      );
+
+      // 8. Log successful completion
+      await this.logQuery(fullQuery, 'success', Date.now() - startTime);
+
+      return response;
+
+    } catch (error) {
+      // Log error
+      await this.logQuery(
+        fullQuery, 
+        'error', 
+        Date.now() - startTime, 
+        error instanceof AiReportError ? error.code : AiReportErrorCode.DATABASE_ERROR
+      );
+      
+      // Re-throw with proper typing
+      if (error instanceof AiReportError) {
+        throw error;
+      }
+      throw new AiReportError(
+        error instanceof Error ? error.message : 'Unknown error in AI report generation',
+        AiReportErrorCode.DATABASE_ERROR,
+        queryId,
+        query.tenantId
+      );
+    }
+  }
+
+  /**
+   * Generate SQL from natural language prompt
+   * This will later integrate with LangChain/LLM
+   */
+  private async generateSqlFromPrompt(query: AiReportQuery): Promise<AiGeneratedSql> {
+    // For now, return mock SQL based on common query patterns
+    // This will be replaced with real LLM integration in Task 3.1
+    
+    const prompt = query.prompt.toLowerCase();
+    
+    let mockSql = '';
+    if (prompt.includes('cost overrun') || prompt.includes('over budget')) {
+      mockSql = `SELECT project_id, project_name, budgeted_cost, actual_cost, 
+                (actual_cost - budgeted_cost) as variance 
+                FROM projects 
+                WHERE tenant_id = '${query.tenantId}' 
+                AND actual_cost > budgeted_cost
+                AND ${this.getDateFilter(query.context?.dateRange)}`;
+    } else if (prompt.includes('schedule') || prompt.includes('timeline')) {
+      mockSql = `SELECT task_id, task_name, planned_start, planned_end, 
+                actual_start, actual_end, 
+                (actual_end - planned_end) as delay_days 
+                FROM wbs_nodes 
+                WHERE tenant_id = '${query.tenantId}' 
+                AND project_id = '${query.context?.projectId || ''}'`;
+    } else if (prompt.includes('vendor') || prompt.includes('supplier')) {
+      mockSql = `SELECT vendor_name, total_spent, invoice_count, 
+                AVG(invoice_amount) as avg_invoice 
+                FROM procurement_vendors 
+                WHERE tenant_id = '${query.tenantId}' 
+                GROUP BY vendor_id, vendor_name`;
+    } else {
+      // Default generic query
+      mockSql = `SELECT * FROM projects WHERE tenant_id = '${query.tenantId}' LIMIT 10`;
+    }
+
+    return {
+      rawSql: mockSql,
+      validated: true,
+      executionTimeMs: 50, // Mock value
+      rowCount: 5 // Mock value
+    };
+  }
+
+  /**
+   * Execute the SQL query (mock for now, will use Supabase client)
+   */
+  private async executeQuery(query: AiReportQuery, generatedSql: AiGeneratedSql): Promise<any> {
+    // For development with mock data enabled, return mock data
+    if (this.config.enableMockData) {
+      return this.getMockDataForQuery(query);
+    }
+    
+    // In production, this will use the Supabase client
+    // Example: const { data, error } = await this.supabase.rpc('execute_safe_query', { sql: generatedSql.rawSql });
+    
+    // For now, simulate database call
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // This will be replaced with actual Supabase query execution
+    throw new AiReportError(
+      'Real database integration pending Supabase schema deployment',
+      AiReportErrorCode.DATABASE_ERROR,
+      query.id,
+      query.tenantId
+    );
+  }
+
+  /**
+   * Generate narrative summary from data
+   */
+  private async generateNarrative(query: AiReportQuery, data: any): Promise<string> {
+    // Mock narrative generation - will be replaced with LLM in Task 3.1
+    
+    const prompt = query.prompt.toLowerCase();
+    
+    if (prompt.includes('cost overrun')) {
+      return `Analysis of cost performance reveals that 2 out of 4 active projects are currently over budget, with a total variance of $700,000. The Highway Bridge project shows the largest overrun at $500,000 (5.9% over budget), primarily driven by increased steel and labor costs. The Downtown Tower project is $200,000 over budget (4% variance). Overall project portfolio is running 3.5% over planned budget.`;
+    } else if (prompt.includes('schedule')) {
+      return `Schedule analysis indicates mixed performance across projects. The Riverfront Condos project is ahead of schedule by approximately 2 weeks, while the Highway Bridge project faces a 3-week delay due to weather conditions and material delivery issues. Critical path activities are being monitored daily with recovery plans in place for delayed tasks.`;
+    } else {
+      return `Analysis of your query "${query.prompt}" shows normal operational performance across key metrics. All systems are functioning within expected parameters. No critical issues requiring immediate attention were identified in the analyzed dataset.`;
+    }
+  }
+
+  /**
+   * Generate visualizations from data
+   */
+  private async generateVisualizations(query: AiReportQuery, data: any): Promise<AiReportVisualization[]> {
+    // Mock visualizations - will be enhanced with real chart generation
+    
+    const prompt = query.prompt.toLowerCase();
+    const visualizations: AiReportVisualization[] = [];
+    
+    if (prompt.includes('cost') || prompt.includes('budget')) {
+      visualizations.push({
+        type: 'bar',
+        title: 'Project Budget vs Actual Cost',
+        data: this.mockProjects.map(p => ({
+          label: p.name,
+          value: p.actualCost,
+          secondaryValue: p.budget,
+          category: p.status
+        })),
+        config: {
+          xAxisLabel: 'Projects',
+          yAxisLabel: 'Cost ($)',
+          showLegend: true,
+          stacked: false
+        }
+      });
+      
+      visualizations.push({
+        type: 'pie',
+        title: 'Cost Code Distribution',
+        data: this.mockCostCodes.map(c => ({
+          label: c.description,
+          value: c.actual,
+          category: c.code
+        })),
+        config: {
+          showLegend: true
+        }
+      });
+    }
+    
+    if (prompt.includes('schedule') || prompt.includes('timeline')) {
+      visualizations.push({
+        type: 'gauge',
+        title: 'Overall Schedule Performance',
+        data: [{
+          label: 'On Schedule',
+          value: 75, // 75% on schedule
+          category: 'performance'
+        }],
+        config: {
+          colors: ['#00C853', '#FFD600', '#FF3D00'] // Green, Yellow, Red
+        }
+      });
+    }
+    
+    // Always include a summary table
+    visualizations.push({
+      type: 'table',
+      title: 'Summary Data',
+      data: this.mockProjects.map(p => ({
+        label: p.name,
+        value: p.actualCost,
+        secondaryValue: p.budget,
+        category: p.status
+      })),
+      config: {}
+    });
+    
+    return visualizations.slice(0, this.config.maxQueryLength || 3);
+  }
+
+  /**
+   * Apply security requirements based on security mode
+   */
+  private async applySecurityRequirements(
+    query: AiReportQuery,
+    reportData: any
+  ): Promise<{ witnessTxHash?: string; timingCertificate?: string }> {
+    const securityData: { witnessTxHash?: string; timingCertificate?: string } = {};
+    
+    // Mode φ requires XRPL witnessing
+    if (query.securityMode === AiReportSecurityMode.PHI && query.requiresWitnessing) {
+      // This will be implemented when PlenumNET witnessing service is ready
+      // For now, return mock witness hash
+      securityData.witnessTxHash = 'mock_xrpl_tx_hash_' + Date.now();
+      
+      // Mode φ also requires femtosecond timing certificate
+      securityData.timingCertificate = 'mock_timing_certificate_' + Date.now();
+    }
+    
+    return securityData;
+  }
+
+  /**
+   * Construct the final response object
+   */
+  private async constructResponse(
+    query: AiReportQuery,
+    data: any,
+    narrative: string,
+    visualizations: AiReportVisualization[],
+    generatedSql: AiGeneratedSql,
+    securityData: { witnessTxHash?: string; timingCertificate?: string },
+    options?: AiReportOptions,
+    generationTimeMs?: number
+  ): Promise<AiReportResponse> {
+    
+    // Extract key findings from narrative (simplified - will use LLM in Task 3.1)
+    const keyFindings = this.extractKeyFindings(narrative);
+    
+    return {
+      queryId: query.id,
+      tenantId: query.tenantId,
+      
+      narrative,
+      executiveSummary: this.generateExecutiveSummary(narrative),
+      keyFindings,
+      
+      visualizations,
+      generatedSql: options?.includeRawData ? generatedSql : undefined,
+      rawDataPreview: options?.includeRawData ? this.mockProjects.slice(0, 3) : undefined,
+      
+      recommendations: this.generateRecommendations(data),
+      
+      securityMode: query.securityMode,
+      witnessTxHash: securityData.witnessTxHash,
+      timingCertificate: securityData.timingCertificate,
+      
+      generatedAt: new Date(),
+      generationTimeMs: generationTimeMs || 0,
+      modelUsed: 'mock-model-v1.0',
+      confidenceScore: 0.85
+    };
+  }
+
+  /**
+   * Generate an executive summary from the narrative
+   */
+  private generateExecutiveSummary(narrative: string): string {
+    // Simplified extraction - will use LLM in Task 3.1
+    const sentences = narrative.split('. ');
+    return sentences.slice(0, 2).join('. ') + '.';
+  }
+
+  /**
+   * Extract key findings from narrative
+   */
+  private extractKeyFindings(narrative: string): string[] {
+    // Simplified extraction - will use LLM in Task 3.1
+    const findings: string[] = [];
+    
+    if (narrative.includes('over budget')) {
+      findings.push('Two projects are currently over budget');
+      findings.push('Total budget variance of $700,000 identified');
+    }
+    
+    if (narrative.includes('delay')) {
+      findings.push('One project facing schedule delays');
+      findings.push('Weather and material delivery cited as causes');
+    }
+    
+    if (findings.length === 0) {
+      findings.push('All projects operating within normal parameters');
+      findings.push('No critical issues requiring immediate attention');
+    }
+    
+    return findings.slice(0, 5);
+  }
+
+  /**
+   * Generate recommendations based on data
+   */
+  private generateRecommendations(data: any): Array<{ text: string; priority: 'high' | 'medium' | 'low'; actionItems?: string[] }> {
+    // Mock recommendations - will be generated by LLM in Task 3.1
+    return [
+      {
+        text: 'Review steel procurement process for Highway Bridge project to address 8.3% cost overrun',
+        priority: 'high',
+        actionItems: ['Meet with procurement manager', 'Request vendor quotes', 'Review contract terms']
+      },
+      {
+        text: 'Implement weekly schedule review meetings for all projects exceeding $3M budget',
+        priority: 'medium',
+        actionItems: ['Schedule recurring meeting', 'Define agenda template', 'Assign meeting lead']
+      },
+      {
+        text: 'Consider value engineering opportunities for Downtown Tower finishes package',
+        priority: 'low',
+        actionItems: ['Consult with design team', 'Research alternative materials', 'Calculate potential savings']
+      }
+    ];
+  }
+
+  /**
+   * Get mock data for development
+   */
+  private getMockDataForQuery(query: AiReportQuery): any {
+    // Return different mock data based on query type
+    const prompt = query.prompt.toLowerCase();
+    
+    if (prompt.includes('project')) {
+      return {
+        projects: this.mockProjects,
+        summary: {
+          totalBudget: this.mockProjects.reduce((sum, p) => sum + p.budget, 0),
+          totalActual: this.mockProjects.reduce((sum, p) => sum + p.actualCost, 0),
+          overBudgetCount: this.mockProjects.filter(p => p.status === 'over-budget').length,
+          underBudgetCount: this.mockProjects.filter(p => p.status === 'under-budget').length
+        }
+      };
+    }
+    
+    if (prompt.includes('cost') && prompt.includes('code')) {
+      return {
+        costCodes: this.mockCostCodes,
+        summary: {
+          totalBudget: this.mockCostCodes.reduce((sum, c) => sum + c.budget, 0),
+          totalActual: this.mockCostCodes.reduce((sum, c) => sum + c.actual, 0),
+          largestOverrun: this.mockCostCodes.reduce((max, c) => c.actual - c.budget > max.actual - max.budget ? c : max)
+        }
+      };
+    }
+    
+    return { mockData: true, query: query.prompt };
+  }
+
+  /**
+   * Validate the query before processing
+   */
+  private validateQuery(query: AiReportQuery): void {
+    if (!query.tenantId) {
+      throw new AiReportError(
+        'Tenant ID is required',
+        AiReportErrorCode.INVALID_QUERY,
+        query.id,
+        query.tenantId
+      );
+    }
+    
+    if (!query.prompt || query.prompt.trim().length === 0) {
+      throw new AiReportError(
+        'Query prompt cannot be empty',
+        AiReportErrorCode.INVALID_QUERY,
+        query.id,
+        query.tenantId
+      );
+    }
+    
+    if (query.prompt.length > (this.config.maxQueryLength || 1000)) {
+      throw new AiReportError(
+        `Query too long (max ${this.config.maxQueryLength} characters)`,
+        AiReportErrorCode.INVALID_QUERY,
+        query.id,
+        query.tenantId
+      );
+    }
+    
+    // Check for potentially harmful prompts (basic check)
+    const harmfulPatterns = [/drop table/i, /delete from/i, /insert into/i, /update.*set/i];
+    if (harmfulPatterns.some(pattern => pattern.test(query.prompt))) {
+      throw new AiReportError(
+        'Query contains potentially harmful patterns',
+        AiReportErrorCode.SECURITY_VIOLATION,
+        query.id,
+        query.tenantId
+      );
+    }
+  }
+
+  /**
+   * Log query for audit purposes
+   */
+  private async logQuery(
+    query: AiReportQuery, 
+    status: 'pending' | 'success' | 'error',
+    responseTimeMs?: number,
+    errorCode?: AiReportErrorCode
+  ): Promise<void> {
+    // This will write to your audit log table in Supabase
+    // For now, just log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[AI Report Audit]`, {
+        queryId: query.id,
+        tenantId: query.tenantId,
+        userId: query.userId,
+        prompt: query.prompt.substring(0, 100) + '...',
+        securityMode: query.securityMode,
+        status,
+        responseTimeMs,
+        errorCode,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // TODO: Implement actual audit logging to Supabase table
+    // await this.supabase.from('ai_report_audit_log').insert({ ... });
+  }
+
+  /**
+   * Generate a unique query ID
+   */
+  private generateQueryId(): string {
+    return `aiq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Helper: Generate date filter for SQL
+   */
+  private getDateFilter(dateRange?: { start: Date; end: Date }): string {
+    if (!dateRange) return '1=1';
+    
+    const startStr = dateRange.start.toISOString().split('T')[0];
+    const endStr = dateRange.end.toISOString().split('T')[0];
+    
+    return `created_at BETWEEN '${startStr}' AND '${endStr}'`;
+  }
+
+  /**
+   * Get service health status
+   */
+  async getHealthStatus(): Promise<{
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    message: string;
+    timestamp: Date;
+    features: {
+      sqlGeneration: boolean;
+      dataAccess: boolean;
+      narrativeGeneration: boolean;
+      visualization: boolean;
+      security: boolean;
+    };
+  }> {
+    return {
+      status: 'healthy',
+      message: 'AI Report Service operational in mock mode',
+      timestamp: new Date(),
+      features: {
+        sqlGeneration: true,
+        dataAccess: this.config.enableMockData,
+        narrativeGeneration: true,
+        visualization: true,
+        security: true
+      }
+    };
+  }
+
+  /**
+   * Get usage statistics for a tenant
+   */
+  async getTenantUsage(tenantId: string): Promise<{
+    tenantId: string;
+    queryCount: number;
+    lastQueryDate?: Date;
+    averageResponseTimeMs: number;
+    securityModeDistribution: Record<AiReportSecurityMode, number>;
+  }> {
+    // Mock data - will query audit log in production
+    return {
+      tenantId,
+      queryCount: 42,
+      lastQueryDate: new Date(),
+      averageResponseTimeMs: 1250,
+      securityModeDistribution: {
+        [AiReportSecurityMode.PHI]: 5,
+        [AiReportSecurityMode.ONE]: 30,
+        [AiReportSecurityMode.ZERO]: 7
+      }
+    };
+  }
+}
+
+/**
+ * Factory function to create AI Report Service
+ */
+export function createAiReportService(config: AiReportServiceConfig): AiReportService {
+  return new AiReportService(config);
+}
+```
+
+### **File 3: `server/api/ai-report/router.ts`** (Bonus - API Router)
+```typescript
+/**
+ * AI Report API Router
+ * All Rights Reserved and Preserved; Capomastro Holdings Ltd.
+ */
+
+import { Router } from 'express';
+import { z } from 'zod';
+import { AiReportService } from '../../services/ai-report-service';
+import { 
+  AiReportQuery, 
+  AiReportOptions, 
+  AiReportError, 
+  AiReportSecurityMode 
+} from '../../../shared/types/ai-report';
+
+// Validation schemas
+const GenerateReportSchema = z.object({
+  prompt: z.string().min(1).max(1000),
+  securityMode: z.enum(['phi', 'one', 'zero']).default('one'),
+  requiresWitnessing: z.boolean().default(false),
+  context: z.object({
+    projectId: z.string().optional(),
+    dateRange: z.object({
+      start: z.string().datetime(),
+      end: z.string().datetime()
+    }).optional(),
+    costCenters: z.array(z.string()).optional(),
+    wbsCodes: z.array(z.string()).optional()
+  }).optional(),
+  options: z.object({
+    includeRawData: z.boolean().default(false),
+    maxVisualizations: z.number().min(1).max(10).default(3),
+    language: z.string().default('en'),
+    detailLevel: z.enum(['summary', 'detailed', 'executive']).default('detailed'),
+    format: z.enum(['interactive', 'pdf', 'excel']).default('interactive')
+  }).optional()
+});
+
+export function createAiReportRouter(aiReportService: AiReportService): Router {
+  const router = Router();
+
+  /**
+   * Generate a new AI report
+   * POST /api/ai-report/generate
+   */
+  router.post('/generate', async (req, res) => {
+    try {
+      // Extract tenant and user from auth middleware (should be added by your auth middleware)
+      const tenantId = req.tenantId; // Set by your tenant middleware
+      const userId = req.userId;     // Set by your auth middleware
+      
+      if (!tenantId || !userId) {
+        return res.status(401).json({
+          error: 'Authentication required',
+          code: 'AUTH_REQUIRED'
+        });
+      }
+
+      // Validate request body
+      const validated = GenerateReportSchema.parse(req.body);
+      
+      // Create query object
+      const query: Omit<AiReportQuery, 'id' | 'timestamp'> = {
+        tenantId,
+        userId,
+        prompt: validated.prompt,
+        securityMode: validated.securityMode as AiReportSecurityMode,
+        requiresWitnessing: validated.requiresWitnessing,
+        context: validated.context
+      };
+
+      // Generate report
+      const report = await aiReportService.generateReport(query, validated.options);
+      
+      // Return success response
+      return res.status(200).json({
+        success: true,
+        data: report,
+        metadata: {
+          queryId: report.queryId,
+          generatedAt: report.generatedAt,
+          generationTimeMs: report.generationTimeMs
+        }
+      });
+
+    } catch (error) {
+      // Handle validation errors
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: error.errors,
+          code: 'VALIDATION_ERROR'
+        });
+      }
+      
+      // Handle AI report errors
+      if (error instanceof AiReportError) {
+        return res.status(400).json({
+          error: error.message,
+          code: error.code,
+          queryId: error.queryId,
+          tenantId: error.tenantId
+        });
+      }
+      
+      // Handle unexpected errors
+      console.error('AI Report generation error:', error);
+      return res.status(500).json({
+        error: 'Internal server error',
+        code: 'INTERNAL_ERROR'
+      });
+    }
+  });
+
+  /**
+   * Get service health status
+   * GET /api/ai-report/health
+   */
+  router.get('/health', async (_req, res) => {
+    try {
+      const health = await aiReportService.getHealthStatus();
+      return res.status(200).json(health);
+    } catch (error) {
+      return res.status(500).json({
+        status: 'unhealthy',
+        message: 'Service health check failed',
+        timestamp: new Date()
+      });
+    }
+  });
+
+  /**
+   * Get tenant usage statistics
+   * GET /api/ai-report/usage
+   */
+  router.get('/usage', async (req, res) => {
+    try {
+      const tenantId = req.tenantId;
+      if (!tenantId) {
+        return res.status(401).json({ error: 'Tenant ID required' });
+      }
+      
+      const usage = await aiReportService.getTenantUsage(tenantId);
+      return res.status(200).json(usage);
+    } catch (error) {
+      return res.status(500).json({
+        error: 'Failed to fetch usage statistics',
+        code: 'USAGE_FETCH_FAILED'
+      });
+    }
+  });
+
+  return router;
+}
+```
+
+## **Key Features Implemented in Task 1.1:**
+
+### ✅ **Completed Components:**
+1. **Type-Safe Foundation** (`shared/types/ai-report.ts`):
+   - Complete TypeScript interfaces for AI reporting
+   - Security mode integration with PlenumNET (φ, 1, 0)
+   - Audit logging types for compliance
+
+2. **Core Service Skeleton** (`server/services/ai-report-service.ts`):
+   - `generateReport()` main method with full workflow
+   - Mock data generation for development
+   - Security mode handling (witnessing for Mode φ)
+   - Error handling and validation
+   - Health check and usage statistics
+
+3. **Bonus API Router** (`server/api/ai-report/router.ts`):
+   - RESTful endpoints for integration
+   - Zod validation for request/response
+   - Authentication and tenant isolation
+
+### 🎯 **What This Enables Immediately:**
+- **Development Testing**: The mock data allows frontend developers to build the UI without waiting for AI integration
+- **Type Safety**: Full TypeScript support prevents runtime errors
+- **Security Integration**: PlenumNET security modes are baked in from the start
+- **Audit Trail**: Framework for compliance and debugging
+
+### 🔄 **What Comes Next (Tasks 1.2, 2.1, 3.1):**
+1. **Task 1.2**: O365 Graph API Client - Enables real document and email integration
+2. **Task 2.1**: Frontend AI Chat Interface - Users can actually use this service
+3. **Task 3.1**: LLM Integration - Replace mock AI with real LangChain/LLM
+
+## **Usage Example:**
+```typescript
+// Example of how to use the service in your Express app
+import { createAiReportService } from './services/ai-report-service';
+import { createAiReportRouter } from './api/ai-report/router';
+
+// Initialize with your Supabase client
+const aiReportService = createAiReportService({
+  supabase: supabaseClient, // Your Supabase client
+  enableMockData: true      // Use mock data during development
+});
+
+// Add to your Express app
+app.use('/api/ai-report', createAiReportRouter(aiReportService));
+```
+
+The service is now ready for integration. The mock data allows immediate frontend development while the architecture is prepared for real AI/LLM integration in Task 3.1.
+
+**Next Step**: Proceed with **Task 1.2** to implement the Microsoft Graph API client, which will enable real O365 integration for document editing and email functionality.

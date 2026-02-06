@@ -31,6 +31,8 @@ import CustomersPage from "@/pages/customers";
 import VendorsPage from "@/pages/vendors";
 import ContactsDirectoryPage from "@/pages/contacts-directory";
 import MaestroDevPage from "@/pages/maestro-dev";
+import AIReportsPage from "@/pages/ai-reports";
+import SmartInboxPage from "@/pages/smart-inbox";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
@@ -115,6 +117,9 @@ function Router() {
       <Route path="/documents/templates" component={WbsTemplatesPage} />
       <Route path="/documents/reports" component={DocumentReportsPage} />
       <Route path="/documents/archives" component={ArchivesPage} />
+      <Route path="/documents/smart-inbox" component={SmartInboxPage} />
+      
+      <Route path="/ai/reports" component={AIReportsPage} />
       
       <Route path="/team" component={Team} />
       <Route path="/settings" component={Settings} />

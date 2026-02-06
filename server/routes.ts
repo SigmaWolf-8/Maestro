@@ -2587,5 +2587,226 @@ export async function registerRoutes(
     });
   });
 
+  // ==================== AI REPORT ENDPOINTS ====================
+
+  app.post("/api/ai/report", async (req: Request, res: Response) => {
+    try {
+      const { generateReport } = await import("./services/ai-report-service");
+      const { aiReportQuerySchema } = await import("../shared/types/ai-report");
+      
+      const parsed = aiReportQuerySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid query", details: parsed.error.issues });
+      }
+
+      const tenantId = parsed.data.tenantId || await getDefaultTenantId();
+      const report = await generateReport({ ...parsed.data, tenantId });
+      res.json(report);
+    } catch (error) {
+      console.error("Error generating AI report:", error);
+      res.status(500).json({ error: "Failed to generate report" });
+    }
+  });
+
+  app.get("/api/ai/quick-prompts", async (_req: Request, res: Response) => {
+    try {
+      const { getQuickPrompts } = await import("./services/ai-report-service");
+      res.json(getQuickPrompts());
+    } catch (error) {
+      console.error("Error fetching quick prompts:", error);
+      res.status(500).json({ error: "Failed to fetch quick prompts" });
+    }
+  });
+
+  // ==================== WOPI HOST ENDPOINTS ====================
+
+  app.get("/api/wopi/files/:id", async (req: Request, res: Response) => {
+    try {
+      const { getFileInfo, validateAccessToken } = await import("./services/wopi-host-service");
+      const accessToken = req.query.access_token as string;
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Access token required" });
+      }
+      
+      const tokenData = validateAccessToken(accessToken);
+      if (!tokenData) {
+        return res.status(401).json({ error: "Invalid or expired access token" });
+      }
+
+      if (tokenData.fileId !== req.params.id) {
+        return res.status(403).json({ error: "Token not authorized for this document" });
+      }
+
+      const fileInfo = await getFileInfo(req.params.id, tokenData.userId);
+      if (!fileInfo) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      res.json(fileInfo);
+    } catch (error) {
+      console.error("Error getting WOPI file info:", error);
+      res.status(500).json({ error: "Failed to get file info" });
+    }
+  });
+
+  app.get("/api/wopi/files/:id/contents", async (req: Request, res: Response) => {
+    try {
+      const { validateAccessToken } = await import("./services/wopi-host-service");
+      const accessToken = req.query.access_token as string;
+      
+      if (!accessToken) {
+        return res.status(401).json({ error: "Access token required" });
+      }
+      
+      const tokenData = validateAccessToken(accessToken);
+      if (!tokenData) {
+        return res.status(401).json({ error: "Invalid or expired access token" });
+      }
+
+      if (tokenData.fileId !== req.params.id) {
+        return res.status(403).json({ error: "Token not authorized for this document" });
+      }
+
+      const doc = await storage.getDocument(req.params.id);
+      if (!doc) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      const content = doc.plainContent || doc.encryptedContent || "";
+      res.setHeader("Content-Type", doc.mimeType || "application/octet-stream");
+      res.send(Buffer.from(content, "base64"));
+    } catch (error) {
+      console.error("Error getting WOPI file contents:", error);
+      res.status(500).json({ error: "Failed to get file contents" });
+    }
+  });
+
+  app.post("/api/wopi/token/:documentId", async (req: Request, res: Response) => {
+    try {
+      const { generateAccessToken, isOfficeDocument } = await import("./services/wopi-host-service");
+      const doc = await storage.getDocument(req.params.documentId);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+
+      if (!isOfficeDocument(doc.name)) {
+        return res.status(400).json({ error: "Not a supported Office document" });
+      }
+
+      const userId = (req.session as any)?.passport?.user?.id || "anonymous";
+      const canWrite = req.body?.readOnly !== true;
+      const token = generateAccessToken(userId, req.params.documentId, canWrite);
+
+      res.json({
+        accessToken: token.token,
+        tokenTtl: token.tokenTtl,
+        wopiSrc: `${req.protocol}://${req.get("host")}/api/wopi/files/${req.params.documentId}`,
+      });
+    } catch (error) {
+      console.error("Error generating WOPI token:", error);
+      res.status(500).json({ error: "Failed to generate access token" });
+    }
+  });
+
+  // ==================== SMART INBOX ENDPOINTS ====================
+
+  app.get("/api/smart-inbox", async (req: Request, res: Response) => {
+    try {
+      const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
+      const filter = (req.query.filter as string) || "all";
+      const search = (req.query.search as string) || "";
+      
+      const projects = await storage.getProjects(tenantId);
+      const vendors = await storage.getVendors(tenantId);
+      const customers = await storage.getCustomers(tenantId);
+
+      const projectNames = projects.map(p => p.name);
+      const vendorNames = vendors.map(v => v.company);
+      const customerNames = customers.map(c => c.company || c.firstName || "");
+
+      const mockEmails = generateSmartInboxEmails(projectNames, vendorNames, customerNames, filter, search);
+      res.json({
+        emails: mockEmails,
+        filters: {
+          projects: projectNames,
+          vendors: vendorNames,
+          customers: customerNames.filter(Boolean),
+        },
+        totalCount: mockEmails.length,
+        unreadCount: mockEmails.filter((e: any) => !e.isRead).length,
+      });
+    } catch (error) {
+      console.error("Error fetching smart inbox:", error);
+      res.status(500).json({ error: "Failed to fetch smart inbox" });
+    }
+  });
+
   return httpServer;
+}
+
+function generateSmartInboxEmails(projects: string[], vendors: string[], customers: string[], filter: string, search: string) {
+  const subjects = [
+    { subject: "Updated Project Timeline", category: "project", importance: "high" },
+    { subject: "Invoice #INV-2026-0142 Submitted", category: "finance", importance: "normal" },
+    { subject: "Building Permit Approved", category: "project", importance: "high" },
+    { subject: "Material Delivery Schedule Change", category: "vendor", importance: "high" },
+    { subject: "Weekly Progress Report", category: "project", importance: "normal" },
+    { subject: "Change Order Request #CO-089", category: "project", importance: "high" },
+    { subject: "Insurance Certificate Renewal", category: "vendor", importance: "normal" },
+    { subject: "Site Inspection Results", category: "project", importance: "high" },
+    { subject: "Subcontractor Bid Submission", category: "vendor", importance: "normal" },
+    { subject: "Client Meeting Notes", category: "customer", importance: "normal" },
+    { subject: "Safety Compliance Update", category: "project", importance: "high" },
+    { subject: "Purchase Order Confirmation", category: "finance", importance: "normal" },
+    { subject: "Architectural Drawing Review", category: "project", importance: "normal" },
+    { subject: "Payment Processing Notification", category: "finance", importance: "normal" },
+    { subject: "Schedule Conflict Alert", category: "project", importance: "high" },
+  ];
+
+  const senders = [
+    ...(vendors.length > 0 ? vendors.slice(0, 3).map(v => ({ name: `${v}`, email: `info@${(v || "vendor").toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^$/, 'vendor')}.com` })) : []),
+    ...(customers.length > 0 ? customers.slice(0, 2).map(c => ({ name: `${c}`, email: `contact@${(c || "customer").toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^$/, 'customer')}.com` })) : []),
+    { name: "City Building Department", email: "permits@citybuilding.gov" },
+    { name: "Safety Inspector", email: "inspector@safetyboard.org" },
+    { name: "Accounting Team", email: "ap@internal.com" },
+  ];
+
+  const emails = subjects.map((s, i) => {
+    const sender = senders[i % senders.length];
+    const project = projects.length > 0 ? projects[i % projects.length] : null;
+    const daysAgo = Math.floor(i * 0.7);
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    date.setHours(9 + (i % 8), (i * 17) % 60);
+
+    return {
+      id: `email-${i + 1}`,
+      subject: s.subject,
+      from: sender,
+      receivedAt: date.toISOString(),
+      category: s.category,
+      importance: s.importance,
+      isRead: i > 3,
+      preview: `This email relates to ${project || "general operations"}. Please review the attached documentation and respond at your earliest convenience.`,
+      relatedProject: project,
+      hasAttachment: i % 3 === 0,
+      labels: [s.category, ...(s.importance === "high" ? ["urgent"] : [])],
+    };
+  });
+
+  let filtered = emails;
+  if (filter !== "all") {
+    filtered = filtered.filter(e => e.category === filter);
+  }
+  if (search) {
+    const lower = search.toLowerCase();
+    filtered = filtered.filter(e =>
+      e.subject.toLowerCase().includes(lower) ||
+      e.from.name.toLowerCase().includes(lower) ||
+      e.preview.toLowerCase().includes(lower)
+    );
+  }
+
+  return filtered;
 }
