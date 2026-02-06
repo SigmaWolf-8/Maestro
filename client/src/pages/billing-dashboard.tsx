@@ -81,6 +81,19 @@ export default function BillingDashboard() {
     },
   });
 
+  const markPaidMutation = useMutation({
+    mutationFn: async (invoiceId: number) => {
+      return apiRequest("POST", `/api/billing/invoices/${invoiceId}/pay`, {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/billing/invoices"] });
+      toast({ title: "Invoice paid", description: "Invoice has been marked as paid." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to mark invoice as paid.", variant: "destructive" });
+    },
+  });
+
   const witnessMutation = useMutation({
     mutationFn: async (invoiceId: number) => {
       return apiRequest("POST", `/api/billing/invoices/${invoiceId}/witness`, { provider: "algorand" });
@@ -101,11 +114,11 @@ export default function BillingDashboard() {
   const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "paid":
-        return <Badge variant="default" className="bg-green-600" data-testid={`badge-status-paid`}>Paid</Badge>;
+        return <Badge variant="default" data-testid="badge-status-paid">Paid</Badge>;
       case "overdue":
-        return <Badge variant="destructive" data-testid={`badge-status-overdue`}>Overdue</Badge>;
+        return <Badge variant="destructive" data-testid="badge-status-overdue">Overdue</Badge>;
       case "draft":
-        return <Badge variant="secondary" data-testid={`badge-status-draft`}>Draft</Badge>;
+        return <Badge variant="secondary" data-testid="badge-status-draft">Draft</Badge>;
       default:
         return <Badge variant="outline" data-testid={`badge-status-${status}`}>{status || "Unknown"}</Badge>;
     }
@@ -213,6 +226,17 @@ export default function BillingDashboard() {
                       <TableCell data-testid={`text-invoice-province-${invoice.id}`}>{invoice.province || "N/A"}</TableCell>
                       <TableCell>
                         <div className="flex gap-2 flex-wrap">
+                          {invoice.status !== "paid" && (
+                            <Button
+                              size="sm"
+                              onClick={() => markPaidMutation.mutate(invoice.id)}
+                              disabled={markPaidMutation.isPending}
+                              data-testid={`button-pay-${invoice.id}`}
+                            >
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              Mark Paid
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"

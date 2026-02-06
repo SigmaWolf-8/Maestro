@@ -82,6 +82,11 @@ export default function SubscriptionManagement() {
 
   const { data: calculation, isLoading: calcLoading } = useQuery<BillingCalculation>({
     queryKey: ["/api/subscriptions/calculate", selectedProvince],
+    queryFn: async () => {
+      const res = await fetch(`/api/subscriptions/calculate?province=${selectedProvince}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to calculate billing");
+      return res.json();
+    },
     enabled: !!selectedProvince,
   });
 
@@ -100,6 +105,19 @@ export default function SubscriptionManagement() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to change plan. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async (atPeriodEnd: boolean) => {
+      return apiRequest("POST", "/api/subscriptions/cancel", { atPeriodEnd });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions/current"] });
+      toast({ title: "Subscription cancelled", description: "Your subscription will end at the current period." });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to cancel subscription.", variant: "destructive" });
     },
   });
 
@@ -200,6 +218,23 @@ export default function SubscriptionManagement() {
                 </div>
               )}
             </CardContent>
+            {current.subscription.status !== "canceled" && (
+              <CardFooter className="flex justify-end gap-2 flex-wrap">
+                {current.subscription.cancelAtPeriodEnd ? (
+                  <Badge variant="secondary" data-testid="badge-cancel-pending">Cancellation pending at period end</Badge>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cancelMutation.mutate(true)}
+                    disabled={cancelMutation.isPending}
+                    data-testid="button-cancel-subscription"
+                  >
+                    Cancel Subscription
+                  </Button>
+                )}
+              </CardFooter>
+            )}
           </Card>
 
           {usageLoading ? (
