@@ -435,7 +435,7 @@ export default function VendorsForm() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">None</SelectItem>
-                          <SelectItem value="Due on Receipt">Due on Receipt</SelectItem>
+                          <SelectItem value="DOR - Due on Receipt">DOR - Due on Receipt</SelectItem>
                           <SelectItem value="Net 10">Net 10</SelectItem>
                           <SelectItem value="Net 15">Net 15</SelectItem>
                           <SelectItem value="Net 30">Net 30</SelectItem>
@@ -451,16 +451,16 @@ export default function VendorsForm() {
                     <div>
                       <Label htmlFor="arTerms" className="text-xs">AR Terms</Label>
                       <Select
-                        value={vendor.arTerms || ""}
+                        value={vendor.arTerms || "DOR - Due on Receipt"}
                         onValueChange={(value) => handleFieldBlur("arTerms", value === "__none__" ? "" : value)}
                         disabled={!editMode}
                       >
                         <SelectTrigger id="arTerms" className="h-8" data-testid="select-ar-terms">
-                          <SelectValue placeholder="Select..." />
+                          <SelectValue placeholder="DOR - Due on Receipt" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">None</SelectItem>
-                          <SelectItem value="Due on Receipt">Due on Receipt</SelectItem>
+                          <SelectItem value="DOR - Due on Receipt">DOR - Due on Receipt</SelectItem>
                           <SelectItem value="Net 10">Net 10</SelectItem>
                           <SelectItem value="Net 15">Net 15</SelectItem>
                           <SelectItem value="Net 30">Net 30</SelectItem>
@@ -517,6 +517,16 @@ export default function VendorsForm() {
                         data-testid="checkbox-subtrade"
                       />
                       <Label htmlFor="subtrade" className="text-xs">Subtrade</Label>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Checkbox
+                        id="includeInPayroll"
+                        checked={vendor.includeInPayroll || false}
+                        disabled={!editMode}
+                        onCheckedChange={(checked) => handleFieldBlur("includeInPayroll", checked)}
+                        data-testid="checkbox-payroll"
+                      />
+                      <Label htmlFor="includeInPayroll" className="text-xs">Include in Payroll</Label>
                     </div>
                   </div>
                 </CardContent>

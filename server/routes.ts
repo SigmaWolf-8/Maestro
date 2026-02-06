@@ -877,9 +877,9 @@ export async function registerRoutes(
       const tenantId = (req.query.tenantId as string) || await getDefaultTenantId();
       
       const sampleVendors = [
-        { tenantId, company: "ABC Supply Co.", vendorId: "V001", address: "100 Industrial Blvd", city: "Calgary", stateProvince: "AB", zipPostalCode: "T2E 1K5", countryRegion: "Canada", matVendor: true, subtrade: false, apTerms: "Net 30" },
-        { tenantId, company: "Elite Electrical Ltd.", vendorId: "V002", address: "250 Trade Way", city: "Edmonton", stateProvince: "AB", zipPostalCode: "T5J 2L8", countryRegion: "Canada", matVendor: false, subtrade: true, apTerms: "Net 15", wcbNum: "WCB-12345" },
-        { tenantId, company: "Premium Plumbing Services", vendorId: "V003", address: "75 Service Rd", city: "Red Deer", stateProvince: "AB", zipPostalCode: "T4N 3X2", countryRegion: "Canada", matVendor: false, subtrade: true, apTerms: "Net 30", gstNum: "GST-98765" },
+        { tenantId, company: "ABC Supply Co.", vendorId: "V001", address: "100 Industrial Blvd", city: "Calgary", stateProvince: "AB", zipPostalCode: "T2E 1K5", countryRegion: "Canada", matVendor: true, subtrade: false, apTerms: "Net 30", arTerms: "DOR - Due on Receipt" },
+        { tenantId, company: "Elite Electrical Ltd.", vendorId: "V002", address: "250 Trade Way", city: "Edmonton", stateProvince: "AB", zipPostalCode: "T5J 2L8", countryRegion: "Canada", matVendor: false, subtrade: true, apTerms: "Net 15", arTerms: "DOR - Due on Receipt", wcbNum: "WCB-12345", includeInPayroll: true },
+        { tenantId, company: "Premium Plumbing Services", vendorId: "V003", address: "75 Service Rd", city: "Red Deer", stateProvince: "AB", zipPostalCode: "T4N 3X2", countryRegion: "Canada", matVendor: false, subtrade: true, apTerms: "Net 30", arTerms: "Net 30", gstNum: "GST-98765" },
       ];
       
       for (const v of sampleVendors) {

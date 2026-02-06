@@ -913,7 +913,12 @@ export class DatabaseStorage implements IStorage {
 
   async createVendor(vendor: InsertVendor): Promise<Vendor> {
     const id = randomUUID();
-    const [created] = await db.insert(vendors).values({ ...vendor, id }).returning();
+    const data = {
+      ...vendor,
+      id,
+      arTerms: vendor.arTerms || "DOR - Due on Receipt",
+    };
+    const [created] = await db.insert(vendors).values(data).returning();
     return created;
   }
 
