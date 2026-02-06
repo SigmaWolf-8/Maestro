@@ -2311,6 +2311,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
           { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
           { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
         ]},
+        billing,
       ];
 
     case "general":
