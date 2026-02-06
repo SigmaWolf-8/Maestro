@@ -27,7 +27,7 @@ The project is organized into `client/` (React frontend), `server/` (Express bac
 - **Settings & Customization:** Extensive per-company branding options, including logo upload, typography, and color themes, persisted to the backend.
 - **Legacy Form Recreations:** Includes recreation of MS Access VBA forms for Vendors & Pricing and Customers, featuring auto-save on field blur, detailed data entry, and condensed layouts. Vendors page includes: 4-digit auto-generated vendor IDs (V0001), Date Added display, Vendor Compliance section (WCB Compliance Date, Insurance Expiry Date, Hold All Payments), scrollable all-contacts container, AP/AR Terms dropdowns with standard accounting payment terms, and Include in Payroll checkbox.
 - **Contacts Directory:** Unified searchable/filterable table of all customers, vendor contacts, and employees with category filtering, sorting, and pagination.
-- **File Manager:** Sophisticated document management system with drag-and-drop uploads, 13-dimensional WBS filtering/meta-tagging, and a large document viewer.
+- **File Manager:** Sophisticated document management system with drag-and-drop uploads, 13-dimensional WBS filtering/meta-tagging, a large document viewer, and inline Office Online editing for Word/Excel/PowerPoint documents via WOPI integration.
 - **User Group Security:** Provides granular, form-level access control with user group management and a permissions matrix (View, Create, Edit, Delete).
 
 ### Email Configuration (Per-User)
@@ -45,8 +45,9 @@ Email sending is configured per user (not per tenant). Each user sets up their o
 - **API Endpoints**: `GET /api/wopi/files/:id` (CheckFileInfo), `GET /api/wopi/files/:id/contents` (GetFile), `POST /api/wopi/token/:documentId` (generate token). Token-document binding enforced for multi-tenant security.
 
 ### Smart Inbox
-- **Smart Inbox Page** (`client/src/pages/smart-inbox.tsx`): Email interface surfacing project-relevant emails within the ERP. Features category filtering (project/vendor/finance/customer), search, email detail view with project linking, and Microsoft Graph integration placeholders.
-- **API Endpoint**: `GET /api/smart-inbox` with filter/search parameters. Generates contextual mock emails linked to actual projects, vendors, and customers from the database.
+- **Smart Inbox Page** (`client/src/pages/smart-inbox.tsx`): Email interface surfacing project-relevant emails within the ERP. Features category filtering (project/vendor/finance/customer), search, email detail view with project linking, AI-assisted WBS tagging, and Microsoft Graph integration placeholders.
+- **WBS Tagging Engine**: Server-side keyword-matching engine (`EMAIL_WBS_KEYWORD_MAP` in routes.ts) auto-tags emails across 8 WBS dimensions (phase, trade, location, system, cost_code, responsibility, material, work_package) with confidence scores (0.5-0.95 range). Tags displayed as grouped badges with dimension icons, confidence percentages, and color coding (green >= 80%, amber >= 60%, muted < 60%).
+- **API Endpoint**: `GET /api/smart-inbox` with filter/search parameters. Returns emails with `wbsTags` array: `{dimensionType, wbsCodeId, codeName, codeValue, confidence}`.
 
 ### Navigation
 Navigation follows an 8-section architecture (Dashboard, People, Projects, Finance, Sales, Marketing, Intelligence, Documents) with database-driven, tenant-specific configuration. The "Intelligence" section (order 65) contains AI Analytics. The "Documents" section includes Smart Inbox.
