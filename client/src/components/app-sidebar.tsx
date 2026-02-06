@@ -251,7 +251,8 @@ export function AppSidebar({
     if (navigationItems.length === 0) return [];
     const tree = buildNavigationTree(navigationItems);
     const roleFiltered = filterByRole(tree, userRoleLevel);
-    return enforceChoiceConstraint(roleFiltered);
+    const constrained = enforceChoiceConstraint(roleFiltered);
+    return constrained.filter(item => item.path !== "/security/dashboard");
   }, [navigationItems, userRoleLevel]);
 
   const isActive = (path?: string | null) => {
@@ -329,6 +330,19 @@ export function AppSidebar({
       <SidebarFooter className="border-t-[3px] border-t-black/20 shadow-[inset_0_6px_12px_rgba(0,0,0,0.25),inset_0_-4px_8px_rgba(255,255,255,0.05)]">
         <div className="px-2 py-1 space-y-0.5">
           <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={isActive("/security/dashboard")}
+                data-testid="nav-plenumnet-security"
+                style={{ fontSize: '65%', minHeight: '1.4rem', height: '1.4rem' }}
+              >
+                <Link href="/security/dashboard">
+                  <Shield className="h-2.5 w-2.5" />
+                  <span>PlenumNET Security</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
