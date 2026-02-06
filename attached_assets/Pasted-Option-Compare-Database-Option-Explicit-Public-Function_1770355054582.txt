@@ -1,0 +1,1101 @@
+Option Compare Database
+Option Explicit
+Public Function ARTerms(CompanyName As String) As Variant
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+    Set Yoda = CurrentDb
+    Set rs = Yoda.OpenRecordset("Select * from SalviVendors where Company='" & CompanyName & "'", dbOpenSnapshot)
+    If Not rs.EOF Then
+        ARTerms = Nz(rs![AR Terms], 7)
+        If InStr(ARTerms, "net") Then
+            ARTerms = Mid(rs![AR Terms], 5)
+        End If
+
+        If InStr(ARTerms, "on reciept") Then
+            ARTerms = 0
+        End If
+    Else
+        ARTerms = 7
+    End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function APTerms(CompanyName As String) As Variant
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+    Set Yoda = CurrentDb
+    Set rs = Yoda.OpenRecordset("Select * from SalviVendors where Company='" & CompanyName & "'", dbOpenSnapshot)
+    If Not rs.EOF Then
+        APTerms = Nz(rs![AP Terms], 30)
+        If InStr(APTerms, "net") Then
+            APTerms = Mid(rs![AP Terms], 5)
+        End If
+
+        If InStr(APTerms, "on reciept") Then
+            APTerms = 0
+        End If
+    Else
+        APTerms = 30
+    End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function CurrentAccPeriod(PeriodDate) As Integer
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Dim PeriodMonth As Integer, PeriodYear As String, Periodday As String, PeriodDateBeg As Date
+Set Yoda = CurrentDb
+
+Periodday = 1
+PeriodMonth = Month(PeriodDate)
+PeriodYear = Year(PeriodDate)
+
+PeriodDateBeg = PeriodMonth & "/" & Periodday & "/" & PeriodYear
+
+Set rs = Yoda.OpenRecordset("Select * From AccPeriods where PeriodstartDate=#" & PeriodDateBeg & "#")
+
+If Not rs.EOF Then
+    CurrentAccPeriod = rs!Period
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+
+End Function
+Public Function APRecordsForExport() As Boolean
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From PeachtreeINVPost", dbOpenSnapshot)
+
+If rs.EOF Then APRecordsForExport = False Else APRecordsForExport = True
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function ARRecordsForExport() As Boolean
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From PeachtreeINVPostAR", dbOpenSnapshot)
+
+If rs.EOF Then ARRecordsForExport = False Else ARRecordsForExport = True
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function INVRecordsForExport() As Boolean
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From PeachtreeInventory", dbOpenSnapshot)
+
+If rs.EOF Then INVRecordsForExport = False Else INVRecordsForExport = True
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function PayrollRecordsForExport() As Boolean
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From PeachTreePayrollPost", dbOpenSnapshot)
+
+If rs.EOF Then PayrollRecordsForExport = False Else PayrollRecordsForExport = True
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Sub SchedulePostAR(Optional SkipMessage As Boolean)
+Dim TodayDate As String, dateANDTime As String, Filename As String, wks As Workspace
+
+Set wks = DBEngine.Workspaces(0)
+Screen.MousePointer = 11
+If ARRecordsForExport = True Then
+    TodayDate = Month(Now) & "_" & Day(Now) & "_" & Year(Now)
+
+    dateANDTime = " (" & Hour(Time) & "-" & Minute(Time) & "-" & Second(Time) & ")"
+    Filename = "AR_" & TodayDate & dateANDTime
+
+    
+    'Copy Peachtree to Post Table to new temp table to clean up Sharepoint fields
+    wks.BeginTrans
+    CurrentDb.Execute "Select PeachtreeINVPostAR.[Customer ID], PeachtreeINVPostAR.[Customer Name], PeachtreeINVPostAR.[Invoice/CM #], PeachtreeINVPostAR.INVDate, PeachtreeINVPostAR.[Date Due], PeachtreeINVPostAR.[Accounts Receivable Account], PeachtreeINVPostAR.[Accounts Receivable Amount], PeachtreeINVPostAR.[Number of Distributions], PeachtreeINVPostAR.[Invoice/CM Distribution],PeachtreeINVPostAR.Quantity,PeachtreeINVPostAR.[Item ID], PeachtreeINVPostAR.Description, PeachtreeINVPostAR.[G/L Account], PeachtreeINVPostAR.[Tax Type],PeachtreeINVPostAR.Amount, PeachtreeINVPostAR.[Job ID], PeachtreeINVPostAR.[Transaction Period] INTO PeachtreeINVTempAR FROM PeachtreeINVPostAR Order by PeachtreeINVPostAR.[Invoice/CM #], PeachtreeINVPostAR.[Invoice/CM Distribution];"
+    wks.CommitTrans
+    
+    'Create Spreadsheet
+    'DoCmd.TransferSpreadsheet acExport, acSpreadsheetTypeExcel9, "PeachtreeINVTempAR", ExcelARLocation & Filename & ".xls" 'Excel Format
+    DoCmd.TransferText acExportDelim, , "PeachtreeINVTempAR", ExcelARLocation & Filename & ".csv", True 'Text Format
+    
+    'Delete Temp File
+    DoCmd.DeleteObject acTable, "PeachtreeINVTempAR"
+    
+    'Copy exported items into backupfile and delete from original Posting table
+    wks.BeginTrans
+    TodayDate = Now
+    CurrentDb.Execute ("INSERT INTO PeachtreeINVEXportedAR (ID, [Customer ID], [Customer Name], [Invoice/CM #], INVDate, [Date Due], [Accounts Receivable Account], [Accounts Receivable Amount], [Number of Distributions], [Invoice/CM Distribution],Quantity,[Item ID], Description, [G/L Account],[Tax Type], Amount, [Job ID], [Transaction Period], ExportDate) SELECT PeachtreeINVPostAR.ID, PeachtreeINVPostAR.[Customer ID], PeachtreeINVPostAR.[Customer Name], PeachtreeINVPostAR.[Invoice/CM #], PeachtreeINVPostAR.INVDate, PeachtreeINVPostAR.[Date Due], PeachtreeINVPostAR.[Accounts Receivable Account], PeachtreeINVPostAR.[Accounts Receivable Amount], PeachtreeINVPostAR.[Number of Distributions], PeachtreeINVPostAR.[Invoice/CM Distribution]," & _
+    "PeachtreeINVPostAR.Quantity,PeachtreeINVPostAR.[Item ID],PeachtreeINVPostAR.Description, PeachtreeINVPostAR.[G/L Account], PeachtreeINVPostAR.[Tax Type], PeachtreeINVPostAR.Amount, PeachtreeINVPostAR.[Job ID], PeachtreeINVPostAR.[Transaction Period],#" & TodayDate & "# AS Expr1 FROM PeachtreeINVPostAR;")
+    CurrentDb.Execute ("DELETE PeachtreeINVPostAR.* FROM PeachtreeINVPostAR;")
+    wks.CommitTrans
+    
+    'Send Email notifying file that has been exported
+    AutoSendEmail AccountantE, , PresidentE, "A new AR batch has been exported", "Receivables are ready for importation and posting into Peachtree.  A file has been created on " & ExcelARLocation & Filename & ".xls", , , , , , , True
+        
+     'AutoSendEmail "Rob@Salvi-Homes.com", , , "JUST A TEST__New AP batch has been exported", "Invoices are ready for importation and posting into Peachtree.  A file has been created on " & ExcelARLocation & Filename & ".csv"
+    DoCmd.Beep
+Else
+If SkipMessage <> True Then MsgBox "There are currently no recevables waiting for export", vbCritical, "Rockhead Accounting"
+End If
+Screen.MousePointer = 1
+
+Set wks = Nothing
+End Sub
+Public Sub SchedulePostAP(Optional SkipMessage As Boolean)
+Dim TodayDate As String, dateANDTime As String, Filename As String, wks As Workspace
+
+Set wks = DBEngine.Workspaces(0)
+Screen.MousePointer = 11
+If APRecordsForExport = True Then
+    TodayDate = Month(Now) & "_" & Day(Now) & "_" & Year(Now)
+
+    dateANDTime = " (" & Hour(Time) & "-" & Minute(Time) & "-" & Second(Time) & ")"
+    Filename = "AP_" & TodayDate & dateANDTime
+    
+    wks.BeginTrans
+    'Copy Pechtree to Post Table to new temp table to clean up Sharepoint fields
+    CurrentDb.Execute "Select PeachtreeINVPost.[Vendor ID], PeachtreeINVPost.[Vendor Name], PeachtreeINVPost.[Invoice/CM #], PeachtreeINVPost.INVDate, PeachtreeINVPost.[Date Due], PeachtreeINVPost.[Discount Date], PeachtreeINVPost.[Discount Amount], PeachtreeINVPost.[Accounts Payable Account], PeachtreeINVPost.[Accounts Payable Amount], PeachtreeINVPost.[Number of Distributions], PeachtreeINVPost.[Invoice/CM Distribution], PeachtreeINVPost.Description, PeachtreeINVPost.[G/L Account], PeachtreeINVPost.Amount, PeachtreeINVPost.[Job ID], PeachtreeINVPost.[Company], PeachtreeINVPost.[Transaction Period] INTO PeachtreeINVTemp FROM PeachtreeINVPost Order by PeachtreeINVPost.[Invoice/CM #], PeachtreeINVPost.[Invoice/CM Distribution];"
+    wks.CommitTrans
+    
+    'Create Spreadsheet
+    'DoCmd.TransferSpreadsheet acExport, acSpreadsheetTypeExcel9, "PeachtreeINVTemp", ExcelAPLocation & Filename & ".xls" 'Excel Format
+    DoCmd.TransferText acExportDelim, , "PeachtreeINVTemp", ExcelAPLocation & Filename & ".csv", True 'Text Format
+    'Delete Temp File
+    DoCmd.DeleteObject acTable, "PeachtreeINVTemp"
+    'Copy exported items into backupfile and delete from original Posting table
+    TodayDate = Now
+    
+    wks.BeginTrans
+    CurrentDb.Execute ("INSERT INTO PeachtreeINVEXported (ID, [Vendor ID], [Vendor Name], [Invoice/CM #], INVDate, [Date Due], [Discount Date], [Discount Amount], [Accounts Payable Account], [Accounts Payable Amount], [Number of Distributions], [Invoice/CM Distribution], Description, [G/L Account], Amount, [Job ID],[Company], [Transaction Period], ExportDate) SELECT PeachtreeINVPost.ID, PeachtreeINVPost.[Vendor ID], PeachtreeINVPost.[Vendor Name], PeachtreeINVPost.[Invoice/CM #], PeachtreeINVPost.INVDate, PeachtreeINVPost.[Date Due], PeachtreeINVPost.[Discount Date], PeachtreeINVPost.[Discount Amount], PeachtreeINVPost.[Accounts Payable Account], PeachtreeINVPost.[Accounts Payable Amount], PeachtreeINVPost.[Number of Distributions], PeachtreeINVPost.[Invoice/CM Distribution], PeachtreeINVPost.Description, PeachtreeINVPost.[G/L Account], PeachtreeINVPost.Amount, PeachtreeINVPost.[Job ID],PeachtreeINVPost.[Company], PeachtreeINVPost.[Transaction Period],#" & TodayDate & "# AS Expr1 FROM PeachtreeINVPost;")
+    CurrentDb.Execute ("DELETE PeachtreeINVPost.* FROM PeachtreeINVPost;")
+    wks.CommitTrans
+    
+    'Send Email notifying file that has been exported
+    Dim FileLoc As String
+    FileLoc = ExcelAPLocation & Filename & ".csv"
+    AutoSendEmail AccountantE, , PresidentE, "New Salvi/Ironwood AP batch has been exported", "Invoices are ready for importation and posting into Peachtree." & vbCrLf & "A file has been created on..." & vbCrLf & FileLoc, , , , , , , True
+    'AutoSendEmail AccountantE, , PresidentE, "New AP batch has been exported", "Invoices are ready for importation and posting into Peachtree." & vbcrlf & "A file has been created on " & ExcelAPLocation & Filename & ".csv", , , , , , , True
+        'AutoSendEmail AccountantE, "Rob@Salvi-Homes.com", , "JUST A TEST__New AP batch has been exported", "Invoices are ready for importation and posting into Peachtree.  A file has been created on " & ExcelAPLocation & Filename & ".csv"
+    DoCmd.Beep
+Else
+If SkipMessage <> True Then MsgBox "There are currently no approved payable invoices waiting for export", vbCritical, "Salvi Accounting"
+End If
+
+Set wks = Nothing
+Screen.MousePointer = 1
+End Sub
+Public Sub SchedulePostINV(Optional SkipMessage As Boolean)
+Dim TodayDate As String, dateANDTime As String, Filename As String
+
+Screen.MousePointer = 11
+If INVRecordsForExport = True Then
+    TodayDate = Month(Now) & "_" & Day(Now) & "_" & Year(Now)
+
+    dateANDTime = " (" & Hour(Time) & "-" & Minute(Time) & "-" & Second(Time) & ")"
+    Filename = "Inventory_" & TodayDate & dateANDTime
+
+    'Copy Pechtree to Post Table to new temp table to clean up Sharepoint fields
+    CurrentDb.Execute "Select PeachtreeInventory.[Vendor ID], PeachtreeInventory.[Invoice/CM #], PeachtreeInventory.INVDate, PeachtreeInventory.[Date Due],PeachtreeInventory.[Number of Distributions], PeachtreeInventory.[Invoice/CM Distribution], PeachtreeInventory.Quantity,PeachtreeInventory.[Item ID],PeachtreeInventory.Description, PeachtreeInventory.[G/L Account], PeachtreeInventory.Amount, PeachtreeInventory.[Transaction Period] INTO PeachtreeInventoryTemp FROM PeachtreeInventory Order by PeachtreeInventory.[Invoice/CM #], PeachtreeInventory.[Invoice/CM Distribution];"
+    'Create Spreadsheet
+    'DoCmd.TransferSpreadsheet acExport, acSpreadsheetTypeExcel9, "PeachtreeInventoryTemp", ExcelAPLocation & Filename & ".xls" 'Excel Format
+    DoCmd.TransferText acExportDelim, , "PeachtreeInventoryTemp", ExcelAPLocation & Filename & ".csv", True 'Text Format
+    'Delete Temp File
+    DoCmd.DeleteObject acTable, "PeachtreeInventoryTemp"
+    'Copy exported items into backupfile and delete from original Posting table
+    TodayDate = Now
+    CurrentDb.Execute ("INSERT INTO PeachtreeInventoryEXported (ID, [Vendor ID], [Invoice/CM #], INVDate, [Date Due], [Number of Distributions], [Invoice/CM Distribution],Quantity,[Item ID], Description, [G/L Account], Amount, [Transaction Period], ExportDate) SELECT PeachtreeInventory.ID, PeachtreeInventory.[Vendor ID], PeachtreeInventory.[Invoice/CM #], PeachtreeInventory.INVDate, PeachtreeInventory.[Date Due], PeachtreeInventory.[Number of Distributions], PeachtreeInventory.[Invoice/CM Distribution], PeachtreeInventory.Quantity,PeachtreeInventory.[Item ID],PeachtreeInventory.Description, PeachtreeInventory.[G/L Account], PeachtreeInventory.Amount, PeachtreeInventory.[Transaction Period],#" & TodayDate & "# AS Expr1 FROM PeachtreeInventory;")
+    CurrentDb.Execute ("DELETE PeachtreeInventory.* FROM PeachtreeInventory;")
+    'Send Email notifying file that has been exported
+    AutoSendEmail AccountantE, , PresidentE, "New Inventory batch has been exported", "Items are ready for importation and posting into Peachtree.  A file has been created on " & ExcelAPLocation & Filename & ".xls", , , , , , , True
+    DoCmd.Beep
+Else
+If SkipMessage <> True Then MsgBox "There are currently no inventory items waiting for export", vbCritical, "Salvi Accounting"
+End If
+
+Screen.MousePointer = 1
+End Sub
+Public Sub SchedulePostPayroll(Optional SkipMessage As Boolean)
+Dim TodayDate As String, dateANDTime As String, Filename As String
+Dim Yoda As DAO.Database, fld As DAO.Field, wks As Workspace
+
+Set wks = DBEngine.Workspaces(0)
+
+Screen.MousePointer = 11
+If PayrollRecordsForExport = True Then
+    TodayDate = Month(Now) & "_" & Day(Now) & "_" & Year(Now)
+
+    dateANDTime = " (" & Hour(Time) & "-" & Minute(Time) & "-" & Second(Time) & ")"
+    Filename = "Payroll_" & TodayDate & dateANDTime
+    
+    'Run Queries to Change 12:00 times so Peachtree accepts tickets less than 1 hour
+    wks.BeginTrans
+    CurrentDb.Execute "UPDATE PeachTreePayrollPost SET PeachTreePayrollPost.Duration = '1/1/1900 00:15:00 AM' WHERE (((PeachTreePayrollPost.Duration)='1/1/1900 12:15:00 AM'));"
+    CurrentDb.Execute "UPDATE PeachTreePayrollPost SET PeachTreePayrollPost.Duration = '1/1/1900 00:30:00 AM' WHERE (((PeachTreePayrollPost.Duration)='1/1/1900 12:30:00 AM'));"
+    CurrentDb.Execute "UPDATE PeachTreePayrollPost SET PeachTreePayrollPost.Duration = '1/1/1900 00:45:00 AM' WHERE (((PeachTreePayrollPost.Duration)='1/1/1900 12:45:00 AM'));"
+    wks.CommitTrans
+
+    'Copy Peachtree to Post Table to new temp table to clean up Sharepoint fields.
+    wks.BeginTrans
+    CurrentDb.Execute "SELECT PeachTreePayrollPost.[Employee/Vendor], PeachTreePayrollPost.[Recorded by ID], PeachTreePayrollPost.[Ticket Number], PeachTreePayrollPost.[Ticket Date], PeachTreePayrollPost.[Has been used in Sales/Invoicing], PeachTreePayrollPost.[Activity Item ID], PeachTreePayrollPost.[Customer/Job/Adm], PeachTreePayrollPost.[Completed for ID], PeachTreePayrollPost.[Pay Level], PeachTreePayrollPost.[Has been used in Payroll], PeachTreePayrollPost.[Manual/Timed Option], Format([Duration], 'h:mm:ss') AS Expr1, PeachTreePayrollPost.[Billing Type], PeachTreePayrollPost.[Billing Rate], PeachTreePayrollPost.[Billing Status] INTO PeachtreePayrollTemp FROM PeachTreePayrollPost;"
+    'Rename Exp1 to Duration (Needed for formatting)
+    Set Yoda = CurrentDb
+    Set fld = Yoda.TableDefs("PeachtreePayrollTemp").Fields("Expr1")
+    fld.Name = "Duration"
+    Yoda.Close
+    Set Yoda = Nothing
+    Set fld = Nothing
+    wks.CommitTrans
+    
+    wks.BeginTrans
+    CurrentDb.Execute "UPDATE PeachtreePayrollTemp SET PeachtreePayrollTemp.Duration = PeachtreePayrollTemp.[Duration] &  ' AM';"
+    'Clean out any vendor Time Ticket hours.  They still need to invoice.  Hours can be imported into invoice.
+    CurrentDb.Execute "Delete * From PeachtreePayrollTemp Where [Employee/Vendor]=1" 'Maybe it should be deleted from PeachTreePayrollPost instead?
+        'Truncate phase and job codes if job number is missing.  Not neccesary now that GL Batch takes care of job coding
+        'CurrentDb.Execute "UPDATE PeachtreePayrollTemp SET PeachtreePayrollTemp.[Completed for ID] = null WHERE (((PeachtreePayrollTemp.[Completed for ID]) Like (',*')));"
+    'Remove Job ID's as these are now captured in a seperate GL batch.
+    CurrentDb.Execute "UPDATE PeachtreePayrollTemp SET PeachtreePayrollTemp.[Completed for ID] = null"
+    'And set all time to admin. Job Costing will be achieved through GL batch
+    CurrentDb.Execute "UPDATE PeachtreePayrollTemp SET PeachtreePayrollTemp.[Customer/Job/Adm] = 3"
+    wks.CommitTrans
+
+    
+
+    'Create Spreadsheet
+    DoCmd.TransferText acExportDelim, , "PeachtreePayrollTemp", ExcelPayrollLocation & Filename & ".csv", True 'Text Format
+    'Delete Temp File
+    DoCmd.DeleteObject acTable, "PeachtreePayrollTemp"
+    
+    'Copy exported items into backupfile and delete from original Posting table
+    'wks.BeginTrans
+    'TodayDate = Now
+    'CurrentDb.Execute ("INSERT INTO PeachTreePayrollExported ([Employee/Vendor], [Recorded by ID], [Ticket Number], [Ticket Date], [Has been used in Sales/Invoicing], [Activity Item ID], [Customer/Job/Adm], [Completed for ID], [Pay Level], [Has been used in Payroll], [Manual/Timed Option], Duration, [Billing Type], [Billing Rate], [Billing Status], ExportDate) SELECT PeachTreePayrollPost.[Employee/Vendor], PeachTreePayrollPost.[Recorded by ID], PeachTreePayrollPost.[Ticket Number], PeachTreePayrollPost.[Ticket Date], PeachTreePayrollPost.[Has been used in Sales/Invoicing], PeachTreePayrollPost.[Activity Item ID], PeachTreePayrollPost.[Customer/Job/Adm], PeachTreePayrollPost.[Completed for ID], PeachTreePayrollPost.[Pay Level], PeachTreePayrollPost.[Has been used in Payroll], PeachTreePayrollPost.[Manual/Timed Option], PeachTreePayrollPost.Duration, PeachTreePayrollPost.[Billing Type], PeachTreePayrollPost.[Billing Rate]," & _
+    '"PeachTreePayrollPost.[Billing Status],#" & TodayDate & "# AS Expr1 FROM PeachTreePayrollPost;")
+    'wks.CommitTrans
+   
+    'Export and Create General Journal Allocation Batchs
+    CreatePayrollGLAllocationBatch
+   
+   'Then Delete all items waiting for posting
+    CurrentDb.Execute ("DELETE PeachTreePayrollPost.* FROM PeachTreePayrollPost;")
+    
+    'Send Email notifying file that has been exported
+    AutoSendEmail AccountantE, , PresidentE, "A new Payroll batch has been exported", "Items are ready for importation and posting into Peachtree.  Two files has been created on " & ExcelPayrollLocation & Filename & ".csv AND " & ExcelPayrollLocation, , , , , , , True
+        
+     DoCmd.Beep
+Else
+If SkipMessage <> True Then MsgBox "There are currently no payroll items waiting for export", vbCritical, "Rockhead Accounting"
+End If
+
+Screen.MousePointer = 1
+Set wks = Nothing
+End Sub
+Public Sub CreatePayrollGLAllocationBatch()
+Dim NumDis As Integer, dateANDTime As String, Filename As String, TodayDate As String, Monthdate As String, Daydate As String
+Dim Yoda As DAO.Database, rs As DAO.Recordset, fld As Field, ReferenceDate As String
+Set Yoda = CurrentDb
+
+
+Screen.MousePointer = 11
+
+
+'Store Reference Invoice Number
+Monthdate = Month(Now)
+If Len(Monthdate) = 1 Then Monthdate = "0" & Monthdate
+Daydate = Day(Now)
+If Len(Daydate) = 1 Then Daydate = "0" & Daydate
+ReferenceDate = Mid(Year(Now), 3, 2) & Monthdate & Daydate & "_" & Hour(Time) & ":" & Minute(Time) & ":" & Second(Time)
+
+
+ 
+CurrentDb.Execute "SELECT #" & Date & "# As [Transaction Date],'" & ReferenceDate & "' as Reference, 1 as [Number of Distributions],Payroll.Code as [G/L Account],'Payroll Allocation #" & Date & "# -' & [Payroll]![Completed for ID]" & " AS Description, Sum(Payroll.GLAMT) AS Amount, Payroll![Completed for ID] As [Job ID] INTO PeachTreePayrollAllocationPostTemp FROM PeachTreePayrollPost LEFT JOIN Payroll ON PeachTreePayrollPost.[Ticket Number] = Payroll.[Ticket Number] GROUP BY Payroll.Code,[Payroll]![Completed for ID];"
+
+
+'Need to revise 71010 to Hourly payroll account
+CurrentDb.Execute "Insert into PeachTreePayrollAllocationPostTemp([Transaction Date],[Reference],Amount,[G/L Account],Description) SELECT #" & Date & "# as date1,'" & ReferenceDate & "' As Refdate, Sum(Payroll.GLAMT) AS Amount,'71010' as Expr1,'Total sum being allocated from time tickets' as Expr2 FROM PeachTreePayrollPost LEFT JOIN Payroll ON PeachTreePayrollPost.[Ticket Number] = Payroll.[Ticket Number];"
+'Truncate phase and job codes if job number is missing
+CurrentDb.Execute "UPDATE PeachTreePayrollAllocationPostTemp SET PeachTreePayrollAllocationPostTemp.[Job ID] = null WHERE (((PeachTreePayrollAllocationPostTemp.[Job ID]) Like (',*')));"
+'Truncate Extraneous job codes used for database tracking
+CurrentDb.Execute "Update PeachTreePayrollAllocationExported SET PeachTreePayrollAllocationExported.[Job ID] = Mid([JOb ID],1,Len([Job Id])-5) WHERE (((PeachTreePayrollAllocationExported.[Job ID]) Like '*.*'));"
+
+
+'Count records
+Set rs = Yoda.OpenRecordset("Select * From PeachTreePayrollAllocationPostTemp")
+If Not rs.EOF Then
+    rs.MoveLast
+    NumDis = rs.RecordCount
+End If
+rs.Close
+Set rs = Nothing
+
+
+'Update table
+CurrentDb.Execute "Update PeachTreePayrollAllocationPostTemp Set [Number of Distributions]=" & NumDis & ""
+
+
+'Create Spreadsheet
+TodayDate = Month(Now) & "_" & Day(Now) & "_" & Year(Now)
+dateANDTime = " (" & Hour(Time) & "-" & Minute(Time) & "-" & Second(Time) & ")"
+Filename = "Payroll_To_GLAccounts_" & TodayDate & dateANDTime
+DoCmd.TransferText acExportDelim, , "PeachTreePayrollAllocationPostTemp", ExcelPayrollLocation & Filename & ".csv", True 'Text Format
+         
+        'Copy exported items into backupfile
+    TodayDate = Now
+    CurrentDb.Execute ("INSERT INTO PeachTreePayrollAllocationExported ( [Transaction Date], Reference, [Number of Distributions], [G/L Account], Description, Amount, [Job ID], ExportDate) SELECT PeachTreePayrollAllocationPostTemp.[Transaction Date], PeachTreePayrollAllocationPostTemp.Reference, PeachTreePayrollAllocationPostTemp.[Number of Distributions], PeachTreePayrollAllocationPostTemp.[G/L Account], PeachTreePayrollAllocationPostTemp.Description, PeachTreePayrollAllocationPostTemp.Amount, PeachTreePayrollAllocationPostTemp.[Job ID], #" & TodayDate & "# AS Exp1 FROM PeachTreePayrollAllocationPostTemp;")
+    'Delete Temp File
+    DoCmd.DeleteObject acTable, "PeachTreePayrollAllocationPostTemp"
+
+
+Screen.MousePointer = 1
+
+
+Yoda.Close
+Set Yoda = Nothing
+
+
+End Sub
+Public Function INVPOTotal(PONum As Long, Optional USD As Boolean)
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+
+Set rs = Yoda.OpenRecordset("Select Sum (amt) as Sumsub, PONum, POClosed From PONumbers Group by Ponum,POClosed Having PoNum=" & PONum & " And POClosed=False", dbOpenSnapshot)
+If Not rs.EOF Then
+    INVPOTotal = rs!SumSub
+    If USD = True Then INVPOTotal = rs!SumSub * USDC
+Else
+    Set rs = Yoda.OpenRecordset("Select Sum (CADAmt) as Sumsub, PONum From INVap Where GLAccount<>'11150' Group by Ponum Having PoNum=" & PONum, dbOpenSnapshot)
+    If Not rs.EOF Then INVPOTotal = Round(rs!SumSub, 2)
+End If
+
+Debug.Print INVPOTotal
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function USDC() As Single
+USDC = Inputbox("Enter current USD conversion", "Salvi Accounting", 1.03)
+End Function
+Public Sub CarInventoryCost(Car As String)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rsc As DAO.Recordset, TodayDate As String
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("SELECT BOLRail.CarNum, BOLRail.BOL, BOLRail.PO, BOLRail.OriginRL, BOLRail.Quantity, BOLRail.DestinationRL, Sum(POData.Quantity) AS SumOfQuantity, BOLRailPO.OriginRLPO, BOLRailPO.DestinationRLPO, BOLRailPO.CustomsPO, BOLRailPO.CNPO FROM POData INNER JOIN (BOLRail INNER JOIN BOLRailPO ON BOLRail.CarNum = BOLRailPO.CarNum) ON POData.PONum = BOLRail.PO GROUP BY BOLRail.CarNum, BOLRail.BOL, BOLRail.PO, BOLRail.OriginRL, BOLRail.Quantity, BOLRail.DestinationRL, BOLRailPO.Carnum, BOLRailPO.OriginRLPO, BOLRailPO.DestinationRLPO, BOLRailPO.CustomsPO, BOLRailPO.CNPO HAVING (((Sum(POData.Quantity))>0) AND ((BOLRailPO.Carnum)='" & Car & "'));", dbOpenSnapshot)
+
+Set rsc = Yoda.OpenRecordset("Select * From MatInventoryCosts Where Carnum='" & Car & "'", dbOpenDynaset)
+Dim OriginRL As Single, DestinationRL As Single, Customs As Single, Rail As Single, Mat As Single
+Dim TotalCost As Single
+
+MsgBox "Costs need to be generated and sent to accounting for landed inventory." & vbCrLf & "You may be prompted to enter some USD conversion estimates if all invoicing has not been recieved.", vbOKOnly, "Please be patient while The Core works...."
+
+If Not rs.EOF Then
+    OriginRL = INVPOTotal(rs!OriginRLPO, True)
+    Rail = INVPOTotal(rs!CNPO, True)
+    Customs = INVPOTotal(rs!CustomsPO)
+    DestinationRL = INVPOTotal(Nz(rs!DestinationRLPO, 0))
+    Mat = INVPOTotal(rs!PO, True)
+
+
+    If rsc.EOF Then
+        rsc.AddNew
+        rsc!CarNum = Car
+        rsc!OriginRL = OriginRL
+        rsc!Rail = Rail
+        rsc!Customs = Customs
+        rsc!DestinationRL = DestinationRL
+        rsc!Mats = (Mat / rs.Fields("SumofQuantity")) * rs.Fields("Quantity")
+        rsc!TotalCost = OriginRL + Rail + Customs + DestinationRL + (Mat / rs.Fields("SumofQuantity")) * rs.Fields("Quantity")
+        rsc!CostPerMat = (OriginRL + Rail + Customs + DestinationRL + ((Mat / rs.Fields("SumofQuantity")) * rs.Fields("Quantity"))) / rs.Fields("Quantity")
+        rsc.Update
+    Else
+        rsc.FindFirst "CarNum =" & "'" & Car & "'"
+        If Not rsc.NoMatch Then
+            rsc.Edit
+            rsc!CarNum = Car
+            rsc!OriginRL = OriginRL
+            rsc!Rail = Rail
+            rsc!Customs = Customs
+            rsc!DestinationRL = DestinationRL
+            rsc!Mats = (Mat / rs.Fields("SumofQuantity")) * rs.Fields("Quantity")
+            rsc!TotalCost = OriginRL + Rail + Customs + DestinationRL + (Mat / rs.Fields("SumofQuantity")) * rs.Fields("Quantity")
+            rsc!CostPerMat = (OriginRL + Rail + Customs + DestinationRL + ((Mat / rs.Fields("SumofQuantity")) * rs.Fields("Quantity"))) / rs.Fields("Quantity")
+            rsc.Update
+        End If
+    End If
+
+TodayDate = Month(Now) & "_" & Day(Now) & "_" & Year(Now)
+DoCmd.OutputTo acOutputReport, "MatsToInventoryCosts", acFormatPDF, InventoryTranLocation & Round(rs.Fields("BOL"), 2) & "(" & TodayDate & ").pdf", False
+
+End If
+
+DoCmd.Beep
+
+End Sub
+Public Sub AutoGenerateRECPO(PORefNum As Integer)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, LastNum As Long, RsCopy As DAO.Recordset, rsgst As DAO.Recordset, RsInvoice As DAO.Recordset
+Dim Code As Long
+Dim NewNum As Long
+Dim Intcount As Long
+  
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("PONumbers", dbOpenDynaset)
+
+
+rs.MoveLast
+LastNum = rs!PONum     'Create NewNumber
+NewNum = LastNum + 1
+rs.AddNew
+rs!PONum = NewNum
+rs!Date = Date
+rs!GST = Nz(DLookup("DefaultGST", "PORelations", "PORefNum=" & PORefNum), ".")
+rs!Pst = Nz(DLookup("DefaultPST", "PORelations", "PORefNum=" & PORefNum), ".")
+rs![Supplier/Trade] = Nz(DLookup("[Supplier/Trade]", "PORelations", "PORefNum=" & PORefNum), ".")
+rs!PORefNum = PORefNum
+rs!PrintedBy = WNetGetUser
+rs.Update
+                
+
+               
+'Insert Data into POData table
+CurrentDb.Execute "INSERT INTO POData (PoSortOrder, Quantity, NA, PS, ProductNum, Price, Subtotal, Code, Comments, PONum) SELECT POData.PoSortOrder, POData.Quantity, POData.NA, POData.PS, POData.ProductNum, POData.Price, POData.Subtotal, POData.Code, POData.Comments," & NewNum & " FROM POData WHERE (((POData.PORefNum)=" & PORefNum & "));"
+'Update PriceMaster Costs
+CurrentDb.Execute "UPDATE POData, PM SET POData.Price = [PM].[Price] WHERE (((POData.PONum)=" & NewNum & ") AND ((POData.PS)=[PM].[PS]));"
+
+Set rs = Yoda.OpenRecordset("Select * from POData where POnum=" & NewNum, dbOpenDynaset)
+                
+
+If Not rs.EOF Then
+    Do Until rs.EOF
+    If InStr(1, rs!PS, "For the month", vbTextCompare) Then
+        rs.Edit
+        rs!PS = "  For the month of " & MonthName(Month(Date))
+        rs.Update
+    End If
+    If InStr(1, rs!PS, "For the next month", vbTextCompare) Then
+        rs.Edit
+        rs!PS = "  For the month of " & MonthName(Month(DateAdd("m", 1, (Date))))
+        rs.Update
+    End If
+    
+    rs.MoveNext
+    Loop
+End If
+
+Dim SumPrice As Single
+Set rs = Yoda.OpenRecordset("Select Sum(Subtotal) as SumofPrice From POData where POnum=" & NewNum & " And Na=False And Quantity>0")
+If Not rs.EOF Then SumPrice = Nz(rs!SumofPrice, 0)
+
+Set rs = Yoda.OpenRecordset("Select * from PONumbers where poNum=" & NewNum, dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs!Amt = SumPrice
+    rs!GrandTotal = SumPrice + (SumPrice * (rs!GST / 100)) + (SumPrice * (rs!Pst / 100))
+    rs.Update
+End If
+
+LoadPOReport NewNum, PORefNum, False
+
+Set rs = Yoda.OpenRecordset("Select * from PORelations Where PoRefnum=" & PORefNum, dbOpenDynaset)
+Dim Email As String
+Email = Nz(rs!Email, "")
+If Email <> "" Then
+    AutoSendEmail Nz(rs!Email, PresidentE), , , "Salvi PO " & NewNum, "Please see the attached purchase order and feel free to call should any questions arise.", POPDFLocation & NewNum & ".PDF", , , , , , True
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Public Sub AutoGenerateDefaultPO(Vendor As String, PORefNum As Integer, Car As String, BOL As Single, Optional MatsPercar As Integer, Optional WhichLoad As String, Optional HowmanyonLoad As Integer, Optional ByVal Intcount As Integer)
+Dim Core As DAO.Database, rs As DAO.Recordset, LastNum As Long, RsCopy As DAO.Recordset
+Dim Code As Long
+Dim NewNum As Long
+  
+Set Core = CurrentDb
+Set rs = Core.OpenRecordset("PONumbers", dbOpenDynaset)
+
+rs.MoveLast
+LastNum = rs!PONum     'Create NewNumber
+NewNum = LastNum + 1
+rs.AddNew
+rs!PONum = NewNum
+rs!Date = Date
+rs!GST = Nz(DLookup("DefaultGST", "PORelations", "PORefNum=" & PORefNum), ".")
+rs!Pst = Nz(DLookup("DefaultPST", "PORelations", "PORefNum=" & PORefNum), ".")
+'Rs!ShipDate = Date
+rs![Supplier/Trade] = Vendor
+rs!PORefNum = PORefNum
+rs!Code = Nz(DLookup("Code", "PORelations", "PORefNum=" & PORefNum), ".")
+rs!PrintedBy = WNetGetUser
+rs.Update
+                
+
+'Insert Data into POData table
+CurrentDb.Execute "INSERT INTO POData (PoSortOrder, Quantity, NA, PS, ProductNum, Price, Subtotal, Code, Comments, PONum) SELECT POData.PoSortOrder, POData.Quantity, POData.NA, POData.PS, POData.ProductNum, POData.Price, POData.Subtotal, POData.Code, POData.Comments," & NewNum & " FROM POData WHERE (((POData.PORefNum)=" & PORefNum & "));"
+'Update PriceMaster Costs
+CurrentDb.Execute "UPDATE POData, PM SET POData.Price = [PM].[Price] WHERE (((POData.PONum)=" & NewNum & ") AND ((POData.PS)=[PM].[PS]));"
+'UpdateBOLRail table
+If PORefNum = 40 Then CurrentDb.Execute "Update BOLrailPO set BOLrailPO.OriginRLPO=" & NewNum & " Where CarNum='" & Car & "'"
+If PORefNum = 50 Then CurrentDb.Execute "Update BOLrailPO set BOLrailPO.CustomsPO=" & NewNum & " Where CarNum='" & Car & "'"
+If PORefNum = 60 Then CurrentDb.Execute "Update BOLrailPO set BOLrailPO.DestinationRLPO=" & NewNum & " Where CarNum='" & Car & "'"
+If PORefNum = 30 Then CurrentDb.Execute "Update BOLrailPO set BOLrailPO.CNPO=" & NewNum & " Where CarNum='" & Car & "'"
+If PORefNum = 35 Then CurrentDb.Execute "Update BOLrailPO set BOLrailPO.CNPO=" & NewNum & " Where CarNum='" & Car & "'"
+
+Set rs = Core.OpenRecordset("Select * from POData where POnum=" & NewNum, dbOpenDynaset)
+                
+
+If Not rs.EOF Then
+    Do Until rs.EOF
+    If InStr(1, rs!PS, "BOL", vbTextCompare) Then
+        rs.Edit
+        rs!PS = "  BOL - " & BOL
+        rs.Update
+    End If
+    If InStr(1, rs!PS, "CN Car", vbTextCompare) Then
+        rs.Edit
+        rs!PS = "  CN Car # - " & Car
+        rs.Update
+    End If
+    If InStr(1, rs!PS, "load of", vbTextCompare) Then
+        rs.Edit
+        rs!PS = "  " & WhichLoad & " load of " & HowmanyonLoad & " mats"
+        rs.Update
+    End If
+    rs.MoveNext
+    Loop
+End If
+
+Dim SumPrice As Single
+Set rs = Core.OpenRecordset("Select Sum(Price) as SumofPrice From POData where POnum=" & NewNum & " And Na=False And Quantity>0")
+If Not rs.EOF Then SumPrice = rs!SumofPrice
+
+Set rs = Core.OpenRecordset("Select * from PONumbers where poNum=" & NewNum, dbOpenDynaset)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs!Amt = SumPrice
+    rs!GrandTotal = SumPrice + (SumPrice * (rs!GST / 100)) + (SumPrice * (rs!Pst / 100))
+    rs.Update
+End If
+
+LoadPOReport NewNum, PORefNum, False, Intcount
+
+rs.Close
+Core.Close
+Set Core = Nothing
+Set rs = Nothing
+
+End Sub
+Public Sub LoadPOReport(PONum As Long, PORefNum As Integer, Printe As Boolean, Optional ByVal Intcount As Integer)
+Dim Records As String, Rpt As Report
+Dim Core As DAO.Database, rs As DAO.Recordset, Revision As String, GSTAMt As Single, PstAMT As Single
+'DoCmd.OpenReport "POReportBackDoor", acViewLayout 'Is this line causing bug in accde files?
+DoCmd.OpenReport "POReportBackDoor", acViewReport
+
+
+'Load Recordsource
+Records = ("Select * From POData Where PONum=" & PONum & " And NA = False" & " Or PONum=" & PONum & " And NA = False" & " And Instr([PS],'  ')")
+Set Rpt = Reports.POreportBackdoor
+Rpt.RecordSource = Records
+Rpt.OrderBy = "PoSortOrder"
+Rpt.OrderByOn = True
+
+
+Set Core = CurrentDb
+Set rs = Core.OpenRecordset("Select * From PONumbers where POnum=" & PONum, dbOpenSnapshot)
+Rpt.PONum.Caption = PONum
+If rs!Job > 0 Then Rpt.Job.Caption = Nz(rs!Job, "Stock") Else Rpt.Job.Caption = "Stock"
+Rpt.Code.Caption = Nz(rs!Code, "")
+Rpt.Vendore.Caption = rs![Supplier/Trade]
+Rpt.Notes.Caption = Nz(rs![Notes], "")
+Rpt.POTitle.Caption = Nz(DLookup("PO", "PORelations", "PORefNum=" & PORefNum), ".")
+Rpt.Order.Caption = rs!Date
+Rpt.Ship.Caption = Nz(rs!ShipDate, "")
+Rpt.GSTPer.Caption = rs!GST
+Rpt.Pstper.Caption = Nz(rs!Pst, 0)
+Rpt.Discount.Caption = "$" & Nz(rs!Dis, 0)
+GSTAMt = Round((rs!Amt + Nz(rs!Dis, 0)) * (Nz(rs!GST, 0) / 100), 2)
+PstAMT = Round((rs!Amt + Nz(rs!Dis, 0)) * (Nz(rs!Pst, 0) / 100), 2)
+Rpt.GST.Caption = "$" & GSTAMt
+Rpt.Pst.Caption = "$" & PstAMT
+Rpt.GrandTotal.Caption = "$" & (rs!Amt + Nz(rs!Dis, 0)) + GSTAMt + PstAMT
+
+Revision = Nz(rs!RevisedBy, "")
+If Revision = "" Then
+    Rpt.PrintedBy.Caption = "This PO was issued By " & rs!PrintedBy & " On " & Format(rs!Date, "mmmm/dd/yyyy")
+Else
+    Rpt.PrintedBy.Caption = "This PO was issued By " & rs!PrintedBy & " On " & Format(rs!Date, "mmmm/dd/yyyy") & " and later revised by " & Revision & " on " & Format(Date, "mmmm/dd/yyyy")
+End If
+
+'Create PDF On Server
+DoCmd.OpenReport "POReportBackDoor", acViewPreview
+DoCmd.OutputTo acOutputReport, "", acFormatPDF, POPDFLocation & PONum & ".pdf", False
+If Printe = True Then DoCmd.PrintOut
+DoCmd.Close acReport, "POReportBackDoor"
+
+'StorePONum PONum
+
+Set Rpt = Nothing
+rs.Close
+Core.Close
+Set Core = Nothing
+Set rs = Nothing
+
+End Sub
+Public Function CurrentPayPeriodEnd() As Date
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From AccPayrollPeriod", dbOpenDynaset, dbSeeChanges)
+
+CurrentPayPeriodEnd = DateAdd("d", rs!Period * 14, rs!PayrollStartDate)
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function CurrentPayPeriodBeg() As Date
+
+CurrentPayPeriodBeg = DateAdd("d", -14, CurrentPayPeriodEnd)
+'Debug.Print CurrentPayPeriodBeg & " Pay period Beginning"
+
+End Function
+Public Sub SetCurrentPayPeriod()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From AccPayrollPeriod", dbOpenDynaset, dbSeeChanges)
+
+
+If CurrentPayPeriodEnd < Date Then
+    rs.Edit
+    rs!Period = rs!Period + 1
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Public Function WeekofCurrPayperiod(Dater As Date) As Byte
+Dim PBeg As Date, PEnd As Date
+PBeg = CurrentPayPeriodBeg
+PEnd = CurrentPayPeriodEnd
+
+'Debug.Print DateAdd("d", -8, PEnd) & " End of Week 1"
+'Debug.Print Dater & " Date Processed"
+
+If Dater <= DateAdd("d", -8, PEnd) Then WeekofCurrPayperiod = 1 Else WeekofCurrPayperiod = 2
+If Dater < PBeg Then WeekofCurrPayperiod = 0
+If Dater >= PEnd Then WeekofCurrPayperiod = 0
+
+End Function
+Public Function SumofWeeksHours(Employee As Integer, Anygivenday As Date) As Single
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Dim BegDate As Date
+Dim EndDate As Date
+
+Set Yoda = CurrentDb
+
+If WeekofCurrPayperiod(Anygivenday) = 1 Then
+   BegDate = Format(CurrentPayPeriodBeg(), "mm,dd,yyyy")
+   EndDate = Format(DateAdd("d", 7, CurrentPayPeriodBeg()), "mm,dd,yyyy")
+    'MsgBox Begdate & " Beg Week 1"
+    'MsgBox Enddate & " End Week 1"
+        Set rs = Yoda.OpenRecordset("SELECT Payroll.[Recorded by ID], Sum([Timenum]) AS SumTime From Payroll WHERE (((Payroll.[Ticket Date]) >= #" & BegDate & "# And (Payroll.[Ticket Date]) <#" & EndDate & "#)) GROUP BY Payroll.[Recorded by ID] HAVING (((Payroll.[Recorded by ID])=" & Employee & "));", dbOpenSnapshot)
+        If Not rs.EOF Then
+            SumofWeeksHours = rs!SumTime
+            'MsgBox SumofWeeksHours & " Hours for this week"
+        End If
+rs.Close
+End If
+
+If WeekofCurrPayperiod(Anygivenday) = 2 Then
+    BegDate = Format(DateAdd("d", 7, CurrentPayPeriodBeg()), "mm,dd,yyyy")
+    EndDate = Format(CurrentPayPeriodEnd(), "mm,dd,yyyy")
+    'MsgBox Begdate & " Beg Week 2"
+    'MsgBox Enddate & " End Week 2"
+        Set rs = Yoda.OpenRecordset("SELECT Payroll.[Recorded by ID], Sum([Timenum]) AS SumTime From Payroll WHERE (((Payroll.[Ticket Date]) >= #" & BegDate & "# And (Payroll.[Ticket Date]) <#" & EndDate & "#)) GROUP BY Payroll.[Recorded by ID] HAVING (((Payroll.[Recorded by ID])=" & Employee & "));", dbOpenSnapshot)
+        If Not rs.EOF Then
+            SumofWeeksHours = Nz(rs!SumTime, 0)
+            'MsgBox SumofWeeksHours & " Hours for this week"
+        End If
+rs.Close
+End If
+
+
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function CurrHourlyRate(EmpOrVendorID As Integer) As Single
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from Employees where ContactID=" & EmpOrVendorID)
+
+If Not rs.EOF Then CurrHourlyRate = rs!CurrentRate
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function CurrHourlyRateWBurden(EmpOrVendorID As Integer, Overtime As Boolean) As Single
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from Employees where ContactID=" & EmpOrVendorID)
+
+If Overtime = False Then
+    If Not rs.EOF Then CurrHourlyRateWBurden = rs!TotalCostRate
+Else
+    If Not rs.EOF Then CurrHourlyRateWBurden = ((rs!CurrentRate + rs!BurdenRate) * 1.5) + rs!BenefitRate
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function DefaultGL(EmpOrVendorID As Integer) As Single
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from Employees where ContactID=" & EmpOrVendorID)
+
+If Not rs.EOF Then DefaultGL = Nz(rs!DefaultGL, "")
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function Burden() As Single
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select TotalBurdenPer From BurdenRates", dbOpenSnapshot)
+
+If Not rs.EOF Then Burden = rs!TotalBurdenPer
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Function
+Public Sub InsertJobCostAnalysis(Job As Integer)
+'Use this function for calculating all Job Cost Anaylsis.  Should be run upon Invoicing,and any Invoice approval, Payroll approval will be left out..Too clunky a process
+Screen.MousePointer = 11
+    InsertJobInvoiceCosts (Job)
+    InsertJobInventoryCosts (Job)
+    InsertJobQuoteCosts (Job)
+    InsertJobInvoiceAR (Job)
+    InsertJobPayrollCosts (Job)
+    InsertTotalJobCosts (Job)
+Screen.MousePointer = 1
+
+End Sub
+Public Sub InsertJobInvoiceCosts(Job As Integer)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rss As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("SELECT INVap.Job,GLAccount, Sum(INVap.CADAmt) AS SumOfCADAmt From INVap GROUP BY INVap.Job,GLAccount Having Job=" & Job & ";")
+Set rss = Yoda.OpenRecordset("Select * from JobCostAnalysis where Job=" & Job)
+
+If Not rs.EOF Then
+Do Until rs.EOF
+    rss.FindFirst "GLCode=" & rs!GLAccount
+    'rsc.FindFirst "CarNum =" & "'" & Car & "'"
+    If Not rss.NoMatch Then
+        rss.Edit
+        rss!GLCode = rs!GLAccount
+        rss!Subconcost = Nz(rs!SumofCadAmt, 0)
+        rss.Update
+    Else
+        rss.AddNew
+        rss!Job = Job
+        rss!GLCode = rs!GLAccount
+        rss!Subconcost = Nz(rs!SumofCadAmt, 0)
+        rss.Update
+    End If
+
+rs.MoveNext
+Loop
+End If
+
+
+rs.Close
+rss.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Set rss = Nothing
+End Sub
+Public Sub InsertJobInventoryCosts(Job As Integer)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rss As DAO.Recordset, RSpm As DAO.Recordset
+Dim Item As String, TotalInvCost As Single
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("SELECT Sum(INVData.Quantity) AS SumOfQuantity, INVData.Code, INVData.ItemID, AccInvCodes.PMLookup FROM (INVData INNER JOIN INVNumbers ON INVData.INVNum = INVNumbers.INVNum) INNER JOIN AccInvCodes ON INVData.ItemID = AccInvCodes.[Item ID] WHERE (((INVNumbers.Job) =" & Job & ")) GROUP BY INVData.Code, INVData.ItemID, AccInvCodes.PMLookup HAVING (((INVData.ItemID) Is Not Null));")
+Set rss = Yoda.OpenRecordset("Select * from JobCostAnalysis where Job=" & Job)
+
+
+If Not rs.EOF Then
+Do Until rs.EOF
+    Item = Nz(rs!PMLookup, "")
+    If Item <> "" Then
+        Set RSpm = Yoda.OpenRecordset("Select * from PM where ps='" & Item & "'")
+            If Not RSpm.EOF Then TotalInvCost = rs!SumofQuantity * RSpm!Price
+        RSpm.Close
+    End If
+    rss.FindFirst "GLCode=" & rs!Code
+    If Not rss.NoMatch Then
+        rss.Edit
+        rss!GLCode = rs!Code
+        rss!InventoryCost = Nz(TotalInvCost, 0)
+        rss.Update
+    Else
+        rss.AddNew
+        rss!Job = Job
+        rss!GLCode = rs!Code
+        rss!InventoryCost = Nz(TotalInvCost, 0)
+        rss.Update
+    End If
+
+rs.MoveNext
+Loop
+End If
+
+
+rs.Close
+rss.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Set rss = Nothing
+Set RSpm = Nothing
+End Sub
+Public Sub InsertJobPayrollCosts(Job As Integer)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rss As DAO.Recordset
+Set Yoda = CurrentDb
+'Set Rs = Yoda.OpenRecordset("SELECT INVap.Job,GLAccount, Sum(INVap.CADAmt) AS SumOfCADAmt From INVap GROUP BY INVap.Job,GLAccount Having Job=" & Job & ";")
+Set rs = Yoda.OpenRecordset("SELECT Payroll.job,Payroll.[Employee/Vendor], AccJobCodes.Description, Payroll.JobCode,Payroll.Code, Sum(Payroll.TimeNum) AS SumOfTimeNum, Sum(Payroll.AMT) AS SumOfAMT, Sum(Payroll.tOTALAMT) AS SumOftOTALAMT, Quotes.Division, Quotes.Customer, Quotes.ProjectDescription, Quotes.ProjectAddress, Quotes.PayrollHours, Quotes.PayrollCost" _
+        & " FROM (Payroll INNER JOIN Quotes ON Payroll.Job = Quotes.JobNum) INNER JOIN AccJobCodes ON Payroll.JobCode = AccJobCodes.AccID GROUP BY Payroll.Job, Payroll.[Employee/Vendor], AccJobCodes.Description,Payroll.Code, Payroll.JobCode, Quotes.Division, Quotes.Customer, Quotes.ProjectDescription, Quotes.ProjectAddress, Quotes.PayrollHours, Quotes.PayrollCost" _
+        & " HAVING Payroll.Job=" & Job & " And [Employee/Vendor]=0 ORDER BY Payroll.Job;")
+
+Set rss = Yoda.OpenRecordset("Select * from JobCostAnalysis where Job=" & Job)
+
+If Not rs.EOF Then
+Do Until rs.EOF
+    rss.FindFirst "costcode=" & rs!JOBCode
+    'rsc.FindFirst "CarNum =" & "'" & Car & "'"
+    If Not rss.NoMatch Then
+        rss.Edit
+        rss!GLCode = rs!Code
+        rss!CostCode = rs!JOBCode
+        rss!empcost = Nz(rs!SumofAmt, 0)
+        rss!EmpBurdenCost = Nz(rs!Sumoftotalamt - rs!SumofAmt, 0)
+        rss!TotalPayrollHours = Nz(rs!SumofTimeNum, 0)
+        rss.Update
+    Else
+        rss.AddNew
+        rss!Job = Job
+        rss!GLCode = rs!Code
+        rss!CostCode = rs!JOBCode
+        rss!empcost = Nz(rs!SumofAmt, 0)
+        rss!EmpBurdenCost = Nz(rs!Sumoftotalamt - rs!SumofAmt, 0)
+        rss!TotalPayrollHours = Nz(rs!SumofTimeNum, 0)
+        rss.Update
+    End If
+
+rs.MoveNext
+Loop
+End If
+
+
+rs.Close
+rss.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Set rss = Nothing
+End Sub
+Public Sub InsertJobQuoteCosts(Job As Integer)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rss As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("SELECT * From Quotes Where JOBNum=" & Job)
+Set rss = Yoda.OpenRecordset("Select * from JobCostAnalysisSum where Job=" & Job)
+
+If Not rs.EOF Then
+Do Until rs.EOF
+    rss.FindFirst "JOb=" & Job
+    If Not rss.NoMatch Then
+        rss.Edit
+        rss!QuoteAmt = Nz(rs!Amt, 0)
+        rss.Update
+    Else
+        rss.AddNew
+        rss!Job = Job
+        rss!QuoteAmt = Nz(rs!Amt, 0)
+        rss.Update
+    End If
+
+rs.MoveNext
+Loop
+End If
+
+
+rs.Close
+rss.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Set rss = Nothing
+End Sub
+Public Sub InsertJobInvoiceAR(Job As Integer)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rss As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("SELECT INVNumbers.Job, Sum(Invdata.SubTotal) AS SumOfSubTotal,INVNumbers.Code, Invdata.NA, INVNumbers.Job FROM Invdata INNER JOIN INVNumbers ON Invdata.INVNum = INVNumbers.INVNum GROUP BY INVNumbers.Job,INVNumbers.Code, Invdata.NA HAVING (((INVNumbers.Job)=" & Job & ") AND ((Invdata.[NA])=False));", dbOpenSnapshot)
+Set rss = Yoda.OpenRecordset("Select * from JobCostAnalysisSum where Job=" & Job)
+'Set Rsinv = Yoda.OpenRecordset("SELECT INVNumbers.Job, Sum(Invdata.SubTotal) AS SumOfSubTotal, Invdata.NA, INVNumbers.Job FROM Invdata INNER JOIN INVNumbers ON Invdata.INVNum = INVNumbers.INVNum GROUP BY INVNumbers.Job, Invdata.NA HAVING (((INVNumbers.Job)=" & Me.Job & ") AND ((Invdata.[NA])=False));", dbOpenSnapshot)
+
+If Not rs.EOF Then
+Do Until rs.EOF
+    rss.FindFirst "JOb=" & Job
+    If Not rss.NoMatch Then
+        rss.Edit
+        rss!CustomerInvoiceAmt = Nz(rs!SumOfSubTotal, 0)
+        rss.Update
+    Else
+        rss.AddNew
+        rss!Job = Job
+        rss!CustomerInvoiceAmt = Nz(rs!SumOfSubTotal, 0)
+        rss.Update
+    End If
+
+rs.MoveNext
+Loop
+End If
+
+
+rs.Close
+rss.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Set rss = Nothing
+End Sub
+Public Sub InsertTotalJobCosts(Job As Integer)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rss As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("SELECT JobCostAnalysis.Job, Sum(JobCostAnalysis.EmpCost) AS SumOfEmpCost, Sum(JobCostAnalysis.EmpBurdenCost) AS SumOfEmpBurdenCost, Sum(JobCostAnalysis.SubConCost) AS SumOfSubConCost, Sum(JobCostAnalysis.InventoryCost) AS SumOfInventoryCost, Sum([Empcost]+[EmpBurdenCost]+[subconcost]+[InventoryCost]) AS TotalCost From JobCostAnalysis GROUP BY JobCostAnalysis.Job HAVING (((JobCostAnalysis.Job)=" & Job & "));")
+Set rss = Yoda.OpenRecordset("Select * from JobCostAnalysisSum where Job=" & Job)
+'Set Rsinv = Yoda.OpenRecordset("SELECT INVNumbers.Job, Sum(Invdata.SubTotal) AS SumOfSubTotal, Invdata.NA, INVNumbers.Job FROM Invdata INNER JOIN INVNumbers ON Invdata.INVNum = INVNumbers.INVNum GROUP BY INVNumbers.Job, Invdata.NA HAVING (((INVNumbers.Job)=" & Me.Job & ") AND ((Invdata.[NA])=False));", dbOpenSnapshot)
+
+If Not rs.EOF Then
+Do Until rs.EOF
+    rss.FindFirst "Job=" & Job
+    If Not rss.NoMatch Then
+        rss.Edit
+        rss!TotalGrossCost = rs!TotalCost
+        rss!Profit = rss!CustomerInvoiceAmt - rss!TotalGrossCost
+        If rss!CustomerInvoiceAmt > 0 Then rss!GrossMargin = Round(rss!Profit / Nz(rss!CustomerInvoiceAmt, 0), 4)
+        rss.Update
+    Else
+        rss.AddNew
+        rss!Job = Job
+        rss!TotalGrossCost = rs!TotalCost
+        rss!Profit = rss!CustomerInvoiceAmt - rss!TotalGrossCost
+        If rss!CustomerInvoiceAmt > 0 Then rss!GrossMargin = Round(rss!Profit / Nz(rss!CustomerInvoiceAmt, 0), 4)
+        rss.Update
+    End If
+
+rs.MoveNext
+Loop
+End If
+
+
+rs.Close
+rss.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Set rss = Nothing
+End Sub
+Public Function CurrentBurden(WhatBurden As String) As Single
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+
+
+Set rs = Yoda.OpenRecordset("Select * from BurdenRates", dbOpenSnapshot)
+     
+    If WhatBurden = "CPP" Then CurrentBurden = rs!CPP
+    If WhatBurden = "EI" Then CurrentBurden = rs!EI
+    If WhatBurden = "WCB" Then CurrentBurden = rs!WCB
+    If WhatBurden = "LiabilityInsurance" Then CurrentBurden = rs!LiabilityInsurance
+    If WhatBurden = "VacPay" Then CurrentBurden = rs!VacPay
+    If WhatBurden = "Safety" Then CurrentBurden = rs!Safety
+
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function GLBurden(OriginalAmt As Single, EmpID As Integer, WhichYear As Integer) As Single
+Dim Yoda As DAO.Database, rs As DAO.Recordset, CPMax As Single, EIMax As Single
+Dim Paidtodate As Single, CppPaid As Single, EIPaid As Single
+Dim EPer As Single, CPer As Single
+Dim VacPay As Single, CPPpay As Single, EIpay As Single
+Set Yoda = CurrentDb
+
+ 
+Set rs = Yoda.OpenRecordset("Select * from CPPEI where Yearly=" & WhichYear, dbOpenDynaset)
+    If Not rs.EOF Then
+        CPMax = rs!CPPMax
+        EIMax = rs!EIMax
+    End If
+rs.Close
+
+ 
+VacPay = CurrentBurden("vacpay")
+CPPpay = CurrentBurden("Cpp")
+EIpay = CurrentBurden("EI")
+
+ 
+Set rs = Yoda.OpenRecordset("Select Sum(Amt) as Sumofamt From Payroll Where [Recorded by ID]=" & EmpID & " and Year([Ticket Date])=" & WhichYear)
+    If Not rs.EOF Then
+        Paidtodate = Round((Nz(rs!SumofAmt, 0) * (1 + VacPay)), 2)
+        CppPaid = Paidtodate * CPPpay
+        EIPaid = Paidtodate * EIpay
+            'MsgBox "Total Paid " & Paidtodate
+            'MsgBox "CPP Paid " & CppPaid
+            'MsgBox "EI Paid " & EIPaid
+        If CppPaid > CPMax Then CPer = 0 Else CPer = CPPpay
+        If EIPaid > EIMax Then EPer = 0 Else EPer = EIpay
+            'MsgBox CPer & vbCrLf & EPer
+        GLBurden = Round(OriginalAmt * (1 + (CPer + EPer + VacPay)), 2)
+    End If
+
+
+ 
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+
+End Function

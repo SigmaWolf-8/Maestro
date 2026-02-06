@@ -425,25 +425,53 @@ export default function VendorsForm() {
                   <div className="grid grid-cols-4 gap-2">
                     <div>
                       <Label htmlFor="apTerms" className="text-xs">AP Terms</Label>
-                      <Input
-                        id="apTerms"
-                        defaultValue={vendor.apTerms || ""}
+                      <Select
+                        value={vendor.apTerms || ""}
+                        onValueChange={(value) => handleFieldBlur("apTerms", value === "__none__" ? "" : value)}
                         disabled={!editMode}
-                        onBlur={(e) => handleFieldBlur("apTerms", e.target.value)}
-                        className="h-8"
-                        data-testid="input-ap-terms"
-                      />
+                      >
+                        <SelectTrigger id="apTerms" className="h-8" data-testid="select-ap-terms">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">None</SelectItem>
+                          <SelectItem value="Due on Receipt">Due on Receipt</SelectItem>
+                          <SelectItem value="Net 10">Net 10</SelectItem>
+                          <SelectItem value="Net 15">Net 15</SelectItem>
+                          <SelectItem value="Net 30">Net 30</SelectItem>
+                          <SelectItem value="Net 45">Net 45</SelectItem>
+                          <SelectItem value="Net 60">Net 60</SelectItem>
+                          <SelectItem value="Net 90">Net 90</SelectItem>
+                          <SelectItem value="2/10 Net 30">2/10 Net 30</SelectItem>
+                          <SelectItem value="2/10 Net 45">2/10 Net 45</SelectItem>
+                          <SelectItem value="1/10 Net 30">1/10 Net 30</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Label htmlFor="arTerms" className="text-xs">AR Terms</Label>
-                      <Input
-                        id="arTerms"
-                        defaultValue={vendor.arTerms || ""}
+                      <Select
+                        value={vendor.arTerms || ""}
+                        onValueChange={(value) => handleFieldBlur("arTerms", value === "__none__" ? "" : value)}
                         disabled={!editMode}
-                        onBlur={(e) => handleFieldBlur("arTerms", e.target.value)}
-                        className="h-8"
-                        data-testid="input-ar-terms"
-                      />
+                      >
+                        <SelectTrigger id="arTerms" className="h-8" data-testid="select-ar-terms">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">None</SelectItem>
+                          <SelectItem value="Due on Receipt">Due on Receipt</SelectItem>
+                          <SelectItem value="Net 10">Net 10</SelectItem>
+                          <SelectItem value="Net 15">Net 15</SelectItem>
+                          <SelectItem value="Net 30">Net 30</SelectItem>
+                          <SelectItem value="Net 45">Net 45</SelectItem>
+                          <SelectItem value="Net 60">Net 60</SelectItem>
+                          <SelectItem value="Net 90">Net 90</SelectItem>
+                          <SelectItem value="2/10 Net 30">2/10 Net 30</SelectItem>
+                          <SelectItem value="2/10 Net 45">2/10 Net 45</SelectItem>
+                          <SelectItem value="1/10 Net 30">1/10 Net 30</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <Label htmlFor="gstNum" className="text-xs">GST #</Label>
@@ -489,16 +517,6 @@ export default function VendorsForm() {
                         data-testid="checkbox-subtrade"
                       />
                       <Label htmlFor="subtrade" className="text-xs">Subtrade</Label>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Checkbox
-                        id="includeInPayroll"
-                        checked={vendor.includeInPayroll || false}
-                        disabled={!editMode}
-                        onCheckedChange={(checked) => handleFieldBlur("includeInPayroll", checked)}
-                        data-testid="checkbox-payroll"
-                      />
-                      <Label htmlFor="includeInPayroll" className="text-xs">Payroll</Label>
                     </div>
                   </div>
                 </CardContent>
