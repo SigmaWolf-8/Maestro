@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, and, desc, sql, inArray, like, or } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, like, or, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 import {
   tenants,
@@ -23,6 +23,12 @@ import {
   documentAuditLogs,
   wopiSessions,
   msGraphTokens,
+  subscriptionPlans,
+  tenantSubscriptions,
+  subscriptionInvoices,
+  usageMetrics,
+  pricingConfig,
+  stripeSync,
   type Tenant,
   type TenantUser,
   type Project,
@@ -64,6 +70,18 @@ import {
   type InsertWopiSession,
   type MsGraphToken,
   type InsertMsGraphToken,
+  type SubscriptionPlan,
+  type InsertSubscriptionPlan,
+  type TenantSubscription,
+  type InsertTenantSubscription,
+  type SubscriptionInvoice,
+  type InsertSubscriptionInvoice,
+  type UsageMetric,
+  type InsertUsageMetric,
+  type PricingConfig,
+  type InsertPricingConfig,
+  type StripeSync,
+  type InsertStripeSync,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -202,6 +220,42 @@ export interface IStorage {
   getMsGraphToken(userId: string, tenantId: string): Promise<MsGraphToken | undefined>;
   upsertMsGraphToken(token: InsertMsGraphToken): Promise<MsGraphToken>;
   deleteMsGraphToken(userId: string, tenantId: string): Promise<boolean>;
+
+  // Subscription Plans
+  getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+  getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined>;
+  getSubscriptionPlanByCode(code: string): Promise<SubscriptionPlan | undefined>;
+  createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan>;
+  updateSubscriptionPlan(id: number, updates: Partial<SubscriptionPlan>): Promise<SubscriptionPlan | undefined>;
+
+  // Tenant Subscriptions
+  getTenantSubscription(tenantId: string): Promise<TenantSubscription | undefined>;
+  getTenantSubscriptionById(id: number): Promise<TenantSubscription | undefined>;
+  createTenantSubscription(sub: InsertTenantSubscription): Promise<TenantSubscription>;
+  updateTenantSubscription(id: number, updates: Partial<TenantSubscription>): Promise<TenantSubscription | undefined>;
+  getAllActiveSubscriptions(): Promise<TenantSubscription[]>;
+
+  // Subscription Invoices
+  getSubscriptionInvoices(tenantId: string): Promise<SubscriptionInvoice[]>;
+  getSubscriptionInvoice(id: number): Promise<SubscriptionInvoice | undefined>;
+  createSubscriptionInvoice(invoice: InsertSubscriptionInvoice): Promise<SubscriptionInvoice>;
+  updateSubscriptionInvoice(id: number, updates: Partial<SubscriptionInvoice>): Promise<SubscriptionInvoice | undefined>;
+
+  // Usage Metrics
+  getUsageMetrics(tenantId: string, startDate?: string, endDate?: string): Promise<UsageMetric[]>;
+  getUsageMetric(tenantId: string, metricDate: string): Promise<UsageMetric | undefined>;
+  upsertUsageMetric(metric: InsertUsageMetric): Promise<UsageMetric>;
+
+  // Pricing Config
+  getPricingConfigs(visibility?: string): Promise<PricingConfig[]>;
+  getPricingConfig(key: string): Promise<PricingConfig | undefined>;
+  upsertPricingConfig(config: InsertPricingConfig): Promise<PricingConfig>;
+  deletePricingConfig(key: string): Promise<boolean>;
+
+  // Stripe Sync
+  getStripeSyncRecords(planId?: number): Promise<StripeSync[]>;
+  createStripeSyncRecord(record: InsertStripeSync): Promise<StripeSync>;
+  updateStripeSyncRecord(id: number, updates: Partial<StripeSync>): Promise<StripeSync | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1177,6 +1231,179 @@ export class DatabaseStorage implements IStorage {
     ).returning();
     return result.length > 0;
   }
+
+  // Subscription Plans
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return db.select().from(subscriptionPlans).orderBy(subscriptionPlans.name);
+  }
+
+  async getSubscriptionPlan(id: number): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+    return plan || undefined;
+  }
+
+  async getSubscriptionPlanByCode(code: string): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.code, code));
+    return plan || undefined;
+  }
+
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const [newPlan] = await db.insert(subscriptionPlans).values(plan).returning();
+    return newPlan;
+  }
+
+  async updateSubscriptionPlan(id: number, updates: Partial<SubscriptionPlan>): Promise<SubscriptionPlan | undefined> {
+    const [updated] = await db.update(subscriptionPlans)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(subscriptionPlans.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Tenant Subscriptions
+  async getTenantSubscription(tenantId: string): Promise<TenantSubscription | undefined> {
+    const [sub] = await db.select().from(tenantSubscriptions)
+      .where(eq(tenantSubscriptions.tenantId, tenantId))
+      .orderBy(desc(tenantSubscriptions.createdAt));
+    return sub || undefined;
+  }
+
+  async getTenantSubscriptionById(id: number): Promise<TenantSubscription | undefined> {
+    const [sub] = await db.select().from(tenantSubscriptions).where(eq(tenantSubscriptions.id, id));
+    return sub || undefined;
+  }
+
+  async createTenantSubscription(sub: InsertTenantSubscription): Promise<TenantSubscription> {
+    const [newSub] = await db.insert(tenantSubscriptions).values(sub).returning();
+    return newSub;
+  }
+
+  async updateTenantSubscription(id: number, updates: Partial<TenantSubscription>): Promise<TenantSubscription | undefined> {
+    const [updated] = await db.update(tenantSubscriptions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tenantSubscriptions.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getAllActiveSubscriptions(): Promise<TenantSubscription[]> {
+    return db.select().from(tenantSubscriptions)
+      .where(eq(tenantSubscriptions.status, "active"));
+  }
+
+  // Subscription Invoices
+  async getSubscriptionInvoices(tenantId: string): Promise<SubscriptionInvoice[]> {
+    return db.select().from(subscriptionInvoices)
+      .where(eq(subscriptionInvoices.tenantId, tenantId))
+      .orderBy(desc(subscriptionInvoices.createdAt));
+  }
+
+  async getSubscriptionInvoice(id: number): Promise<SubscriptionInvoice | undefined> {
+    const [invoice] = await db.select().from(subscriptionInvoices).where(eq(subscriptionInvoices.id, id));
+    return invoice || undefined;
+  }
+
+  async createSubscriptionInvoice(invoice: InsertSubscriptionInvoice): Promise<SubscriptionInvoice> {
+    const [newInvoice] = await db.insert(subscriptionInvoices).values(invoice).returning();
+    return newInvoice;
+  }
+
+  async updateSubscriptionInvoice(id: number, updates: Partial<SubscriptionInvoice>): Promise<SubscriptionInvoice | undefined> {
+    const [updated] = await db.update(subscriptionInvoices)
+      .set(updates)
+      .where(eq(subscriptionInvoices.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Usage Metrics
+  async getUsageMetrics(tenantId: string, startDate?: string, endDate?: string): Promise<UsageMetric[]> {
+    const conditions = [eq(usageMetrics.tenantId, tenantId)];
+    if (startDate) {
+      conditions.push(gte(usageMetrics.metricDate, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(usageMetrics.metricDate, endDate));
+    }
+    return db.select().from(usageMetrics)
+      .where(and(...conditions))
+      .orderBy(desc(usageMetrics.metricDate));
+  }
+
+  async getUsageMetric(tenantId: string, metricDate: string): Promise<UsageMetric | undefined> {
+    const [metric] = await db.select().from(usageMetrics)
+      .where(and(eq(usageMetrics.tenantId, tenantId), eq(usageMetrics.metricDate, metricDate)));
+    return metric || undefined;
+  }
+
+  async upsertUsageMetric(metric: InsertUsageMetric): Promise<UsageMetric> {
+    const existing = await this.getUsageMetric(metric.tenantId, metric.metricDate);
+    if (existing) {
+      const [updated] = await db.update(usageMetrics)
+        .set(metric)
+        .where(eq(usageMetrics.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [newMetric] = await db.insert(usageMetrics).values(metric).returning();
+    return newMetric;
+  }
+
+  // Pricing Config
+  async getPricingConfigs(visibility?: string): Promise<PricingConfig[]> {
+    if (visibility) {
+      return db.select().from(pricingConfig)
+        .where(eq(pricingConfig.visibility, visibility))
+        .orderBy(pricingConfig.key);
+    }
+    return db.select().from(pricingConfig).orderBy(pricingConfig.key);
+  }
+
+  async getPricingConfig(key: string): Promise<PricingConfig | undefined> {
+    const [config] = await db.select().from(pricingConfig).where(eq(pricingConfig.key, key));
+    return config || undefined;
+  }
+
+  async upsertPricingConfig(config: InsertPricingConfig): Promise<PricingConfig> {
+    const existing = await this.getPricingConfig(config.key);
+    if (existing) {
+      const [updated] = await db.update(pricingConfig)
+        .set({ ...config, updatedAt: new Date() })
+        .where(eq(pricingConfig.id, existing.id))
+        .returning();
+      return updated;
+    }
+    const [newConfig] = await db.insert(pricingConfig).values(config).returning();
+    return newConfig;
+  }
+
+  async deletePricingConfig(key: string): Promise<boolean> {
+    const result = await db.delete(pricingConfig).where(eq(pricingConfig.key, key)).returning();
+    return result.length > 0;
+  }
+
+  // Stripe Sync
+  async getStripeSyncRecords(planId?: number): Promise<StripeSync[]> {
+    if (planId !== undefined) {
+      return db.select().from(stripeSync)
+        .where(eq(stripeSync.planId, planId))
+        .orderBy(desc(stripeSync.createdAt));
+    }
+    return db.select().from(stripeSync).orderBy(desc(stripeSync.createdAt));
+  }
+
+  async createStripeSyncRecord(record: InsertStripeSync): Promise<StripeSync> {
+    const [newRecord] = await db.insert(stripeSync).values(record).returning();
+    return newRecord;
+  }
+
+  async updateStripeSyncRecord(id: number, updates: Partial<StripeSync>): Promise<StripeSync | undefined> {
+    const [updated] = await db.update(stripeSync)
+      .set(updates)
+      .where(eq(stripeSync.id, id))
+      .returning();
+    return updated || undefined;
+  }
 }
 
 export const storage = new DatabaseStorage();
@@ -1651,6 +1878,15 @@ function getNavigationTemplate(companyType: string): NavSection[] {
     ],
   };
 
+  const billing: NavSection = {
+    title: "Billing", iconName: "DollarSign", order: 75, minRole: "admin",
+    children: [
+      { title: "Subscription", iconName: "Wallet", path: "/billing/subscriptions", minRole: "admin" },
+      { title: "Invoices", iconName: "Receipt", path: "/billing/invoices", minRole: "admin" },
+      { title: "Pricing Admin", iconName: "Shield", path: "/admin/pricing", minRole: "admin" },
+    ],
+  };
+
   switch (companyType) {
     case "construction":
       return [
@@ -1714,6 +1950,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
           { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
           { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
         ]},
+        billing,
       ];
 
     case "land_development":
@@ -1768,6 +2005,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
           { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
           { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
         ]},
+        billing,
       ];
 
     case "holding_company":
@@ -1790,6 +2028,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         },
         intelligence,
         documents,
+        billing,
       ];
 
     case "payroll_company":
@@ -1813,6 +2052,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         },
         intelligence,
         documents,
+        billing,
       ];
 
     case "retail":
@@ -1855,6 +2095,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         },
         intelligence,
         documents,
+        billing,
       ];
 
     case "tech":
@@ -1895,6 +2136,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         },
         intelligence,
         documents,
+        billing,
       ];
 
     case "consulting":
@@ -1936,6 +2178,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         },
         intelligence,
         documents,
+        billing,
       ];
 
     case "manufacturing":
@@ -1978,6 +2221,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         },
         intelligence,
         documents,
+        billing,
       ];
 
     case "healthcare":
@@ -2009,6 +2253,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         },
         intelligence,
         documents,
+        billing,
       ];
 
     case "real_estate":
@@ -2107,6 +2352,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         },
         intelligence,
         documents,
+        billing,
       ];
   }
 }

@@ -33,6 +33,9 @@ import ContactsDirectoryPage from "@/pages/contacts-directory";
 import MaestroDevPage from "@/pages/maestro-dev";
 import AIReportsPage from "@/pages/ai-reports";
 import SmartInboxPage from "@/pages/smart-inbox";
+import SubscriptionManagementPage from "@/pages/subscription-management";
+import BillingDashboardPage from "@/pages/billing-dashboard";
+import AdminPricingPage from "@/pages/admin-pricing";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
@@ -120,6 +123,10 @@ function Router() {
       <Route path="/documents/smart-inbox" component={SmartInboxPage} />
       
       <Route path="/ai/reports" component={AIReportsPage} />
+      
+      <Route path="/billing/subscriptions" component={SubscriptionManagementPage} />
+      <Route path="/billing/invoices" component={BillingDashboardPage} />
+      <Route path="/admin/pricing" component={AdminPricingPage} />
       
       <Route path="/team" component={Team} />
       <Route path="/settings" component={Settings} />

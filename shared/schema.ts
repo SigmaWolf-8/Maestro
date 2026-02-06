@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, boolean, integer, jsonb, timestamp, decimal } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, jsonb, timestamp, decimal, serial, numeric, bigint, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -580,3 +580,149 @@ export type DocumentLock = typeof documentLocks.$inferSelect;
 export type DocumentAuditLog = typeof documentAuditLogs.$inferSelect;
 export type WopiSession = typeof wopiSessions.$inferSelect;
 export type MsGraphToken = typeof msGraphTokens.$inferSelect;
+
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  basePriceMonthlyCents: integer("base_price_monthly_cents"),
+  basePriceYearlyCents: integer("base_price_yearly_cents"),
+  perUserPriceCents: integer("per_user_price_cents"),
+  annualDiscountBps: integer("annual_discount_bps").default(1667),
+  currency: varchar("currency", { length: 3 }).default("CAD"),
+  plenumnetEnabled: boolean("plenumnet_enabled").default(false),
+  securityMode: varchar("security_mode", { length: 20 }).default("zero"),
+  phaseSyncRequired: boolean("phase_sync_required").default(false),
+  femtosecondTiming: boolean("femtosecond_timing").default(false),
+  ledgerWitnessingEnabled: boolean("ledger_witnessing_enabled").default(false),
+  ledgerProvider: varchar("ledger_provider", { length: 20 }).default("algorand"),
+  features: jsonb("features").notNull().default({}),
+  maxUsers: integer("max_users"),
+  maxProjects: integer("max_projects"),
+  storageGb: integer("storage_gb"),
+  apiCallsPerMonth: integer("api_calls_per_month"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const tenantSubscriptions = pgTable("tenant_subscriptions", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  planId: integer("plan_id").notNull().references(() => subscriptionPlans.id),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+  lockedBasePriceCents: integer("locked_base_price_cents"),
+  lockedPerUserPriceCents: integer("locked_per_user_price_cents"),
+  billingInterval: varchar("billing_interval", { length: 20 }).default("monthly"),
+  tatWalletAddress: varchar("tat_wallet_address", { length: 255 }),
+  tatBalance: numeric("tat_balance", { precision: 20, scale: 8 }).default("0"),
+  algorandAccountAddress: varchar("algorand_account_address", { length: 255 }),
+  algorandAppId: bigint("algorand_app_id", { mode: "number" }),
+  hederaAccountId: varchar("hedera_account_id", { length: 50 }),
+  hederaTopicId: varchar("hedera_topic_id", { length: 50 }),
+  status: varchar("status", { length: 50 }).notNull().default("trialing"),
+  currentPeriodStart: timestamp("current_period_start"),
+  currentPeriodEnd: timestamp("current_period_end"),
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
+  trialEndsAt: timestamp("trial_ends_at"),
+  userSeats: integer("user_seats").default(1),
+  currentProjects: integer("current_projects").default(0),
+  storageUsedGb: numeric("storage_used_gb", { precision: 10, scale: 2 }).default("0"),
+  apiCallsThisMonth: integer("api_calls_this_month").default(0),
+  securityMode: varchar("security_mode", { length: 20 }).default("zero"),
+  phaseSyncEnabled: boolean("phase_sync_enabled").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const subscriptionInvoices = pgTable("subscription_invoices", {
+  id: serial("id").primaryKey(),
+  tenantSubscriptionId: integer("tenant_subscription_id").references(() => tenantSubscriptions.id),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  stripeInvoiceId: varchar("stripe_invoice_id", { length: 255 }),
+  amountDueCents: integer("amount_due_cents"),
+  amountPaidCents: integer("amount_paid_cents"),
+  taxAmountCents: integer("tax_amount_cents"),
+  currency: varchar("currency", { length: 3 }).default("CAD"),
+  status: varchar("status", { length: 50 }),
+  pdfUrl: text("pdf_url"),
+  tatPaymentAmount: numeric("tat_payment_amount", { precision: 20, scale: 8 }),
+  tatTransactionId: varchar("tat_transaction_id", { length: 255 }),
+  algorandTxId: varchar("algorand_tx_id", { length: 255 }),
+  algorandRound: bigint("algorand_round", { mode: "number" }),
+  hederaTxId: varchar("hedera_tx_id", { length: 255 }),
+  hederaConsensusTimestamp: varchar("hedera_consensus_timestamp", { length: 50 }),
+  lineItems: jsonb("line_items").default([]),
+  periodStart: timestamp("period_start"),
+  periodEnd: timestamp("period_end"),
+  province: varchar("province", { length: 2 }),
+  taxBreakdown: jsonb("tax_breakdown").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const usageMetrics = pgTable("usage_metrics", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  metricDate: date("metric_date").notNull(),
+  activeUsers: integer("active_users").default(0),
+  apiCalls: integer("api_calls").default(0),
+  storageBytes: bigint("storage_bytes", { mode: "number" }).default(0),
+  networkBytes: bigint("network_bytes", { mode: "number" }).default(0),
+  ternaryOperations: bigint("ternary_operations", { mode: "number" }).default(0),
+  phaseSyncEvents: integer("phase_sync_events").default(0),
+  femtosecondTimingEvents: integer("femtosecond_timing_events").default(0),
+  algorandWitnessEvents: integer("algorand_witness_events").default(0),
+  hederaWitnessEvents: integer("hedera_witness_events").default(0),
+  avgResponseTimeMs: numeric("avg_response_time_ms", { precision: 10, scale: 2 }),
+  phaseAlignmentEfficiency: numeric("phase_alignment_efficiency", { precision: 5, scale: 2 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const pricingConfig = pgTable("pricing_config", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 100 }).notNull().unique(),
+  value: text("value").notNull(),
+  valueType: varchar("value_type", { length: 20 }).notNull().default("string"),
+  visibility: varchar("visibility", { length: 10 }).notNull().default("PRIVATE"),
+  description: text("description"),
+  updatedBy: varchar("updated_by", { length: 36 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const stripeSync = pgTable("stripe_sync", {
+  id: serial("id").primaryKey(),
+  planId: integer("plan_id").references(() => subscriptionPlans.id),
+  stripeProductId: varchar("stripe_product_id", { length: 255 }),
+  stripePriceId: varchar("stripe_price_id", { length: 255 }),
+  stripePriceIdYearly: varchar("stripe_price_id_yearly", { length: 255 }),
+  syncAction: varchar("sync_action", { length: 50 }).notNull(),
+  syncStatus: varchar("sync_status", { length: 20 }).notNull().default("pending"),
+  previousPriceId: varchar("previous_price_id", { length: 255 }),
+  previousPriceIdYearly: varchar("previous_price_id_yearly", { length: 255 }),
+  errorMessage: text("error_message"),
+  syncedAt: timestamp("synced_at"),
+  syncedBy: varchar("synced_by", { length: 36 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTenantSubscriptionSchema = createInsertSchema(tenantSubscriptions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertSubscriptionInvoiceSchema = createInsertSchema(subscriptionInvoices).omit({ id: true, createdAt: true });
+export const insertUsageMetricSchema = createInsertSchema(usageMetrics).omit({ id: true, createdAt: true });
+export const insertPricingConfigSchema = createInsertSchema(pricingConfig).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertStripeSyncSchema = createInsertSchema(stripeSync).omit({ id: true, createdAt: true });
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type TenantSubscription = typeof tenantSubscriptions.$inferSelect;
+export type InsertTenantSubscription = z.infer<typeof insertTenantSubscriptionSchema>;
+export type SubscriptionInvoice = typeof subscriptionInvoices.$inferSelect;
+export type InsertSubscriptionInvoice = z.infer<typeof insertSubscriptionInvoiceSchema>;
+export type UsageMetric = typeof usageMetrics.$inferSelect;
+export type InsertUsageMetric = z.infer<typeof insertUsageMetricSchema>;
+export type PricingConfig = typeof pricingConfig.$inferSelect;
+export type InsertPricingConfig = z.infer<typeof insertPricingConfigSchema>;
+export type StripeSync = typeof stripeSync.$inferSelect;
+export type InsertStripeSync = z.infer<typeof insertStripeSyncSchema>;

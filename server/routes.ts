@@ -8,6 +8,9 @@ import { createDocumentsRouter } from "./api/documents";
 import { createMicrosoftRouter } from "./api/microsoft";
 import { createWopiRouter } from "./api/wopi";
 import { createIntelligenceRouter } from "./api/intelligence";
+import { createSubscriptionsRouter } from "./api/subscriptions";
+import { createBillingRouter } from "./api/billing";
+import { createAdminPricingRouter } from "./api/admin-pricing";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -24,6 +27,9 @@ export async function registerRoutes(
   app.use(createMicrosoftRouter());
   app.use(createWopiRouter());
   app.use(createIntelligenceRouter());
+  app.use(createSubscriptionsRouter());
+  app.use(createBillingRouter());
+  app.use(createAdminPricingRouter());
 
   return httpServer;
 }

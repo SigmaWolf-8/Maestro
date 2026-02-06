@@ -45,6 +45,9 @@ import {
   Palette,
   Sparkles,
   BarChart3,
+  DollarSign,
+  Wallet,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
@@ -119,6 +122,9 @@ const iconMap: Record<string, LucideIcon> = {
   Palette,
   Sparkles,
   BarChart3,
+  DollarSign,
+  Wallet,
+  Shield,
 };
 
 interface NavigationTree extends NavigationItem {
