@@ -382,15 +382,23 @@ interface NavMenuItemProps {
 
 function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { setOpen } = useSidebar();
   const Icon = item.icon || Folder;
   const hasChildren = item.children && item.children.length > 0;
   const active =
     isActive(item.path) || item.children?.some((c) => isActive(c.path));
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && collapsed) {
+      setOpen(true);
+    }
+  };
+
   if (hasChildren) {
     return (
       <SidebarMenuItem>
-        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
           <CollapsibleTrigger asChild>
             <SidebarMenuButton
               className={
