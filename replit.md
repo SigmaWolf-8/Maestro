@@ -3,9 +3,10 @@
 ## Overview
 The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system for residential construction and land development firms. It provides a modern, web-based interface with hierarchical navigation, role-based access control, and a 13-dimensional Work Breakdown Structure (WBS) engine. The system aims to streamline project management, team collaboration, financial tracking, and document management, offering capabilities such as comprehensive project and WBS management, multi-company support with customizable branding, advanced file management with WBS meta-tagging, and integration with Microsoft 365 for document editing and SSO.
 
-**Architecture Version:** 3.1 (February 6, 2026)
+**Architecture Version:** 3.2.1 (February 6, 2026)
 
 ## Recent Changes
+- **v3.2.1** (Feb 6, 2026): SaaS Billing & Authentication Integration — 6 new DB tables (subscription_plans, tenant_subscriptions, subscription_invoices, pricing_config, stripe_sync, usage_metrics), 7 backend services (TaxService with 13 Canadian provinces GST/HST/PST/QST, PricingConfigService, SubscriptionService, BillingService, UsageTrackingService, LedgerWitnessService, TenantOnboardingService), 3 API route files with 30 endpoints (subscriptions, billing, admin-pricing), 3 client pages (subscription-management, billing-dashboard, admin-pricing), 24 new storage methods, sidebar billing navigation for all company types. Prices in integer cents, annual discounts in basis points, locked pricing, Algorand/Hedera ledger witnessing, DB-driven pricing config with PUBLIC/PRIVATE visibility.
 - **v3.1** (Feb 6, 2026): Modularized backend routing (7 domain routers), completed all 12 WOPI endpoints with lock lifecycle, wired MS Graph token DB persistence, added 16 WOPI storage methods to IStorage/DatabaseStorage.
 - **v3.0** (Feb 6, 2026): WOPI infrastructure tables, AI Analytics, Smart Inbox, Kong gateway config, PlenumNET security framework.
 
@@ -24,8 +25,8 @@ I want to prioritize a clear, concise, and professional communication style. My 
 ### Project Structure
 Organized into `client/`, `server/`, `shared/`, `kong/`, and `scripts/`.
 
-### Backend API Modular Routing (v3.1)
-Backend routes extracted from monolithic routes.ts (~3,100 lines) into domain-specific routers under `server/api/`:
+### Backend API Modular Routing (v3.2.1)
+Backend routes extracted from monolithic routes.ts into domain-specific routers under `server/api/`:
 - `tenants.ts` - Tenant CRUD, navigation, dashboard, dimensions (~240 lines)
 - `projects.ts` - Projects, WBS nodes/templates/master codes, copy master WBS (~565 lines)
 - `people.ts` - Team, customers, quotes, vendors, vendor contacts, contacts directory (~640 lines)
@@ -33,11 +34,24 @@ Backend routes extracted from monolithic routes.ts (~3,100 lines) into domain-sp
 - `microsoft.ts` - Microsoft Graph OAuth, file ops, email sending, SMTP config (~540 lines)
 - `wopi.ts` - All 12 WOPI host protocol endpoints (~270 lines)
 - `intelligence.ts` - AI reports, quick prompts, Smart Inbox with WBS tagging (~250 lines)
+- `subscriptions.ts` - Subscription plans, current subscription, billing calculations, provinces, usage (16 endpoints)
+- `billing.ts` - Invoice CRUD, invoice generation, ledger witnessing, usage metrics (7 endpoints)
+- `admin-pricing.ts` - Pricing config CRUD, plan management, Stripe sync, seed data (7 endpoints)
 
-The main `server/routes.ts` (~30 lines) only mounts routers and sets up auth. Each router exports a `create*Router()` factory. Shared `getDefaultTenantId()` exported from `tenants.ts`.
+The main `server/routes.ts` mounts 10 routers and sets up auth. Each router exports a `create*Router()` factory. Shared `getDefaultTenantId()` exported from `tenants.ts`.
+
+### Backend Services (v3.2.1)
+7 domain services under `server/services/`:
+- `tax-service.ts` - Canadian tax calculations for 13 provinces (GST/HST/PST/QST regimes, rates in basis points)
+- `pricing-config-service.ts` - DB-driven key-value pricing configuration with PUBLIC/PRIVATE visibility
+- `subscription-service.ts` - Plan management, subscription CRUD, billing calculations with locked pricing
+- `billing-service.ts` - Invoice generation with line items, tax breakdown, payment tracking
+- `usage-tracking-service.ts` - Usage metrics recording, limit checking, summary aggregation
+- `ledger-witness-service.ts` - Algorand (primary) / Hedera (fallback) distributed ledger witnessing
+- `tenant-onboarding-service.ts` - Automated tenant provisioning with default subscription setup
 
 ### Database Schema
-Comprises 22 tables including core entities like `tenants`, `projects`, `wbs_nodes`, `documents`, `customers`, and `vendors`, as well as WOPI/document-specific tables such as `document_locks` and `wopi_sessions`.
+Comprises 28 tables including core entities like `tenants`, `projects`, `wbs_nodes`, `documents`, `customers`, and `vendors`, WOPI/document-specific tables such as `document_locks` and `wopi_sessions`, and billing tables: `subscription_plans`, `tenant_subscriptions`, `subscription_invoices`, `pricing_config`, `stripe_sync`, `usage_metrics`.
 
 ### Per-Domain Schema Organization
 The `shared/schema/` directory contains per-domain barrel exports for clear organization (e.g., `tenants.ts`, `users.ts`, `projects.ts`, `wbs.ts`, `documents.ts`).
