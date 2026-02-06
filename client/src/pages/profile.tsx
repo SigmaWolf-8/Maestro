@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, Building2, Briefcase, Save, LogOut, RefreshCw, Lock, Server, Hash, Trash2, CheckCircle2, XCircle } from "lucide-react";
+import { User, Mail, Building2, Briefcase, Save, LogOut, RefreshCw, Lock, Server, Hash, Trash2, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
 
 export default function Profile() {
   const { user, isLoading, logout } = useAuth();
@@ -27,6 +27,7 @@ export default function Profile() {
   const [smtpHost, setSmtpHost] = useState("smtp.office365.com");
   const [smtpPort, setSmtpPort] = useState("587");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { data: emailConfig, refetch: refetchEmailConfig } = useQuery<{
     configured: boolean;
@@ -354,13 +355,24 @@ export default function Profile() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="smtpPassword"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={smtpPassword}
                   onChange={(e) => setSmtpPassword(e.target.value)}
                   placeholder="Enter password"
-                  className="pl-10"
+                  className="pl-10 pr-10"
                   data-testid="input-smtp-password"
                 />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 text-muted-foreground"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                  data-testid="button-toggle-password"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
               </div>
             </div>
           </div>
