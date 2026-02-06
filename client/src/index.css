@@ -215,6 +215,21 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+
+  [data-sidebar="content"] [data-sidebar="menu"] {
+    font-family: var(--sidebar-font-family);
+    font-size: var(--sidebar-font-size);
+  }
+
+  [data-sidebar="content"] [data-sidebar="menu-button"] {
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  [data-sidebar="content"] [data-sidebar="menu-sub-button"] {
+    font-family: inherit;
+    font-size: inherit;
+  }
 }
 
 /**
