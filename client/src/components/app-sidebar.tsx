@@ -262,7 +262,7 @@ export function AppSidebar({
   };
 
   return (
-    <Sidebar collapsible="icon" style={{ background: 'var(--sidebar-gradient, hsl(var(--sidebar)))' }}>
+    <Sidebar collapsible="icon" style={{ background: 'var(--sidebar-gradient, hsl(var(--sidebar)))', fontFamily: 'var(--sidebar-font-family)', fontSize: 'var(--sidebar-font-size)' }}>
       <SidebarHeader className="p-2 pt-3 border-b-[3px] border-b-black/20 shadow-[inset_0_-6px_12px_rgba(0,0,0,0.25),inset_0_4px_8px_rgba(255,255,255,0.05)]">
         <div className="flex flex-col items-center">
           {activeTenant?.config?.branding?.logoUrl ? (
@@ -311,7 +311,7 @@ export function AppSidebar({
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu style={{ fontFamily: 'var(--sidebar-font-family, "Great Vibes", cursive)', fontSize: 'var(--sidebar-font-size, 120%)' }}>
+            <SidebarMenu>
               {navigationTree.map((item) => (
                 <NavMenuItem
                   key={item.id}
