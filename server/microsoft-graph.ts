@@ -1,7 +1,8 @@
 // @ts-ignore
 import { Client } from "@microsoft/microsoft-graph-client";
+import { storage } from "./storage";
 
-interface TokenInfo {
+export interface TokenInfo {
   accessToken: string;
   refreshToken?: string;
   expiresAt: number;
@@ -13,7 +14,6 @@ interface MicrosoftCredentials {
   tenantId: string;
 }
 
-// OAuth state store with expiration for CSRF protection
 interface OAuthState {
   state: string;
   createdAt: number;
@@ -23,10 +23,6 @@ interface OAuthState {
 }
 const oauthStateStore = new Map<string, OAuthState>();
 
-// Token store keyed by authenticated user ID
-const tokenStore = new Map<string, TokenInfo>();
-
-// Credentials store keyed by tenant ID (for use after OAuth callback)
 const credentialsStore = new Map<string, MicrosoftCredentials>();
 
 // Generate and store OAuth state for CSRF protection
@@ -212,33 +208,59 @@ export async function refreshAccessToken(refreshToken: string, credentials: Micr
   };
 }
 
-export function storeToken(userId: string, token: TokenInfo): void {
-  tokenStore.set(userId, token);
+export async function storeToken(userId: string, token: TokenInfo, tenantId?: string): Promise<void> {
+  const resolvedTenantId = tenantId || "default";
+  try {
+    await storage.upsertMsGraphToken({
+      tenantId: resolvedTenantId,
+      userId,
+      tokenType: "user_delegated",
+      accessToken: token.accessToken,
+      refreshToken: token.refreshToken || null,
+      expiresAt: new Date(token.expiresAt),
+      scopes: "Files.ReadWrite Files.ReadWrite.All Mail.Send",
+      isActive: true,
+    });
+  } catch (err) {
+    console.error("Failed to persist MS Graph token to database:", err);
+  }
 }
 
-export function getToken(userId: string): TokenInfo | undefined {
-  return tokenStore.get(userId);
+export async function getToken(userId: string, tenantId?: string): Promise<TokenInfo | undefined> {
+  const resolvedTenantId = tenantId || "default";
+  try {
+    const dbToken = await storage.getMsGraphToken(userId, resolvedTenantId);
+    if (!dbToken) return undefined;
+    return {
+      accessToken: dbToken.accessToken,
+      refreshToken: dbToken.refreshToken || undefined,
+      expiresAt: new Date(dbToken.expiresAt).getTime(),
+    };
+  } catch (err) {
+    console.error("Failed to retrieve MS Graph token from database:", err);
+    return undefined;
+  }
 }
 
-export async function getValidToken(userId: string, credentials?: MicrosoftCredentials): Promise<string | null> {
-  const token = tokenStore.get(userId);
+export async function getValidToken(userId: string, credentials?: MicrosoftCredentials, tenantId?: string): Promise<string | null> {
+  const token = await getToken(userId, tenantId);
   if (!token) return null;
-  
+
   if (Date.now() >= token.expiresAt - 60000) {
     if (token.refreshToken && credentials) {
       try {
         const newToken = await refreshAccessToken(token.refreshToken, credentials);
-        storeToken(userId, newToken);
+        await storeToken(userId, newToken, tenantId);
         return newToken.accessToken;
       } catch {
-        tokenStore.delete(userId);
+        await storage.deleteMsGraphToken(userId, tenantId || "default");
         return null;
       }
     }
-    tokenStore.delete(userId);
+    await storage.deleteMsGraphToken(userId, tenantId || "default");
     return null;
   }
-  
+
   return token.accessToken;
 }
 
