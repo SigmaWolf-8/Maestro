@@ -324,9 +324,10 @@ export function AppSidebar({
                 asChild
                 isActive={isActive("/settings")}
                 data-testid="nav-settings"
+                style={{ fontSize: '80%' }}
               >
                 <Link href="/settings">
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-3.5 w-3.5" />
                   <span>Settings</span>
                 </Link>
               </SidebarMenuButton>
@@ -337,8 +338,9 @@ export function AppSidebar({
             href="/profile" 
             className="flex items-center gap-3 pt-3 border-t border-sidebar-border/50 hover-elevate rounded-md p-2 -m-2 cursor-pointer"
             data-testid="nav-profile"
+            style={{ fontSize: '80%' }}
           >
-            <Avatar className="h-8 w-8">
+            <Avatar className="h-7 w-7">
               <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs">
                 {displayFirstName?.[0] || "U"}
                 {displayLastName?.[0] || ""}
@@ -346,10 +348,10 @@ export function AppSidebar({
             </Avatar>
             {state !== "collapsed" && (
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm font-medium text-sidebar-foreground truncate">
+                <span className="font-medium text-sidebar-foreground truncate">
                   {displayFirstName} {displayLastName}
                 </span>
-                <span className="text-xs text-sidebar-foreground/60 truncate capitalize">
+                <span className="text-sidebar-foreground/60 truncate capitalize" style={{ fontSize: '85%' }}>
                   {userRole.replace("_", " ")}
                 </span>
               </div>
