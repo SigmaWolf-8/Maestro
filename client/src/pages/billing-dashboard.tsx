@@ -46,7 +46,7 @@ const formatCurrency = (cents: number | null | undefined): string => {
   return `$${(cents / 100).toFixed(2)} CAD`;
 };
 
-export default function BillingDashboard() {
+export default function BillingDashboard({ embedded = false }: { embedded?: boolean }) {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [invoiceProvince, setInvoiceProvince] = useState("ON");
   const { toast } = useToast();
@@ -125,13 +125,15 @@ export default function BillingDashboard() {
   };
 
   return (
-    <div className="p-6 flex flex-col gap-6" data-testid="page-billing-dashboard">
+    <div className={embedded ? "flex flex-col gap-3" : "p-6 flex flex-col gap-6"} data-testid="page-billing-dashboard">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Receipt className="h-6 w-6 text-muted-foreground" />
-          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Billing & Invoices</h1>
-        </div>
-        <Button onClick={() => setGenerateOpen(true)} data-testid="button-generate-invoice">
+        {!embedded && (
+          <div className="flex items-center gap-3">
+            <Receipt className="h-6 w-6 text-muted-foreground" />
+            <h1 className="text-2xl font-semibold" data-testid="text-page-title">Billing & Invoices</h1>
+          </div>
+        )}
+        <Button onClick={() => setGenerateOpen(true)} size={embedded ? "sm" : "default"} data-testid="button-generate-invoice">
           <Plus className="h-4 w-4 mr-1" />
           Generate Invoice
         </Button>

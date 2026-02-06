@@ -252,7 +252,7 @@ export function AppSidebar({
     const tree = buildNavigationTree(navigationItems);
     const roleFiltered = filterByRole(tree, userRoleLevel);
     const constrained = enforceChoiceConstraint(roleFiltered);
-    return constrained.filter(item => item.path !== "/security/dashboard");
+    return constrained.filter(item => item.path !== "/security/dashboard" && item.title !== "Billing");
   }, [navigationItems, userRoleLevel]);
 
   const isActive = (path?: string | null) => {

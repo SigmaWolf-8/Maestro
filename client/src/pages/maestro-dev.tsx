@@ -24,8 +24,10 @@ import {
   Check,
   RefreshCw,
   Terminal,
+  DollarSign,
 } from "lucide-react";
 import { SiGithub } from "react-icons/si";
+import BillingDashboard from "./billing-dashboard";
 
 const KONG_BASE_URL = "https://kong-9e76b3c08eusfq1zu.kongcloud.dev";
 
@@ -202,7 +204,7 @@ function ApiCategorySection({ category, endpoints }: { category: string; endpoin
 
 export default function MaestroDevPage() {
   const [apiFilter, setApiFilter] = useState("");
-  const [activeTab, setActiveTab] = useState<"kong" | "github" | "api-docs">("kong");
+  const [activeTab, setActiveTab] = useState<"kong" | "github" | "api-docs" | "billing">("kong");
 
   const { data: kongTimestamp, isLoading: timestampLoading, refetch: refetchTimestamp } = useQuery<any>({
     queryKey: ["/api/kong/timestamp"],
@@ -247,6 +249,7 @@ export default function MaestroDevPage() {
     { id: "kong" as const, label: "Kong Konnect Gateway", icon: Shield },
     { id: "github" as const, label: "GitHub & Repository", icon: GitBranch },
     { id: "api-docs" as const, label: "API Reference", icon: Code },
+    { id: "billing" as const, label: "Billing", icon: DollarSign },
   ];
 
   return (
@@ -742,6 +745,10 @@ export default function MaestroDevPage() {
             </Card>
           </div>
         </div>
+      )}
+
+      {activeTab === "billing" && (
+        <BillingDashboard embedded />
       )}
     </div>
   );
