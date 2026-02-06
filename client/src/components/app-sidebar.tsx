@@ -267,14 +267,14 @@ export function AppSidebar({
                   setShowWebViewer(true);
                 }
               }}
-              className={`flex w-full h-[92px] items-center justify-center ${activeTenant?.config?.branding?.companyUrl ? 'cursor-pointer hover-elevate' : 'cursor-default'}`}
+              className={`flex w-full h-[83px] items-center justify-center ${activeTenant?.config?.branding?.companyUrl ? 'cursor-pointer hover-elevate' : 'cursor-default'}`}
               title={activeTenant?.config?.branding?.companyUrl ? "Click to open company website" : undefined}
               data-testid="button-logo-web-viewer"
             >
               <img
                 src={activeTenant.config.branding.logoUrl}
                 alt="Logo"
-                className="max-w-full max-h-full object-contain"
+                className="max-w-[90%] max-h-[90%] object-contain"
               />
             </button>
           ) : (
