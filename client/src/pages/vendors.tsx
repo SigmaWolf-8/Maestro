@@ -275,19 +275,6 @@ export default function VendorsForm() {
 
       {/* Compact Vendor Search/Select */}
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="vendorSearch"
-              placeholder="Search vendors..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
-              data-testid="input-vendor-search"
-            />
-          </div>
-        </div>
         <div className="w-72">
           <Select
             value={selectedVendorId || ""}
@@ -313,6 +300,19 @@ export default function VendorsForm() {
               )}
             </SelectContent>
           </Select>
+        </div>
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="vendorSearch"
+              placeholder="Search vendors..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+              data-testid="input-vendor-search"
+            />
+          </div>
         </div>
       </div>
 

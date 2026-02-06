@@ -221,19 +221,6 @@ export default function CustomersForm() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="search"
-              placeholder="Search by job #, name, or address..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9"
-              data-testid="input-customer-search"
-            />
-          </div>
-        </div>
         <div className="w-80">
           <Select
             value={selectedJobNum?.toString() || ""}
@@ -256,6 +243,19 @@ export default function CustomersForm() {
               )}
             </SelectContent>
           </Select>
+        </div>
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="search"
+              placeholder="Search by job #, name, or address..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9"
+              data-testid="input-customer-search"
+            />
+          </div>
         </div>
       </div>
 
