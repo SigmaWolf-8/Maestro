@@ -304,9 +304,9 @@ export default function MaestroDevPage() {
                   <span className="text-xs text-muted-foreground">Protocol</span>
                   <span className="text-xs">HTTPS/TLS 1.3</span>
                 </div>
-                <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => window.open(KONG_BASE_URL, '_blank')} data-testid="button-open-kong">
+                <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => window.open(`${KONG_BASE_URL}/api/docs`, '_blank')} data-testid="button-open-kong">
                   <ExternalLink className="mr-1 h-3 w-3" />
-                  Open Gateway
+                  Open Gateway Docs
                 </Button>
               </CardContent>
             </Card>
