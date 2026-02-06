@@ -1,0 +1,347 @@
+# The Maestro ERP — v3.2.1 Implementation Task List
+
+## Capomastro Holdings Ltd. — Theoretical Physics Division
+**Date:** February 6, 2026
+**Tracks:** maestro-v3.2.1-saas-integration.md
+**All Rights Reserved and Preserved; Capomastro Holdings Ltd.**
+
+---
+
+## PRE-REQUISITE: Sync v3.1 to GitHub
+
+- [ ] **TASK-000:** Push v3.1 commits (4-5) from Replit to GitHub `main` branch
+  - 29 files: kong/ (18), scripts/ (6), shared/schema/ (6), PlenumNET stack (5), WOPI hooks (1)
+  - Schema: 4 new tables (document_locks, document_audit_logs, wopi_sessions, ms_graph_tokens)
+  - Verify GitHub shows 5 commits after push
+  - Confirm directory structure: kong/, scripts/ (plural), shared/schema/, server/integrations/, client/src/lib/integrations/
+
+---
+
+## PHASE 1: Database Schema & Types (Day 1-3)
+
+### Schema (append to shared/schema.ts)
+
+- [ ] **TASK-101:** Add `subscription_plans` table to shared/schema.ts
+  - All pricing in integer cents (14900 = $149.00)
+  - Includes Stripe sync columns (stripeProductId, stripe*PriceId)
+  - PlenumNET feature flags (securityMode, phaseSyncRequired, femtosecondTiming, etc.)
+  - Usage limits (maxUsers, maxProjects, storageGb, apiCallsPerMonth; -1 = unlimited)
+  - Support tier fields (supportLevel, slaResponseHours, uptimeGuaranteeBps)
+
+- [ ] **TASK-102:** Add `pricing_config` table to shared/schema.ts
+  - Key-value store with PUBLIC/PRIVATE visibility
+  - Categories: currency, tax, billing, display, stripe, ledger, plenumnet
+  - valueType column (string, integer, decimal, boolean, json)
+
+- [ ] **TASK-103:** Add `tenant_subscriptions` table to shared/schema.ts
+  - Links to tenants (FK) and subscription_plans (FK)
+  - Locked-in pricing columns (lockedBasePriceCents, lockedPerUserPriceCents)
+  - Billing period (monthly/yearly), currency
+  - Algorand + Hedera witnessing columns (NOT XRPL)
+  - Canadian tax fields (province, taxExempt, businessNumber)
+
+- [ ] **TASK-104:** Add `subscription_invoices` table to shared/schema.ts
+  - All amounts in cents (subtotalCents, taxCents, totalCents, amountPaidCents)
+  - Tax breakdown JSONB column
+  - Algorand + Hedera witness receipt columns
+  - Line items JSONB
+
+- [ ] **TASK-105:** Add `usage_metrics` table to shared/schema.ts
+  - Daily aggregates per tenant
+  - PlenumNET metrics (ternaryOperations, phaseSyncEvents, femtosecondTimingEvents)
+  - Algorand + Hedera witness event counts (NOT XRPL)
+
+- [ ] **TASK-106:** Add `stripe_sync` table to shared/schema.ts
+  - Tracks Stripe product/price sync state
+  - Records archived prices (Stripe prices are immutable)
+  - isActive flag + archivedAt timestamp
+
+- [ ] **TASK-107:** Add all insert schemas and types for 6 new tables
+  - createInsertSchema() for each table
+  - $inferSelect and $inferInsert types for each table
+
+- [ ] **TASK-108:** Run `npx drizzle-kit push` to apply schema migration
+
+### Barrel Exports
+
+- [ ] **TASK-109:** Create `shared/schema/subscriptions.ts` — barrel exports for subscription_plans, tenant_subscriptions, pricing_config
+- [ ] **TASK-110:** Create `shared/schema/billing.ts` — barrel exports for subscription_invoices, usage_metrics, stripe_sync
+
+### Shared Types
+
+- [ ] **TASK-111:** Create `shared/types/pricing.ts`
+  - PRICING_CONFIG_SEED array (all seed defaults for pricing_config table)
+  - Canadian province codes and tax regime mapping (13 provinces)
+  - ConfigVisibility, ConfigValueType, ConfigCategory types
+
+- [ ] **TASK-112:** Create `shared/types/subscriptions.ts`
+  - PLAN_SEED_DEFAULTS array (4 tiers with CAD pricing in cents)
+  - Essentials: $149/$35, Professional: $299/$65, Enterprise: $749/$110, Quantum: $1,999/$225
+  - FEATURE_GATES constant object (19 feature keys)
+  - SECURITY_MODE_HIERARCHY, SECURITY_MODE_REQUIREMENTS maps
+  - SecurityMode, LedgerProvider, PaymentMethod, SubscriptionStatus, BillingPeriod types
+
+- [ ] **TASK-113:** Create `shared/types/billing.ts`
+  - InvoiceLineItem, TaxLineItem, BillingCalculation types
+  - PricingCalculatorInput/Result types
+  - LedgerWitnessReceipt, UsageSummary, UsageLimitStatus types
+  - TenantEntitlement, OnboardingStep, OnboardingResult types
+
+---
+
+## PHASE 2: Config & Tax Services (Day 4-5)
+
+- [ ] **TASK-201:** Create `server/services/pricing-config-service.ts` (~180 lines)
+  - In-memory cache with 60s TTL
+  - Typed getters: getString, getInteger, getDecimal, getBoolean, getJson
+  - getAllPublic() — returns only PUBLIC visibility configs
+  - getAllByCategory() — for admin UI
+  - getTaxRatesForProvince() — reads from pricing_config table
+  - setValue/setValues with cache invalidation and updatedBy tracking
+  - calculatePricing() — reads plan prices from DB + applies tax
+
+- [ ] **TASK-202:** Create `server/services/tax-service.ts` (~100 lines)
+  - calculateTax(subtotalCents, province, taxExempt?) → { taxLines, totalTaxCents }
+  - All 13 Canadian provinces: GST-only (AB, NT, NU, YT), HST (ON, NB, NL, NS, PE), GST+PST (BC, SK, MB), GST+QST (QC)
+  - getStripeTaxRateIds(province) — maps province to Stripe tax rate IDs from config
+  - Reads ALL rates from PricingConfigService (never hardcoded)
+
+- [ ] **TASK-203:** Create `server/services/stripe-product-service.ts` (~200 lines)
+  - initializeAllProducts() — creates Stripe products + 4 prices each from DB
+  - syncPlanPricing(planCode) — creates new Stripe prices, archives old (immutable in Stripe)
+  - createCheckoutSession() — with Canadian tax rates, billing period, user count
+  - migrateSubscriberPricing() — optional admin tool for renewals
+  - Records all operations in stripe_sync table
+
+- [ ] **TASK-204:** Create `scripts/dev/seed-subscriptions.ts` (~150 lines)
+  - Seed pricing_config from PRICING_CONFIG_SEED (idempotent upsert)
+  - Seed subscription_plans from PLAN_SEED_DEFAULTS (idempotent upsert)
+  - Calculate yearly prices: Math.round(monthly × 12 × (1 - annualDiscountBps/10000))
+  - Assign Professional plan to existing seed tenant
+  - Create sample invoices and usage metrics
+
+- [ ] **TASK-205:** Run seed script to populate plans + config
+
+---
+
+## PHASE 3: Core Services (Day 6-8)
+
+- [ ] **TASK-301:** Create `server/services/ledger-witness-service.ts` (~120 lines)
+  - Algorand primary (algosdk), Hedera fallback (@hashgraph/sdk)
+  - witnessEvent() — SHA-256 hash of payload to Algorand app call, falls back to Hedera HCS
+  - verifyWitness() — verify transaction on-chain
+  - getTenantWitnessStatus() — provider, last witness, total events
+  - initializeTenantLedger() — create Algorand account or Hedera topic for Enterprise+ tenants
+  - Reads provider config from PricingConfigService
+
+- [ ] **TASK-302:** Create `server/services/usage-tracking-service.ts` (~180 lines)
+  - In-memory counters flushed to usage_metrics every 60s
+  - trackApiCall, trackStorageChange, trackTernaryOperation, trackPhaseSyncEvent
+  - trackLedgerWitnessEvent (algorand | hedera), trackFemtosecondEvent
+  - getDailyUsage, getMonthlyUsage, getUsageTrend
+  - checkLimits() — returns UsageLimitStatus[] with 80%/90%/100% thresholds
+  - resetMonthlyCounters() — called on subscription period start
+
+- [ ] **TASK-303:** Create `server/services/subscription-service.ts` (~250 lines)
+  - getAllActivePlans() — reads from subscription_plans table
+  - getActiveSubscription(tenantId) — with plan join
+  - createSubscription() — locks in current pricing to tenant_subscriptions
+  - upgradePlan / downgradePlan — prorated billing
+  - cancelSubscription(immediate: boolean)
+  - hasFeature() — reads features JSONB from plan
+  - checkSecurityModeAccess() — hierarchy: zero < one < phi < phi-plus
+  - getTenantEntitlement() — full entitlement summary
+  - getSuggestedUpgrade() — recommends plan for missing feature
+
+- [ ] **TASK-304:** Create `server/services/billing-service.ts` (~300 lines)
+  - createStripeCustomer / getOrCreateStripeCustomer
+  - createStripeSubscription — delegates to StripeProductService.createCheckoutSession
+  - createTatSubscription — Algorand-based TAT transfer
+  - createMixedSubscription — partial Stripe + partial TAT
+  - generateMonthlyInvoice — with tax calculation via TaxService
+  - calculateBilling — returns BillingCalculation with full breakdown
+  - processPayment, handleStripeWebhook
+  - processAllMonthlyBilling — batch automation
+  - calculatePlenumnetCharges — reads rates from PricingConfigService
+
+- [ ] **TASK-305:** Create `server/services/tenant-onboarding-service.ts` (~200 lines)
+  - 7-step orchestration: tenant → admin → auth → subscription → PlenumNET → ledger → seed data
+  - Uses existing storage.ts for tenant/user creation
+  - Delegates billing to BillingService
+  - Delegates ledger to LedgerWitnessService for Enterprise+ plans
+  - Step tracking with OnboardingStep[] status
+
+- [ ] **TASK-306:** Create `server/middleware/entitlement.ts` (~120 lines)
+  - featureGuard(requiredFeature, requiredSecurityMode?) middleware factory
+  - requireActiveSubscription() lightweight middleware
+  - meetsSecurityLevel() helper
+  - Attaches entitlement context to Express request
+  - Returns 403 with upgrade suggestion, 429 for usage limits
+  - CRITICAL: Does NOT apply to existing v3.1 routes
+
+---
+
+## PHASE 4: API Routes (Day 9-10)
+
+- [ ] **TASK-401:** Create `server/routes/subscription-routes.ts` (~200 lines)
+  - 12 endpoints at /api/subscriptions/*
+  - Plans listing, current subscription, create/upgrade/downgrade/cancel
+  - Entitlement, features, usage, usage trend
+  - Pricing calculator endpoint with plan/users/period/province params
+
+- [ ] **TASK-402:** Create `server/routes/billing-routes.ts` (~180 lines)
+  - 11 endpoints at /api/billing/*
+  - Invoices (list, detail, PDF), payment method CRUD
+  - Billing calculation preview, manual billing trigger
+  - TAT balance, ledger status/history
+  - Stripe checkout session creation
+
+- [ ] **TASK-403:** Create `server/routes/admin-pricing-routes.ts` (~180 lines)
+  - 12 endpoints at /api/admin/pricing/* (admin role required)
+  - Config CRUD (get all, get public, update single, bulk update)
+  - Plan CRUD (list, update pricing/limits/features, activate/deactivate)
+  - Stripe sync (init, sync single plan, sync all, status)
+  - Tax test endpoint, pricing change audit log
+
+- [ ] **TASK-404:** Create `server/routes/webhook-routes.ts` (~100 lines)
+  - POST /api/webhooks/stripe — Stripe signature verification + event handling
+  - POST /api/webhooks/algorand — Algorand transaction callback
+  - POST /api/webhooks/hedera — Hedera consensus callback
+  - NO auth middleware — uses provider-specific verification
+
+- [ ] **TASK-405:** Append route mounting to `server/routes.ts` (MODIFY — append only)
+  - Import and mount subscriptionRoutes, billingRoutes, adminPricingRoutes, webhookRoutes
+
+---
+
+## PHASE 5: Client (Day 11-14)
+
+### Hooks
+
+- [ ] **TASK-501:** Create `client/src/hooks/use-pricing.ts`
+  - usePricingConfig() — fetches PUBLIC config from /api/admin/pricing/public
+  - usePricingCalculator() — calls /api/subscriptions/calculate
+
+- [ ] **TASK-502:** Create `client/src/hooks/use-subscription.ts`
+  - useSubscription() — current plan + entitlement
+  - useFeatureAccess(featureKey) — hasAccess + requiredPlan
+  - useSecurityMode() — current + available modes
+
+- [ ] **TASK-503:** Create `client/src/hooks/use-billing.ts`
+  - useBilling() — invoices, next billing date/amount
+  - usePaymentMethod() — Stripe card on file
+  - useTatBalance() — TAT wallet
+
+- [ ] **TASK-504:** Create `client/src/hooks/use-usage.ts`
+  - useUsage() — current usage + limits
+  - useUsageTrend(days) — historical data
+
+### Lib
+
+- [ ] **TASK-505:** Create `client/src/lib/feature-flags.ts`
+  - Re-export FEATURE_GATES from shared
+  - isFeatureAvailable() and getUpgradePlanForFeature() helpers
+
+### Components
+
+- [ ] **TASK-506:** Create `client/src/components/subscription-card.tsx` — plan card with DB-driven pricing
+- [ ] **TASK-507:** Create `client/src/components/pricing-calculator.tsx` — interactive calculator with tax
+- [ ] **TASK-508:** Create `client/src/components/tax-breakdown.tsx` — GST/HST/PST/QST display
+- [ ] **TASK-509:** Create `client/src/components/usage-meter.tsx` — color-coded progress bars
+- [ ] **TASK-510:** Create `client/src/components/invoice-table.tsx` — sortable with status badges
+- [ ] **TASK-511:** Create `client/src/components/feature-gate.tsx` — wrapper with upgrade prompt
+- [ ] **TASK-512:** Create `client/src/components/onboarding-stepper.tsx` — step indicator
+
+### Pages
+
+- [ ] **TASK-513:** Create `client/src/pages/subscription-management.tsx` (~400 lines)
+  - Plan comparison grid (4 tiers), monthly/annual toggle
+  - Pricing calculator with province selector + tax breakdown
+  - Upgrade/downgrade with confirmation modals
+  - Current plan highlight + usage summary
+
+- [ ] **TASK-514:** Create `client/src/pages/billing-dashboard.tsx` (~350 lines)
+  - Invoice history table with tax breakdown per invoice
+  - Next billing preview, payment method management
+  - TAT balance display, Algorand/Hedera witnessing log
+  - Usage breakdown charts
+
+- [ ] **TASK-515:** Create `client/src/pages/tenant-onboarding.tsx` (~350 lines)
+  - 5-step wizard: Company Info (province) → Plan → Payment → Config → Complete
+  - Province drives real-time tax calculation
+  - Stripe Elements for payment
+  - PlenumNET + ledger config for Enterprise+
+
+- [ ] **TASK-516:** Create `client/src/pages/admin-pricing.tsx` (~500 lines)
+  - Edit plan prices, limits, features, discount BPS
+  - Edit tax rates per province
+  - Modify billing defaults (trial days, grace period, currency)
+  - Stripe sync buttons with status
+  - Pricing calculator preview
+  - Change audit log
+
+### Route Registration
+
+- [ ] **TASK-517:** Append 4 routes to `client/src/App.tsx` (MODIFY — append only)
+  - /subscriptions, /billing, /onboarding, /admin/pricing
+
+---
+
+## PHASE 6: Infrastructure & Verification (Day 15-16)
+
+### Kong
+
+- [ ] **TASK-601:** Create `kong/services/maestro-billing.yml`
+  - Billing service with rate limiting (60/min) and CORS
+
+- [ ] **TASK-602:** Create `kong/routes/billing-routes.yml`
+  - Routes for subscriptions, billing, admin pricing (with JWT)
+  - Webhook routes (no JWT — signature verification)
+
+### Scripts
+
+- [ ] **TASK-603:** Create `scripts/tools/init-stripe-products.mjs`
+  - One-time Stripe product/price initialization from subscription_plans table
+
+- [ ] **TASK-604:** Create `scripts/tools/validate-billing.mjs`
+  - Tests: plans endpoint, pricing config, pricing calculator with Ontario HST
+  - Tests: subscription CRUD, invoice list, ledger status, feature gating
+  - Tax calculation validation for all 13 provinces
+
+### Environment
+
+- [ ] **TASK-605:** Add v3.2.1 environment variables to .env
+  - Stripe: STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
+  - Algorand: ALGORAND_TOKEN, ALGORAND_SERVER, ALGORAND_PORT, ALGORAND_MNEMONIC, ALGORAND_APP_ID
+  - Hedera: HEDERA_NETWORK, HEDERA_ACCOUNT_ID, HEDERA_PRIVATE_KEY, HEDERA_TOPIC_ID
+
+### Verification
+
+- [ ] **TASK-606:** Run validate-billing.mjs — all endpoints pass
+- [ ] **TASK-607:** Verify all 21 existing schema tables unchanged
+- [ ] **TASK-608:** Verify all ~85 existing API endpoints return identical responses
+- [ ] **TASK-609:** Verify all 21 existing client pages render correctly
+- [ ] **TASK-610:** Verify existing Kong, PlenumNET (incl. XRPL), WOPI untouched
+- [ ] **TASK-611:** Verify shared/schema.ts changes are append-only
+- [ ] **TASK-612:** Verify Algorand/Hedera testnet connectivity
+- [ ] **TASK-613:** Commit v3.2.1 to GitHub (target: commit 7 or 8 on main)
+
+---
+
+## SUMMARY
+
+| Phase | Tasks | Estimated Days | Estimated Hours |
+|-------|-------|----------------|-----------------|
+| Pre-req (v3.1 push) | 1 | 0.5 | 1-2 |
+| Phase 1: Schema & Types | 13 | 3 | 28-42 |
+| Phase 2: Config & Tax | 5 | 2 | 20-30 |
+| Phase 3: Core Services | 6 | 3 | 50-70 |
+| Phase 4: API Routes | 5 | 2 | 16-22 |
+| Phase 5: Client | 17 | 4 | 55-75 |
+| Phase 6: Infra & Verify | 13 | 2 | 18-27 |
+| **TOTAL** | **60** | **16.5** | **188-266** |
+
+---
+
+*Task list aligned with maestro-v3.2.1-saas-integration.md*
+*All Rights Reserved and Preserved; Capomastro Holdings Ltd.*
