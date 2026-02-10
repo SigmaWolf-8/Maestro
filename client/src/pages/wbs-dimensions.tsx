@@ -56,7 +56,14 @@ export default function WbsDimensions() {
   const [pendingEdit, setPendingEdit] = useState<{ oldKey: string; newKey: string; newLabel: string; newRequired: boolean } | null>(null);
 
   const { data: projects = [], isLoading: projectsLoading, isError: projectsError } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
+    queryKey: ["/api/projects", activeTenant?.id],
+    queryFn: async () => {
+      if (!activeTenant?.id) return [];
+      const res = await fetch(`/api/projects?tenantId=${activeTenant.id}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!activeTenant?.id,
   });
 
   const dimensions: WbsDimension[] = activeTenant?.config?.wbsDimensions || [];

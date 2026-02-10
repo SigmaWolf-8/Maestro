@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useSettings } from "@/components/settings-provider";
 import { useToast } from "@/hooks/use-toast";
 import {
   Building2,
@@ -54,6 +55,7 @@ const isValidEmail = (email: string): boolean => {
 
 export default function VendorsForm() {
   const { toast } = useToast();
+  const { activeTenant } = useSettings();
   
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,7 +66,14 @@ export default function VendorsForm() {
   const [emailData, setEmailData] = useState({ to: "", subject: "", body: "" });
 
   const { data: allVendors, isLoading: vendorsLoading } = useQuery<Vendor[]>({
-    queryKey: ["/api/vendors"],
+    queryKey: ["/api/vendors", activeTenant?.id],
+    queryFn: async () => {
+      if (!activeTenant?.id) return [];
+      const res = await fetch(`/api/vendors?tenantId=${activeTenant.id}`);
+      if (!res.ok) throw new Error("Failed to fetch vendors");
+      return res.json();
+    },
+    enabled: !!activeTenant?.id,
   });
 
   const { data: vendorData, isLoading: dataLoading, refetch: refetchData } = useQuery<VendorWithContacts | null>({
@@ -100,12 +109,12 @@ export default function VendorsForm() {
 
   const createVendor = useMutation({
     mutationFn: async (company: string) => {
-      const tenantId = allVendors?.[0]?.tenantId;
+      const tenantId = activeTenant?.id;
       return apiRequest("POST", "/api/vendors", { tenantId, company });
     },
     onSuccess: async (response) => {
       const vendor = await response.json();
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendors", activeTenant?.id] });
       setSelectedVendorId(vendor.id);
       setShowCreateDialog(false);
       setNewCompanyName("");
@@ -118,10 +127,10 @@ export default function VendorsForm() {
 
   const seedData = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/vendors/seed", {});
+      return apiRequest("POST", "/api/vendors/seed", { tenantId: activeTenant?.id });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendors", activeTenant?.id] });
       toast({ title: "Sample Data Added", description: "Sample vendors have been created" });
     },
     onError: (error: any) => {
@@ -154,20 +163,23 @@ export default function VendorsForm() {
         if (message.includes("{")) {
           const jsonPart = message.substring(message.indexOf("{"));
           const parsed = JSON.parse(jsonPart);
-          if (parsed.message) {
-            errorMessage = parsed.message;
+          errorTitle = parsed.error || "Error";
+          errorMessage = parsed.message || errorMessage;
+          if (parsed.error === "Not authenticated") {
+            errorTitle = "Login Required";
+          } else if (parsed.error === "Email not configured") {
+            errorTitle = "Email Not Configured";
+          } else if (parsed.error === "SMTP Authentication Failed") {
+            errorTitle = "Authentication Failed";
+          } else if (parsed.error === "SMTP Connection Failed") {
+            errorTitle = "Connection Error";
           } else if (parsed.details?.to) {
+            errorTitle = "Invalid Email";
             errorMessage = parsed.details.to[0] || "Invalid email address";
-          } else if (parsed.error) {
-            errorMessage = parsed.error;
-          }
-          if (parsed.error === "Microsoft 365 not connected") {
-            errorTitle = "Microsoft 365 Required";
-            errorMessage = "Please connect your Microsoft 365 account in Settings to send emails";
           }
         } else if (message.includes("401")) {
-          errorTitle = "Microsoft 365 Required";
-          errorMessage = "Please connect your Microsoft 365 account in Settings to send emails";
+          errorTitle = "Email Not Configured";
+          errorMessage = "Please configure your email settings in your Profile to send emails.";
         } else {
           errorMessage = message;
         }

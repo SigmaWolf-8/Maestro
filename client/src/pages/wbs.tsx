@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,9 +8,7 @@ import {
   Plus,
   ChevronRight,
   ChevronDown,
-  MoreHorizontal,
   Trash2,
-  Edit,
   FolderTree,
   Circle,
   CheckCircle2,
@@ -20,9 +18,22 @@ import {
   Layers,
   GitBranch,
   Upload,
-  FileSpreadsheet,
+  Calendar,
+  Hammer,
+  MapPin,
+  Building2,
+  Layers3,
+  Grid3x3,
+  FileText,
+  Settings2,
+  Box,
+  Package,
+  DollarSign,
+  Users,
+  List,
+  Pencil,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -34,15 +45,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Form,
   FormControl,
@@ -62,6 +65,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { WbsNode, Project } from "@shared/schema";
+import { wbsDimensionDefinitions } from "@shared/schema";
 import { useSettings } from "@/components/settings-provider";
 
 const wbsFormSchema = z.object({
@@ -81,28 +85,196 @@ interface WbsNodeWithChildren extends WbsNode {
   children: WbsNodeWithChildren[];
 }
 
+const dimensionIcons: Record<string, React.ReactNode> = {
+  phase: <Calendar className="h-4 w-4" />,
+  trade: <Hammer className="h-4 w-4" />,
+  location: <MapPin className="h-4 w-4" />,
+  building: <Building2 className="h-4 w-4" />,
+  level: <Layers className="h-4 w-4" />,
+  zone: <Grid3x3 className="h-4 w-4" />,
+  system: <FileText className="h-4 w-4" />,
+  subsystem: <Settings2 className="h-4 w-4" />,
+  element_type: <Box className="h-4 w-4" />,
+  material: <Layers3 className="h-4 w-4" />,
+  work_package: <Package className="h-4 w-4" />,
+  cost_code: <DollarSign className="h-4 w-4" />,
+  responsibility: <Users className="h-4 w-4" />,
+};
+
+const statusConfig: Record<string, { icon: React.ReactNode; label: string }> = {
+  not_started: { icon: <Circle className="h-3 w-3 text-muted-foreground" />, label: "Not Started" },
+  in_progress: { icon: <Clock className="h-3 w-3 text-primary" />, label: "In Progress" },
+  on_hold: { icon: <Pause className="h-3 w-3 text-amber-500" />, label: "On Hold" },
+  completed: { icon: <CheckCircle2 className="h-3 w-3 text-green-500" />, label: "Completed" },
+  cancelled: { icon: <X className="h-3 w-3 text-destructive" />, label: "Cancelled" },
+};
+
+function WbsTreeView({
+  nodes,
+  expandedNodes,
+  onToggleNode,
+  onEdit,
+  onDelete,
+  onAddChild,
+}: {
+  nodes: WbsNodeWithChildren[];
+  expandedNodes: Set<string>;
+  onToggleNode: (id: string) => void;
+  onEdit: (node: WbsNode) => void;
+  onDelete: (id: string) => void;
+  onAddChild: (parentId: string, projectId: string) => void;
+}) {
+  const renderNode = (node: WbsNodeWithChildren, depth: number = 0) => {
+    const hasChildren = node.children.length > 0;
+    const isExpanded = expandedNodes.has(node.id);
+
+    return (
+      <div key={node.id} data-testid={`tree-node-${node.id}`}>
+        <div
+          className="flex items-center gap-1.5 px-1 py-0.5 rounded-md hover-elevate group text-[11px]"
+          style={{ paddingLeft: `${depth * 16 + 4}px` }}
+        >
+          {hasChildren ? (
+            <button
+              onClick={() => onToggleNode(node.id)}
+              className="p-0.5 rounded"
+              data-testid={`tree-toggle-${node.id}`}
+            >
+              {isExpanded ? (
+                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-3 w-3 text-muted-foreground" />
+              )}
+            </button>
+          ) : (
+            <span className="w-4" />
+          )}
+
+          {statusConfig[node.status]?.icon || statusConfig.not_started.icon}
+
+          <Badge variant="outline" className="font-mono text-[9px] px-1 py-0">
+            {node.codeDisplay || node.codePath}
+          </Badge>
+
+          <span className="font-medium text-[11px] flex-1 truncate">{node.title}</span>
+
+          {node.estimatedHours && (
+            <span className="text-[10px] text-muted-foreground hidden md:block">
+              {node.estimatedHours}h
+            </span>
+          )}
+
+          <div className="flex items-center gap-0.5 invisible group-hover:visible">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onEdit(node)}
+              data-testid={`tree-edit-${node.id}`}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onAddChild(node.id, node.projectId)}
+              data-testid={`tree-add-child-${node.id}`}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onDelete(node.id)}
+              data-testid={`tree-delete-${node.id}`}
+            >
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            </Button>
+          </div>
+        </div>
+
+        {hasChildren && isExpanded && (
+          <div className="border-l border-border ml-4">
+            {node.children.map((child) => renderNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  if (nodes.length === 0) {
+    return (
+      <div className="text-center text-muted-foreground py-8 text-xs">
+        No WBS nodes found. Click "Add Node" to create one.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-0.5 text-[11px]" data-testid="tree-view">
+      {nodes.map((node) => renderNode(node, 0))}
+    </div>
+  );
+}
+
 export default function WBS() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingNode, setEditingNode] = useState<WbsNode | null>(null);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [dimensionValues, setDimensionValues] = useState<Record<string, string>>({});
-  const [isDragOver, setIsDragOver] = useState(false);
   const [csvPreview, setCsvPreview] = useState<Array<Record<string, string>>>([]);
   const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedDimension, setSelectedDimension] = useState<string>("__all__");
+  const [viewMode, setViewMode] = useState<"table" | "tree">("table");
+  const [expandedTreeNodes, setExpandedTreeNodes] = useState<Set<string>>(new Set());
   const csvInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { activeTenant } = useSettings();
-  
+
   const wbsDimensions = activeTenant?.config?.wbsDimensions || [];
 
+  const dimensionLabelsMap: Record<string, { label: string; code: string; description: string; hidden: boolean }> = {};
+  wbsDimensionDefinitions.forEach((dim) => {
+    const customDim = wbsDimensions.find((d: any) => d.key === dim.key);
+    dimensionLabelsMap[dim.key] = {
+      label: customDim?.label || dim.label,
+      code: customDim?.code || dim.key.toUpperCase(),
+      description: customDim?.description || dim.description,
+      hidden: customDim?.hidden ?? false,
+    };
+  });
+
+  const getDimensionLabel = (key: string): string => {
+    return dimensionLabelsMap[key]?.label || key;
+  };
+
+  const getDimensionCode = (key: string): string => {
+    return dimensionLabelsMap[key]?.code || key.toUpperCase();
+  };
+
+  const getSortedDimensions = () => {
+    return [...wbsDimensionDefinitions].sort((a, b) => {
+      const customA = wbsDimensions.find((d: any) => d.key === a.key);
+      const customB = wbsDimensions.find((d: any) => d.key === b.key);
+      const orderA = customA?.sortOrder ?? wbsDimensionDefinitions.findIndex(d => d.key === a.key);
+      const orderB = customB?.sortOrder ?? wbsDimensionDefinitions.findIndex(d => d.key === b.key);
+      return orderA - orderB;
+    });
+  };
+
+  useEffect(() => {
+    setExpandedTreeNodes(new Set());
+  }, [selectedDimension]);
+
   const { data: wbsNodes, isLoading: wbsLoading } = useQuery<WbsNode[]>({
-    queryKey: ["/api/wbs"],
+    queryKey: [`/api/wbs?tenantId=${activeTenant?.id}`],
+    enabled: !!activeTenant?.id,
   });
 
   const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
+    queryKey: [`/api/projects?tenantId=${activeTenant?.id}`],
+    enabled: !!activeTenant?.id,
   });
 
   const createMutation = useMutation({
@@ -113,11 +285,12 @@ export default function WBS() {
         estimatedCost: data.estimatedCost ? parseFloat(data.estimatedCost) : undefined,
         parentId: data.parentId || undefined,
         dimensions: dimensionValues,
+        tenantId: activeTenant?.id,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wbs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/wbs?tenantId=${activeTenant?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats", activeTenant?.id] });
       setIsCreateOpen(false);
       form.reset();
       setDimensionValues({});
@@ -140,8 +313,8 @@ export default function WBS() {
       return apiRequest("DELETE", `/api/wbs/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wbs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/wbs?tenantId=${activeTenant?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats", activeTenant?.id] });
       toast({
         title: "WBS node deleted",
         description: "The node and its children have been removed.",
@@ -168,15 +341,14 @@ export default function WBS() {
         estimatedCost: rest.estimatedCost ? parseFloat(rest.estimatedCost) : undefined,
         dimensions: dimensionValues,
       };
-      // Only include parentId if it's not root level
       if (rest.parentId && rest.parentId !== "__root__") {
         payload.parentId = rest.parentId;
       }
       return apiRequest("PATCH", `/api/wbs/${id}`, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wbs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/wbs?tenantId=${activeTenant?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats", activeTenant?.id] });
       setIsEditOpen(false);
       setEditingNode(null);
       editForm.reset();
@@ -209,8 +381,8 @@ export default function WBS() {
       return results;
     },
     onSuccess: (results) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wbs"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/wbs?tenantId=${activeTenant?.id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats", activeTenant?.id] });
       setIsCsvDialogOpen(false);
       setCsvPreview([]);
       toast({
@@ -232,7 +404,7 @@ export default function WBS() {
       return apiRequest("POST", `/api/projects/${projectId}/copy-master-wbs?tenantId=${activeTenant?.id}`);
     },
     onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/wbs"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/wbs?tenantId=${activeTenant?.id}`] });
       toast({
         title: "Master Codes Copied",
         description: data.message || "WBS nodes created from master codes.",
@@ -317,17 +489,15 @@ export default function WBS() {
     setIsCreateOpen(true);
   };
 
-  // CSV parsing function - handles quoted values with commas
   const parseCSV = (text: string): Array<Record<string, string>> => {
     const lines = text.trim().split("\n");
     if (lines.length < 2) return [];
-    
-    // Parse a single line handling quoted values
+
     const parseLine = (line: string): string[] => {
       const result: string[] = [];
       let current = "";
       let inQuotes = false;
-      
+
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
         if (char === '"') {
@@ -342,25 +512,23 @@ export default function WBS() {
       result.push(current.trim().replace(/^"|"$/g, ""));
       return result;
     };
-    
+
     const headers = parseLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-z0-9_]/g, "_"));
-    
-    // Validate required headers
+
     if (!headers.includes("title")) {
       return [];
     }
-    
+
     const rows: Array<Record<string, string>> = [];
     const validStatuses = ["not_started", "in_progress", "on_hold", "completed", "cancelled"];
-    
+
     for (let i = 1; i < lines.length; i++) {
       const values = parseLine(lines[i]);
       const row: Record<string, string> = {};
       headers.forEach((header, idx) => {
         row[header] = values[idx] || "";
       });
-      
-      // Only add rows with a title and normalize status
+
       if (row.title) {
         if (row.status && !validStatuses.includes(row.status)) {
           row.status = "not_started";
@@ -370,50 +538,6 @@ export default function WBS() {
     }
     return rows;
   };
-
-  // Drag and drop handlers for CSV
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      const file = files[0];
-      if (file.name.endsWith(".csv")) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const data = parseCSV(reader.result as string);
-          if (data.length > 0) {
-            setCsvPreview(data);
-            setIsCsvDialogOpen(true);
-          } else {
-            toast({
-              title: "Invalid CSV",
-              description: "The CSV file must have a header row with at least 'title' column.",
-              variant: "destructive",
-            });
-          }
-        };
-        reader.readAsText(file);
-      } else {
-        toast({
-          title: "Invalid file type",
-          description: "Please drop a CSV file.",
-          variant: "destructive",
-        });
-      }
-    }
-  }, [toast]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -445,19 +569,19 @@ export default function WBS() {
       });
       return;
     }
-    
+
     const defaultProjectId = projects[0].id;
     const nodesToCreate = csvPreview.map(row => ({
       title: row.title,
       description: row.description || "",
-      status: (["not_started", "in_progress", "on_hold", "completed", "cancelled"].includes(row.status) 
+      status: (["not_started", "in_progress", "on_hold", "completed", "cancelled"].includes(row.status)
         ? row.status : "not_started") as WbsFormData["status"],
       projectId: row.project_id || defaultProjectId,
       parentId: row.parent_id || undefined,
       estimatedHours: row.estimated_hours || "",
       estimatedCost: row.estimated_cost || "",
     }));
-    
+
     bulkCreateMutation.mutate(nodesToCreate);
   };
 
@@ -487,364 +611,100 @@ export default function WBS() {
     return roots;
   };
 
-  const toggleExpand = (nodeId: string) => {
-    setExpandedNodes((prev) => {
-      const next = new Set(prev);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
-      } else {
-        next.add(nodeId);
-      }
-      return next;
-    });
+  const getNodeCountForDimension = (dimKey: string): number => {
+    if (!wbsNodes) return 0;
+    let filtered = wbsNodes;
+    if (selectedProjectId) {
+      filtered = filtered.filter(n => n.projectId === selectedProjectId);
+    }
+    return filtered.filter(n => {
+      const dims = n.dimensions as Record<string, string> | null;
+      return dims && dims[dimKey] && dims[dimKey].trim() !== "";
+    }).length;
   };
 
-  const getStatusIcon = (status: string) => {
-    const icons: Record<string, React.ReactNode> = {
-      not_started: <Circle className="h-4 w-4 text-muted-foreground" />,
-      in_progress: <Clock className="h-4 w-4 text-primary" />,
-      on_hold: <Pause className="h-4 w-4 text-amber-500" />,
-      completed: <CheckCircle2 className="h-4 w-4 text-green-500" />,
-      cancelled: <X className="h-4 w-4 text-destructive" />,
-    };
-    return icons[status] || icons.not_started;
-  };
+  const filteredNodes = (() => {
+    let nodes = wbsNodes || [];
+    if (selectedProjectId) {
+      nodes = nodes.filter(n => n.projectId === selectedProjectId);
+    }
+    if (selectedDimension !== "__all__") {
+      nodes = nodes.filter(n => {
+        const dims = n.dimensions as Record<string, string> | null;
+        return dims && dims[selectedDimension] && dims[selectedDimension].trim() !== "";
+      });
+    }
+    return nodes;
+  })();
 
-  const filteredNodes = selectedProjectId
-    ? wbsNodes?.filter((node) => node.projectId === selectedProjectId)
-    : wbsNodes;
-  const tree = filteredNodes ? buildTree(filteredNodes) : [];
+  const tree = buildTree(filteredNodes);
   const isLoading = wbsLoading || projectsLoading;
 
-  return (
-    <div className="flex flex-col gap-6 p-6" data-testid="page-wbs">
-      <div className="relative overflow-hidden rounded-lg border border-border bg-gradient-to-r from-primary/5 to-transparent p-6">
-        <div className="absolute top-1/2 right-4 -translate-y-1/2 opacity-5">
-          <div className="flex gap-2">
-            <GitBranch className="h-20 w-20" />
-            <Layers className="h-16 w-16 mt-4" />
-          </div>
-        </div>
-        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-              <Network className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-wbs-title">
-                Work Breakdown Structure
-              </h1>
-              <p className="text-muted-foreground">
-                Organize your project tasks in a hierarchical structure.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Select
-              value={selectedProjectId || "__all__"}
-              onValueChange={(value) => setSelectedProjectId(value === "__all__" ? null : value)}
-            >
-              <SelectTrigger className="w-[220px]" data-testid="select-project-filter">
-                <SelectValue placeholder="All Projects" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All Projects</SelectItem>
-                {projects?.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <a href="/wbs/master-codes">
-              <Button variant="outline" data-testid="button-master-codes">
-                <Layers className="mr-2 h-4 w-4" />
-                Master Codes
-              </Button>
-            </a>
-            {selectedProjectId && (
-              <Button
-                variant="outline"
-                onClick={() => copyMasterMutation.mutate(selectedProjectId)}
-                disabled={copyMasterMutation.isPending}
-                data-testid="button-copy-master"
-              >
-                <FolderTree className="mr-2 h-4 w-4" />
-                {copyMasterMutation.isPending ? "Copying..." : "Copy from Master"}
-              </Button>
-            )}
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-              <DialogTrigger asChild>
-                <Button data-testid="button-create-wbs">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add WBS Node
-                </Button>
-              </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Add WBS Node</DialogTitle>
-              <DialogDescription>
-                Create a new work breakdown structure element.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="projectId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Project</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-wbs-project">
-                            <SelectValue placeholder="Select a project" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {projects?.map((project) => (
-                            <SelectItem key={project.id} value={project.id}>
-                              {project.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="parentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Parent Node (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-wbs-parent">
-                            <SelectValue placeholder="Select parent (optional)" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="__root__">No Parent (Root Level)</SelectItem>
-                          {wbsNodes?.map((node) => (
-                            <SelectItem key={node.id} value={node.id}>
-                              {node.codeDisplay || node.codePath} - {node.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter node title"
-                          data-testid="input-wbs-title"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe this work item..."
-                          className="resize-none"
-                          data-testid="input-wbs-description"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-wbs-status">
-                              <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="not_started">Not Started</SelectItem>
-                            <SelectItem value="in_progress">In Progress</SelectItem>
-                            <SelectItem value="on_hold">On Hold</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="estimatedHours"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Hours</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            data-testid="input-wbs-hours"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="estimatedCost"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cost ($)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            data-testid="input-wbs-cost"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                {wbsDimensions.length > 0 && (
-                  <div className="space-y-3 pt-2 border-t">
-                    <p className="text-sm font-medium text-muted-foreground">Dimensions</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      {wbsDimensions.map((dim: { key: string; label: string; required: boolean }) => (
-                        <div key={dim.key} className="space-y-2">
-                          <label className="text-sm font-medium">
-                            {dim.label}
-                            {dim.required && <span className="text-destructive ml-1">*</span>}
-                          </label>
-                          <Input
-                            placeholder={`Enter ${dim.label.toLowerCase()}`}
-                            value={dimensionValues[dim.key] || ""}
-                            onChange={(e) =>
-                              setDimensionValues((prev) => ({
-                                ...prev,
-                                [dim.key]: e.target.value,
-                              }))
-                            }
-                            data-testid={`input-dimension-${dim.key}`}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsCreateOpen(false)}
-                    data-testid="button-cancel-wbs"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createMutation.isPending}
-                    data-testid="button-submit-wbs"
-                  >
-                    {createMutation.isPending ? "Creating..." : "Create Node"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-          </Dialog>
-          </div>
+  if (isLoading) {
+    return (
+      <div className="p-3 space-y-3">
+        <Skeleton className="h-8 w-64" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
         </div>
       </div>
+    );
+  }
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-4">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <FolderTree className="h-5 w-5 text-primary" />
-            Structure Tree
-          </CardTitle>
-          <Badge variant="secondary">{filteredNodes?.length || 0} nodes</Badge>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-2 py-2">
-                  <Skeleton className="h-4 w-4" />
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-5 w-16 ml-auto" />
-                </div>
+  const totalNodes = filteredNodes.length;
+
+  return (
+    <div className="p-3 space-y-3" data-testid="page-wbs">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h1 className="text-lg font-bold flex items-center gap-2" data-testid="text-wbs-title">
+            <Network className="h-5 w-5 text-primary" />
+            Work Breakdown Structure
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Organize your project tasks in a hierarchical structure.
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Select
+            value={selectedProjectId || "__all__"}
+            onValueChange={(value) => setSelectedProjectId(value === "__all__" ? null : value)}
+          >
+            <SelectTrigger className="w-[180px]" data-testid="select-project-filter">
+              <SelectValue placeholder="All Projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All Projects</SelectItem>
+              {projects?.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
               ))}
-            </div>
-          ) : tree.length > 0 ? (
-            <div className="space-y-1">
-              {tree.map((node) => (
-                <WbsTreeNode
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  expandedNodes={expandedNodes}
-                  toggleExpand={toggleExpand}
-                  getStatusIcon={getStatusIcon}
-                  onDelete={(id) => deleteMutation.mutate(id)}
-                  onEdit={openEditDialog}
-                  onAddChild={openAddChildDialog}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-                <Network className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium">No WBS nodes yet</h3>
-              <p className="text-sm text-muted-foreground mt-1 mb-4">
-                Create your first work breakdown structure node
-              </p>
-              <Button onClick={() => setIsCreateOpen(true)} data-testid="button-create-first-wbs">
-                <Plus className="mr-2 h-4 w-4" />
-                Add First Node
-              </Button>
-            </div>
+            </SelectContent>
+          </Select>
+          <Badge variant="secondary" className="text-[10px]" data-testid="badge-total-nodes">
+            {totalNodes} Nodes
+          </Badge>
+          <a href="/wbs/master-codes">
+            <Button variant="outline" size="sm" data-testid="button-master-codes">
+              <Layers className="h-3.5 w-3.5 mr-1" />
+              Master Codes
+            </Button>
+          </a>
+          {selectedProjectId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => copyMasterMutation.mutate(selectedProjectId)}
+              disabled={copyMasterMutation.isPending}
+              data-testid="button-copy-master"
+            >
+              <FolderTree className="h-3.5 w-3.5 mr-1" />
+              {copyMasterMutation.isPending ? "Copying..." : "Copy from Master"}
+            </Button>
           )}
-        </CardContent>
-      </Card>
-
-      {/* CSV Import Zone */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 pb-4">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Upload className="h-5 w-5 text-primary" />
-            Import WBS from CSV
-          </CardTitle>
           <input
             type="file"
             ref={csvInputRef}
@@ -852,38 +712,456 @@ export default function WBS() {
             onChange={handleFileSelect}
             className="hidden"
           />
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => csvInputRef.current?.click()}
             data-testid="button-browse-csv"
           >
-            <FileSpreadsheet className="mr-2 h-4 w-4" />
-            Browse CSV
+            <Upload className="h-3.5 w-3.5 mr-1" />
+            CSV
           </Button>
-        </CardHeader>
-        <CardContent>
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              isDragOver 
-                ? "border-primary bg-primary/5" 
-                : "border-muted-foreground/25 hover:border-muted-foreground/50"
-            }`}
-            data-testid="csv-drop-zone"
-          >
-            <FileSpreadsheet className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-            <p className="text-sm font-medium">Drag and drop CSV file here</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              CSV must have headers: title, description, status, estimated_hours, estimated_cost
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Edit Dialog */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        <Card className="lg:col-span-1">
+          <CardHeader className="px-3 py-2">
+            <CardTitle className="text-sm">Dimensions</CardTitle>
+            <CardDescription className="text-[10px]">
+              Filter nodes by WBS dimension
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="space-y-0.5 px-1.5 pb-1.5">
+              <button
+                onClick={() => setSelectedDimension("__all__")}
+                className={`w-full flex items-center justify-between px-1.5 py-1 rounded-md text-left transition-colors ${
+                  selectedDimension === "__all__"
+                    ? "bg-primary text-primary-foreground"
+                    : "hover-elevate"
+                }`}
+                data-testid="button-dimension-all"
+              >
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <span className="[&>svg]:h-3.5 [&>svg]:w-3.5 shrink-0"><Network className="h-3.5 w-3.5" /></span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[11px] font-medium truncate">All Nodes</span>
+                    <span className={`text-[9px] ${selectedDimension === "__all__" ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                      ALL
+                    </span>
+                  </div>
+                </div>
+                <Badge
+                  variant={selectedDimension === "__all__" ? "secondary" : "outline"}
+                  className="text-[9px] px-1 py-0 ml-1 flex-shrink-0"
+                >
+                  {wbsNodes?.filter(n => !selectedProjectId || n.projectId === selectedProjectId).length || 0}
+                </Badge>
+              </button>
+              {getSortedDimensions().filter(dim => !dimensionLabelsMap[dim.key]?.hidden).map((dim) => {
+                const count = getNodeCountForDimension(dim.key);
+                const isSelected = selectedDimension === dim.key;
+                return (
+                  <button
+                    key={dim.key}
+                    onClick={() => setSelectedDimension(dim.key)}
+                    className={`w-full flex items-center justify-between px-1.5 py-1 rounded-md text-left transition-colors ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground"
+                        : "hover-elevate"
+                    }`}
+                    data-testid={`button-dimension-${dim.key}`}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className="[&>svg]:h-3.5 [&>svg]:w-3.5 shrink-0">{dimensionIcons[dim.key]}</span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[11px] font-medium truncate">{getDimensionLabel(dim.key)}</span>
+                        <span className={`text-[9px] ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                          {getDimensionCode(dim.key)}
+                        </span>
+                      </div>
+                    </div>
+                    <Badge
+                      variant={isSelected ? "secondary" : "outline"}
+                      className="text-[9px] px-1 py-0 ml-1 flex-shrink-0"
+                    >
+                      {count}
+                    </Badge>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 px-3 py-2">
+            <div>
+              <CardTitle className="flex items-center gap-1.5 text-sm">
+                {selectedDimension === "__all__" ? (
+                  <Network className="h-3.5 w-3.5" />
+                ) : (
+                  <span className="[&>svg]:h-3.5 [&>svg]:w-3.5">{dimensionIcons[selectedDimension]}</span>
+                )}
+                {selectedDimension === "__all__" ? "All WBS Nodes" : getDimensionLabel(selectedDimension)}
+              </CardTitle>
+              <CardDescription className="text-[10px]">
+                {selectedDimension === "__all__"
+                  ? "All work breakdown structure nodes across dimensions"
+                  : `Nodes tagged with ${getDimensionLabel(selectedDimension)} dimension`}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="flex border rounded-md">
+                <Button
+                  size="icon"
+                  variant={viewMode === "table" ? "default" : "ghost"}
+                  onClick={() => setViewMode("table")}
+                  className="rounded-r-none"
+                  data-testid="button-view-table"
+                >
+                  <List className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant={viewMode === "tree" ? "default" : "ghost"}
+                  onClick={() => setViewMode("tree")}
+                  className="rounded-l-none"
+                  data-testid="button-view-tree"
+                >
+                  <GitBranch className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  form.reset({
+                    title: "",
+                    description: "",
+                    status: "not_started",
+                    projectId: selectedProjectId || "",
+                    parentId: "",
+                    estimatedHours: "",
+                    estimatedCost: "",
+                  });
+                  setDimensionValues(selectedDimension !== "__all__" ? { [selectedDimension]: "" } : {});
+                  setIsCreateOpen(true);
+                }}
+                data-testid="button-create-wbs"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add Node
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="px-3 pb-3 pt-0">
+            {viewMode === "table" ? (
+              <table className="w-full text-[11px]">
+                <thead className="sticky top-0 z-10 bg-muted">
+                  <tr className="border-b">
+                    <th className="text-left px-1 py-1 w-14 font-medium text-[10px]">Order</th>
+                    <th className="text-left px-1 py-1 w-24 font-medium text-[10px]">Code</th>
+                    <th className="text-left px-1 py-1 font-medium text-[10px]">Title</th>
+                    <th className="text-left px-1 py-1 w-20 font-medium text-[10px]">Status</th>
+                    <th className="text-left px-1 py-1 font-medium text-[10px] hidden lg:table-cell">Project</th>
+                    <th className="text-left px-1 py-1 font-medium text-[10px] hidden md:table-cell">Description</th>
+                    <th className="text-right px-1 py-1 w-16 font-medium text-[10px]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredNodes.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center text-muted-foreground py-6 text-xs">
+                        No WBS nodes found. Click "Add Node" to create one.
+                      </td>
+                    </tr>
+                  ) : (
+                    [...filteredNodes]
+                      .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
+                      .map((node) => {
+                        const project = projects?.find(p => p.id === node.projectId);
+                        return (
+                          <tr key={node.id} className="border-b hover-elevate transition-colors" data-testid={`row-node-${node.id}`}>
+                            <td className="px-1 py-0.5 text-[10px] tabular-nums">{node.orderIndex || 0}</td>
+                            <td className="px-1 py-0.5">
+                              <Badge variant="outline" className="font-mono text-[9px] px-1 py-0">
+                                {node.codeDisplay || node.codePath}
+                              </Badge>
+                            </td>
+                            <td className="px-1 py-0.5 font-medium">{node.title}</td>
+                            <td className="px-1 py-0.5">
+                              <div className="flex items-center gap-1">
+                                {statusConfig[node.status]?.icon}
+                                <span className="text-[10px]">{statusConfig[node.status]?.label || node.status}</span>
+                              </div>
+                            </td>
+                            <td className="px-1 py-0.5 hidden lg:table-cell">
+                              {project ? (
+                                <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                                  {project.name}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </td>
+                            <td className="px-1 py-0.5 hidden md:table-cell text-muted-foreground text-[10px] truncate max-w-[200px]">
+                              {node.description || "—"}
+                            </td>
+                            <td className="px-1 py-0.5 text-right">
+                              <div className="flex items-center justify-end gap-0.5">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => openEditDialog(node)}
+                                  data-testid={`button-edit-${node.id}`}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => deleteMutation.mutate(node.id)}
+                                  data-testid={`button-delete-${node.id}`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <WbsTreeView
+                nodes={tree}
+                expandedNodes={expandedTreeNodes}
+                onToggleNode={(nodeId) => {
+                  setExpandedTreeNodes((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(nodeId)) {
+                      next.delete(nodeId);
+                    } else {
+                      next.add(nodeId);
+                    }
+                    return next;
+                  });
+                }}
+                onEdit={openEditDialog}
+                onDelete={(id) => deleteMutation.mutate(id)}
+                onAddChild={openAddChildDialog}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add WBS Node</DialogTitle>
+            <DialogDescription>
+              Create a new work breakdown structure element.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="projectId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Project</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-wbs-project">
+                          <SelectValue placeholder="Select a project" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {projects?.map((project) => (
+                          <SelectItem key={project.id} value={project.id}>
+                            {project.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="parentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Parent Node (Optional)</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-wbs-parent">
+                          <SelectValue placeholder="Select parent (optional)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__root__">No Parent (Root Level)</SelectItem>
+                        {wbsNodes?.map((node) => (
+                          <SelectItem key={node.id} value={node.id}>
+                            {node.codeDisplay || node.codePath} - {node.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter node title"
+                        data-testid="input-wbs-title"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Describe this work item..."
+                        className="resize-none"
+                        data-testid="input-wbs-description"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-wbs-status">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="not_started">Not Started</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="on_hold">On Hold</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="estimatedHours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hours</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          data-testid="input-wbs-hours"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="estimatedCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cost ($)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          data-testid="input-wbs-cost"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              {wbsDimensionDefinitions.length > 0 && (
+                <div className="space-y-3 pt-2 border-t">
+                  <p className="text-sm font-medium text-muted-foreground">Dimensions</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {wbsDimensionDefinitions
+                      .filter(dim => !dimensionLabelsMap[dim.key]?.hidden)
+                      .map((dim) => (
+                      <div key={dim.key} className="space-y-2">
+                        <label className="text-sm font-medium">
+                          {getDimensionLabel(dim.key)}
+                        </label>
+                        <Input
+                          placeholder={`Enter ${getDimensionLabel(dim.key).toLowerCase()}`}
+                          value={dimensionValues[dim.key] || ""}
+                          onChange={(e) =>
+                            setDimensionValues((prev) => ({
+                              ...prev,
+                              [dim.key]: e.target.value,
+                            }))
+                          }
+                          data-testid={`input-dimension-${dim.key}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCreateOpen(false)}
+                  data-testid="button-cancel-wbs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  data-testid="button-submit-wbs"
+                >
+                  {createMutation.isPending ? "Creating..." : "Create Node"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -950,9 +1228,9 @@ export default function WBS() {
                   <FormItem>
                     <FormLabel>Title</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Enter node title" 
-                        {...field} 
+                      <Input
+                        placeholder="Enter node title"
+                        {...field}
                         data-testid="input-edit-wbs-title"
                       />
                     </FormControl>
@@ -967,9 +1245,9 @@ export default function WBS() {
                   <FormItem>
                     <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Enter description" 
-                        {...field} 
+                      <Textarea
+                        placeholder="Enter description"
+                        {...field}
                         data-testid="textarea-edit-wbs-description"
                       />
                     </FormControl>
@@ -1009,10 +1287,10 @@ export default function WBS() {
                     <FormItem>
                       <FormLabel>Est. Hours</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="0" 
-                          {...field} 
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          {...field}
                           data-testid="input-edit-wbs-hours"
                         />
                       </FormControl>
@@ -1027,10 +1305,10 @@ export default function WBS() {
                     <FormItem>
                       <FormLabel>Est. Cost ($)</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="0" 
-                          {...field} 
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          {...field}
                           data-testid="input-edit-wbs-cost"
                         />
                       </FormControl>
@@ -1061,7 +1339,6 @@ export default function WBS() {
         </DialogContent>
       </Dialog>
 
-      {/* CSV Preview Dialog */}
       <Dialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen}>
         <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
@@ -1118,120 +1395,6 @@ export default function WBS() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-interface WbsTreeNodeProps {
-  node: WbsNodeWithChildren;
-  depth: number;
-  expandedNodes: Set<string>;
-  toggleExpand: (id: string) => void;
-  getStatusIcon: (status: string) => React.ReactNode;
-  onDelete: (id: string) => void;
-  onEdit: (node: WbsNode) => void;
-  onAddChild: (parentId: string, projectId: string) => void;
-}
-
-function WbsTreeNode({
-  node,
-  depth,
-  expandedNodes,
-  toggleExpand,
-  getStatusIcon,
-  onDelete,
-  onEdit,
-  onAddChild,
-}: WbsTreeNodeProps) {
-  const hasChildren = node.children.length > 0;
-  const isExpanded = expandedNodes.has(node.id);
-
-  return (
-    <div data-testid={`wbs-tree-node-${node.id}`}>
-      <div
-        className="group flex items-center gap-2 rounded-md py-2 px-2 hover-elevate"
-        style={{ paddingLeft: `${depth * 24 + 8}px` }}
-      >
-        {hasChildren ? (
-          <button
-            onClick={() => toggleExpand(node.id)}
-            className="flex h-5 w-5 items-center justify-center rounded hover-elevate"
-            data-testid={`button-expand-${node.id}`}
-          >
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-        ) : (
-          <div className="w-5" />
-        )}
-        {getStatusIcon(node.status)}
-        <span className="font-mono text-xs text-muted-foreground w-20">
-          {node.codeDisplay || node.codePath}
-        </span>
-        <span className="text-sm font-medium flex-1 truncate">{node.title}</span>
-        {node.estimatedHours && (
-          <span className="text-xs text-muted-foreground">
-            {node.estimatedHours}h
-          </span>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 opacity-0 group-hover:opacity-100"
-              data-testid={`button-wbs-menu-${node.id}`}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onClick={() => onEdit(node)}
-              data-testid={`button-edit-wbs-${node.id}`}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => onAddChild(node.id, node.projectId)}
-              data-testid={`button-add-child-${node.id}`}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Child
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => onDelete(node.id)}
-              data-testid={`button-delete-wbs-${node.id}`}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      {hasChildren && isExpanded && (
-        <div>
-          {node.children.map((child) => (
-            <WbsTreeNode
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              expandedNodes={expandedNodes}
-              toggleExpand={toggleExpand}
-              getStatusIcon={getStatusIcon}
-              onDelete={onDelete}
-              onEdit={onEdit}
-              onAddChild={onAddChild}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

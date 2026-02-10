@@ -60,7 +60,14 @@ export default function UserGroupsPage() {
   });
 
   const { data: teamMembers = [] } = useQuery<TenantUser[]>({
-    queryKey: ["/api/team"],
+    queryKey: ["/api/team", activeTenant?.id],
+    queryFn: async () => {
+      if (!activeTenant?.id) return [];
+      const res = await fetch(`/api/team?tenantId=${activeTenant.id}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!activeTenant?.id,
   });
 
   const { data: groupMembers = [] } = useQuery<GroupMember[]>({
@@ -81,7 +88,7 @@ export default function UserGroupsPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", activeTenant?.id] });
       setIsCreateDialogOpen(false);
       setNewGroupName("");
       setNewGroupDescription("");
@@ -101,7 +108,7 @@ export default function UserGroupsPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", activeTenant?.id] });
       setEditingGroup(null);
       toast({ title: "Group Updated", description: "User group has been updated successfully." });
     },
@@ -115,7 +122,7 @@ export default function UserGroupsPage() {
       return apiRequest("DELETE", `/api/user-groups/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/user-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user-groups", activeTenant?.id] });
       if (selectedGroup?.id === editingGroup?.id) {
         setSelectedGroup(null);
       }

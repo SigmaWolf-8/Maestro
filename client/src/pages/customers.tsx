@@ -40,7 +40,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Customer, Quote } from "@shared/schema";
+import { Trash2, Mail, Users } from "lucide-react";
+import type { Customer, Quote, CustomerContact } from "@shared/schema";
 
 interface CustomerWithQuote {
   customer: Customer;
@@ -59,15 +60,26 @@ export default function CustomersForm() {
   const [newJobNum, setNewJobNum] = useState("");
   const [pendingChanges, setPendingChanges] = useState<Record<string, any>>({});
 
-  // Fetch all customers for the dropdown - uses default fetcher since routes handle tenant fallback
   const { data: allCustomers, isLoading: customersLoading } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
+    queryKey: ["/api/customers", tenantId],
+    queryFn: async () => {
+      if (!tenantId) return [];
+      const res = await fetch(`/api/customers?tenantId=${tenantId}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!tenantId,
   });
 
-  // Fetch selected customer with quote - path segments form URL via default fetcher
   const { data: selectedData, isLoading: dataLoading, refetch: refetchData } = useQuery<CustomerWithQuote | null>({
-    queryKey: ["/api/customers/job", String(selectedJobNum)],
-    enabled: !!selectedJobNum,
+    queryKey: ["/api/customers/job", String(selectedJobNum), tenantId],
+    queryFn: async () => {
+      if (!selectedJobNum || !tenantId) return null;
+      const res = await fetch(`/api/customers/job/${selectedJobNum}?tenantId=${tenantId}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!selectedJobNum && !!tenantId,
   });
 
   // Update customer field mutation (VBA AfterUpdate equivalent)
@@ -122,7 +134,7 @@ export default function CustomersForm() {
       return customer;
     },
     onSuccess: (_, jobNum) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", tenantId] });
       setSelectedJobNum(jobNum);
       setShowCreateDialog(false);
       setNewJobNum("");
@@ -140,13 +152,57 @@ export default function CustomersForm() {
       return apiRequest("POST", `/api/customers/seed${params}`, {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", tenantId] });
       toast({ title: "Sample Data Added", description: "Sample customers and quotes have been created" });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  const customerId = selectedData?.customer?.id;
+
+  const { data: customerContacts, isLoading: contactsLoading } = useQuery<CustomerContact[]>({
+    queryKey: ["/api/customers", customerId, "contacts"],
+    queryFn: async () => {
+      if (!customerId) return [];
+      const res = await fetch(`/api/customers/${customerId}/contacts`);
+      if (!res.ok) throw new Error("Failed to fetch contacts");
+      return res.json();
+    },
+    enabled: !!customerId,
+  });
+
+  const updateCustomerContact = useMutation({
+    mutationFn: async ({ contactId, updates }: { contactId: string; updates: Partial<CustomerContact> }) => {
+      return apiRequest("PATCH", `/api/customer-contacts/${contactId}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", customerId, "contacts"] });
+      toast({ title: "Saved", description: "Contact updated" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteCustomerContact = useMutation({
+    mutationFn: async (contactId: string) => {
+      return apiRequest("DELETE", `/api/customer-contacts/${contactId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", customerId, "contacts"] });
+      toast({ title: "Deleted", description: "Contact removed" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleContactFieldBlur = useCallback((contactId: string, field: string, value: any) => {
+    if (!editMode) return;
+    updateCustomerContact.mutate({ contactId, updates: { [field]: value } });
+  }, [editMode, updateCustomerContact]);
 
   // Handle field blur - auto-save like VBA AfterUpdate
   const handleFieldBlur = useCallback((table: "customer" | "quote", field: string, value: any) => {
@@ -689,6 +745,170 @@ export default function CustomersForm() {
         </Card>
       </div>
 
+      {customer && (
+        <Card>
+          <CardHeader className="py-2 px-4">
+            <CardTitle className="flex items-center gap-2 text-sm">
+              <Users className="h-3.5 w-3.5" />
+              <span data-testid="text-contacts-count">Contacts ({customerContacts?.length || 0})</span>
+              <div className="ml-auto flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  disabled={!editMode}
+                  onClick={() => {
+                    if (!customer?.id || !tenantId) return;
+                    apiRequest("POST", `/api/customers/${customerId}/contacts`, {
+                      tenantId,
+                      firstName: "",
+                      lastName: "",
+                      jobTitle: "",
+                      businessPhone: "",
+                      emailAddress: "",
+                      isPrimary: (customerContacts?.length || 0) === 0,
+                    }).then(() => {
+                      queryClient.invalidateQueries({ queryKey: ["/api/customers", customerId, "contacts"] });
+                      toast({ title: "Contact Added", description: "New contact created" });
+                    });
+                  }}
+                  data-testid="button-add-customer-contact"
+                >
+                  <Plus className="mr-1 h-3 w-3" />
+                  Add Contact
+                </Button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3 pt-0">
+            {contactsLoading ? (
+              <div className="space-y-2">
+                {[...Array(2)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : (customerContacts?.length || 0) > 0 ? (
+              <div className="space-y-1" data-testid="customer-contacts-list">
+                {customerContacts?.map((contact, idx) => (
+                  <div
+                    key={contact.id}
+                    className="rounded-md border px-2 py-1"
+                    data-testid={`customer-contact-row-${contact.id}`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-xs font-semibold text-foreground">{idx + 1}.</span>
+                      {contact.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        {[contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unnamed Contact'}
+                      </span>
+                      <div className="ml-auto flex items-center gap-0.5" style={{ visibility: 'visible' }}>
+                        {contact.emailAddress && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => window.open(`mailto:${contact.emailAddress}`, '_blank')}
+                            data-testid={`button-email-customer-contact-${contact.id}`}
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {editMode && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteCustomerContact.mutate(contact.id)}
+                            data-testid={`button-delete-customer-contact-${contact.id}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-6 gap-1">
+                      <div>
+                        <Label className="text-xs text-foreground font-medium">First Name</Label>
+                        <Input
+                          key={`cc-firstName-${contact.id}`}
+                          defaultValue={contact.firstName || ""}
+                          disabled={!editMode}
+                          onBlur={(e) => handleContactFieldBlur(contact.id, "firstName", e.target.value)}
+                          className="h-6 text-xs"
+                          data-testid={`input-cc-first-name-${contact.id}`}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-foreground font-medium">Last Name</Label>
+                        <Input
+                          key={`cc-lastName-${contact.id}`}
+                          defaultValue={contact.lastName || ""}
+                          disabled={!editMode}
+                          onBlur={(e) => handleContactFieldBlur(contact.id, "lastName", e.target.value)}
+                          className="h-6 text-xs"
+                          data-testid={`input-cc-last-name-${contact.id}`}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-foreground font-medium">Job Title</Label>
+                        <Input
+                          key={`cc-jobTitle-${contact.id}`}
+                          defaultValue={contact.jobTitle || ""}
+                          disabled={!editMode}
+                          onBlur={(e) => handleContactFieldBlur(contact.id, "jobTitle", e.target.value)}
+                          className="h-6 text-xs"
+                          data-testid={`input-cc-job-title-${contact.id}`}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-foreground font-medium">Business Phone</Label>
+                        <Input
+                          key={`cc-businessPhone-${contact.id}`}
+                          defaultValue={contact.businessPhone || ""}
+                          disabled={!editMode}
+                          onBlur={(e) => handleContactFieldBlur(contact.id, "businessPhone", e.target.value)}
+                          className="h-6 text-xs"
+                          data-testid={`input-cc-business-phone-${contact.id}`}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-foreground font-medium">Mobile Phone</Label>
+                        <Input
+                          key={`cc-mobilePhone-${contact.id}`}
+                          defaultValue={contact.mobilePhone || ""}
+                          disabled={!editMode}
+                          onBlur={(e) => handleContactFieldBlur(contact.id, "mobilePhone", e.target.value)}
+                          className="h-6 text-xs"
+                          data-testid={`input-cc-mobile-phone-${contact.id}`}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-foreground font-medium">Email</Label>
+                        <Input
+                          key={`cc-email-${contact.id}`}
+                          type="email"
+                          defaultValue={contact.emailAddress || ""}
+                          disabled={!editMode}
+                          onBlur={(e) => handleContactFieldBlur(contact.id, "emailAddress", e.target.value)}
+                          className="h-6 text-xs"
+                          data-testid={`input-cc-email-${contact.id}`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-3 text-muted-foreground">
+                <Users className="h-5 w-5 mx-auto mb-1 opacity-50" />
+                <p className="text-xs">No contacts assigned to this customer</p>
+                {editMode && (
+                  <p className="text-xs mt-1">Click "Add Contact" to create one</p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Create New Customer Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
@@ -731,7 +951,7 @@ export default function CustomersForm() {
       </Dialog>
 
       {/* Saving indicator */}
-      {(updateCustomerField.isPending || updateQuoteField.isPending) && (
+      {(updateCustomerField.isPending || updateQuoteField.isPending || updateCustomerContact.isPending) && (
         <div className="fixed bottom-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-md flex items-center gap-2 shadow-lg">
           <Loader2 className="h-4 w-4 animate-spin" />
           Saving...

@@ -25,6 +25,7 @@ export interface WbsDimensionConfig {
   description: string;
   sortOrder: number;
   required: boolean;
+  hidden?: boolean;
 }
 
 export interface MicrosoftConfig {

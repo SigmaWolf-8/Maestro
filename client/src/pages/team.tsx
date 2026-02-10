@@ -22,11 +22,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSettings } from "@/components/settings-provider";
 import type { TenantUser } from "@shared/schema";
 
 export default function Team() {
+  const { activeTenant } = useSettings();
   const { data: members, isLoading } = useQuery<TenantUser[]>({
-    queryKey: ["/api/team"],
+    queryKey: ["/api/team", activeTenant?.id],
+    queryFn: async () => {
+      if (!activeTenant?.id) return [];
+      const res = await fetch(`/api/team?tenantId=${activeTenant.id}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!activeTenant?.id,
   });
 
   const getRoleBadge = (role: string) => {

@@ -16,7 +16,7 @@ import {
   Building2,
   Layers3,
   Grid3x3,
-  Cog,
+  FileText,
   Settings2,
   Box,
   Package,
@@ -56,19 +56,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useSettings } from "@/components/settings-provider";
@@ -92,7 +85,7 @@ const dimensionIcons: Record<string, React.ReactNode> = {
   building: <Building2 className="h-4 w-4" />,
   level: <Layers className="h-4 w-4" />,
   zone: <Grid3x3 className="h-4 w-4" />,
-  system: <Cog className="h-4 w-4" />,
+  system: <FileText className="h-4 w-4" />,
   subsystem: <Settings2 className="h-4 w-4" />,
   element_type: <Box className="h-4 w-4" />,
   material: <Layers3 className="h-4 w-4" />,
@@ -160,8 +153,8 @@ function TreeView({
     return (
       <div key={code.id} data-testid={`tree-node-${code.id}`}>
         <div
-          className={`flex items-center gap-2 p-2 rounded-md hover-elevate group`}
-          style={{ paddingLeft: `${depth * 20 + 8}px` }}
+          className={`flex items-center gap-1.5 px-1 py-0.5 rounded-md hover-elevate group text-[11px]`}
+          style={{ paddingLeft: `${depth * 16 + 4}px` }}
         >
           {hasChildren ? (
             <button
@@ -170,35 +163,35 @@ function TreeView({
               data-testid={`tree-toggle-${code.id}`}
             >
               {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-3 w-3 text-muted-foreground" />
               ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-3 w-3 text-muted-foreground" />
               )}
             </button>
           ) : (
-            <span className="w-5" />
+            <span className="w-4" />
           )}
           
-          <Badge variant="outline" className="font-mono text-xs">
+          <Badge variant="outline" className="font-mono text-[9px] px-1 py-0">
             {code.code}
           </Badge>
           
-          <span className="font-medium flex-1">{code.name}</span>
+          <span className="font-medium text-[11px] flex-1">{code.name}</span>
           
           {code.description && (
-            <span className="text-xs text-muted-foreground hidden md:block max-w-[200px] truncate">
+            <span className="text-[10px] text-muted-foreground hidden md:block max-w-[200px] truncate">
               {code.description}
             </span>
           )}
           
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-0.5 invisible group-hover:visible">
             <Button
               size="icon"
               variant="ghost"
               onClick={() => onEdit(code)}
               data-testid={`tree-edit-${code.id}`}
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil className="h-3.5 w-3.5" />
             </Button>
             <Button
               size="icon"
@@ -206,7 +199,7 @@ function TreeView({
               onClick={() => onDelete(code.id)}
               data-testid={`tree-delete-${code.id}`}
             >
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
             </Button>
           </div>
         </div>
@@ -231,7 +224,7 @@ function TreeView({
   }
 
   return (
-    <div className="space-y-1" data-testid="tree-view">
+    <div className="space-y-0.5 text-[11px]" data-testid="tree-view">
       {rootNodes.map((node) => renderNode(node, childrenMap, 0))}
     </div>
   );
@@ -243,7 +236,7 @@ export default function MasterWbsCodes() {
   const [editingCode, setEditingCode] = useState<WbsMasterCode | null>(null);
   const [expandedDimensions, setExpandedDimensions] = useState<Set<string>>(new Set(["phase"]));
   const [selectedDimension, setSelectedDimension] = useState<string>("phase");
-  const [dimensionLabels, setDimensionLabels] = useState<Record<string, { code: string; label: string; description: string; sortOrder: number }>>({});
+  const [dimensionLabels, setDimensionLabels] = useState<Record<string, { code: string; label: string; description: string; sortOrder: number; hidden: boolean }>>({});
   const [viewMode, setViewMode] = useState<"table" | "tree">("table");
   const [expandedTreeNodes, setExpandedTreeNodes] = useState<Set<string>>(new Set());
   const { toast } = useToast();
@@ -252,15 +245,22 @@ export default function MasterWbsCodes() {
   // Initialize dimension labels from tenant config or defaults
   useEffect(() => {
     const customDimensions = activeTenant?.config?.wbsDimensions;
-    const labels: Record<string, { code: string; label: string; description: string; sortOrder: number }> = {};
+    const labels: Record<string, { code: string; label: string; description: string; sortOrder: number; hidden: boolean }> = {};
     
     wbsDimensionDefinitions.forEach((dim, index) => {
       const customDim = customDimensions?.find((d: any) => d.key === dim.key);
+      let label = customDim?.label || dim.label;
+      let description = customDim?.description || dim.description;
+      if (dim.key === "system" && label === "Building System") {
+        label = dim.label;
+        description = dim.description;
+      }
       labels[dim.key] = {
         code: customDim?.code || dim.key.toUpperCase(),
-        label: customDim?.label || dim.label,
-        description: customDim?.description || dim.description,
+        label,
+        description,
         sortOrder: customDim?.sortOrder ?? index,
+        hidden: customDim?.hidden ?? false,
       };
     });
     
@@ -337,6 +337,33 @@ export default function MasterWbsCodes() {
     },
   });
 
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; sortOrder: number }[]) => {
+      await Promise.all(
+        updates.map(({ id, sortOrder }) =>
+          apiRequest("PATCH", `/api/wbs-codes/${id}`, { sortOrder })
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/wbs-codes?tenantId=${activeTenant?.id}`] });
+      toast({ title: "Renumbered", description: "Sort orders updated by 10s" });
+    },
+    onError: () => {
+      toast({ title: "Failed to renumber", variant: "destructive" });
+    },
+  });
+
+  const handleReorderByTens = () => {
+    const currentCodes = getCodesForDimension(selectedDimension);
+    if (currentCodes.length === 0) return;
+    const updates = currentCodes.map((code, idx) => ({
+      id: code.id,
+      sortOrder: (idx + 1) * 10,
+    }));
+    reorderMutation.mutate(updates);
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       return apiRequest("DELETE", `/api/wbs-codes/${id}`);
@@ -396,11 +423,12 @@ export default function MasterWbsCodes() {
       description: dimensionLabels[dim.key]?.description || dim.description,
       sortOrder: dimensionLabels[dim.key]?.sortOrder ?? index,
       required: true,
+      hidden: dimensionLabels[dim.key]?.hidden ?? false,
     }));
     saveDimensionSettingsMutation.mutate(customDimensions);
   };
 
-  const updateDimensionLabel = (key: string, field: "code" | "label" | "description" | "sortOrder", value: string | number) => {
+  const updateDimensionLabel = (key: string, field: "code" | "label" | "description" | "sortOrder" | "hidden", value: string | number | boolean) => {
     setDimensionLabels((prev) => ({
       ...prev,
       [key]: {
@@ -509,75 +537,79 @@ export default function MasterWbsCodes() {
   const totalCodes = codes?.length || 0;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3" data-testid="text-page-title">
-            <Layers className="h-8 w-8 text-primary" />
+          <h1 className="text-lg font-bold flex items-center gap-2" data-testid="text-page-title">
+            <Layers className="h-5 w-5 text-primary" />
             Master WBS Codes
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage the 13-dimensional Work Breakdown Structure master codes. These codes are copied to new projects as templates.
+          <p className="text-xs text-muted-foreground">
+            Manage the 13-dimensional Work Breakdown Structure master codes.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-sm" data-testid="badge-total-codes">
-            {totalCodes} Total Codes
+        <div className="flex items-center gap-1.5">
+          <Badge variant="secondary" className="text-[10px]" data-testid="badge-total-codes">
+            {totalCodes} Codes
           </Badge>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setIsDimensionSettingsOpen(true)}
             data-testid="button-configure-dimensions"
           >
-            <Settings className="h-4 w-4 mr-2" />
-            Configure Dimensions
+            <Settings className="h-3.5 w-3.5 mr-1" />
+            Configure
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => seedMutation.mutate()}
             disabled={seedMutation.isPending}
             data-testid="button-seed-defaults"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${seedMutation.isPending ? "animate-spin" : ""}`} />
-            Seed Defaults
+            <RefreshCw className={`h-3.5 w-3.5 mr-1 ${seedMutation.isPending ? "animate-spin" : ""}`} />
+            Seed
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Dimensions</CardTitle>
-            <CardDescription>13 WBS Categories</CardDescription>
+          <CardHeader className="px-3 py-2">
+            <CardTitle className="text-sm">Dimensions</CardTitle>
+            <CardDescription className="text-[10px]">
+              {getSortedDimensions().filter(dim => !dimensionLabels[dim.key]?.hidden).length} of 13 WBS Categories
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="space-y-1 px-2 pb-2">
-              {getSortedDimensions().map((dim) => {
+            <div className="space-y-0.5 px-1.5 pb-1.5">
+              {getSortedDimensions().filter(dim => !dimensionLabels[dim.key]?.hidden).map((dim) => {
                 const count = getCodeCount(dim.key);
                 const isSelected = selectedDimension === dim.key;
                 return (
                   <button
                     key={dim.key}
                     onClick={() => setSelectedDimension(dim.key)}
-                    className={`w-full flex items-center justify-between p-2 rounded-md text-left transition-colors ${
+                    className={`w-full flex items-center justify-between px-1.5 py-1 rounded-md text-left transition-colors ${
                       isSelected
                         ? "bg-primary text-primary-foreground"
                         : "hover-elevate"
                     }`}
                     data-testid={`button-dimension-${dim.key}`}
                   >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {dimensionIcons[dim.key]}
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className="[&>svg]:h-3.5 [&>svg]:w-3.5 shrink-0">{dimensionIcons[dim.key]}</span>
                       <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium truncate">{getDimensionLabel(dim.key)}</span>
-                        <span className={`text-xs ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                        <span className="text-[11px] font-medium truncate">{getDimensionLabel(dim.key)}</span>
+                        <span className={`text-[9px] ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                           {getDimensionCode(dim.key)}
                         </span>
                       </div>
                     </div>
                     <Badge
                       variant={isSelected ? "secondary" : "outline"}
-                      className="text-xs ml-2 flex-shrink-0"
+                      className="text-[9px] px-1 py-0 ml-1 flex-shrink-0"
                     >
                       {count}
                     </Badge>
@@ -589,17 +621,17 @@ export default function MasterWbsCodes() {
         </Card>
 
         <Card className="lg:col-span-3">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-2 px-3 py-2">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                {dimensionIcons[selectedDimension]}
+              <CardTitle className="flex items-center gap-1.5 text-sm">
+                <span className="[&>svg]:h-3.5 [&>svg]:w-3.5">{dimensionIcons[selectedDimension]}</span>
                 {getDimensionLabel(selectedDimension)}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-[10px]">
                 {getDimensionDescription(selectedDimension)}
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <div className="flex border rounded-md">
                 <Button
                   size="icon"
@@ -608,7 +640,7 @@ export default function MasterWbsCodes() {
                   className="rounded-r-none"
                   data-testid="button-view-table"
                 >
-                  <List className="h-4 w-4" />
+                  <List className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   size="icon"
@@ -617,77 +649,83 @@ export default function MasterWbsCodes() {
                   className="rounded-l-none"
                   data-testid="button-view-tree"
                 >
-                  <GitBranch className="h-4 w-4" />
+                  <GitBranch className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <Button
+                size="sm"
                 onClick={() => openCreateDialog(selectedDimension)}
                 data-testid="button-add-code"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-3.5 w-3.5 mr-1" />
                 Add Code
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 pb-3 pt-0">
             {viewMode === "table" ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-24">Code</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="hidden lg:table-cell">Parent</TableHead>
-                    <TableHead className="hidden md:table-cell">Description</TableHead>
-                    <TableHead className="w-20">Order</TableHead>
-                    <TableHead className="w-24 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <table className="w-full text-[11px]">
+                <thead className="sticky top-0 z-10 bg-muted">
+                  <tr className="border-b">
+                    <th
+                      className="text-left px-1 py-1 w-14 font-medium text-[10px] cursor-pointer select-none"
+                      onDoubleClick={handleReorderByTens}
+                      title="Double-click to renumber by 10s"
+                      data-testid="th-order"
+                    >
+                      Order
+                    </th>
+                    <th className="text-left px-1 py-1 w-20 font-medium text-[10px]">Code</th>
+                    <th className="text-left px-1 py-1 font-medium text-[10px]">Name</th>
+                    <th className="text-left px-1 py-1 font-medium text-[10px] hidden lg:table-cell">Parent</th>
+                    <th className="text-left px-1 py-1 font-medium text-[10px] hidden md:table-cell">Description</th>
+                    <th className="text-right px-1 py-1 w-16 font-medium text-[10px]">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {getCodesForDimension(selectedDimension).length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    <tr>
+                      <td colSpan={6} className="text-center text-muted-foreground py-6 text-xs">
                         No codes defined for this dimension. Click "Add Code" to create one.
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   ) : (
                     getCodesForDimension(selectedDimension).map((code) => (
-                      <TableRow key={code.id} data-testid={`row-code-${code.id}`}>
-                        <TableCell>
-                          <Badge variant="outline" className="font-mono">
+                      <tr key={code.id} className="border-b hover-elevate transition-colors" data-testid={`row-code-${code.id}`}>
+                        <td className="px-1 py-0.5 text-[10px] tabular-nums" data-testid={`cell-order-${code.id}`}>{code.sortOrder || 0}</td>
+                        <td className="px-1 py-0.5">
+                          <Badge variant="outline" className="font-mono text-[9px] px-1 py-0">
                             {code.code}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">{code.name}</TableCell>
-                        <TableCell className="hidden lg:table-cell">
+                        </td>
+                        <td className="px-1 py-0.5 font-medium">{code.name}</td>
+                        <td className="px-1 py-0.5 hidden lg:table-cell">
                           {code.parentCodeId ? (
-                            <div className="flex items-center gap-1">
-                              {(() => {
-                                const parent = getParentCode(code.parentCodeId);
-                                if (!parent) return <span className="text-muted-foreground">—</span>;
-                                return (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {parent.code} ({getDimensionLabel(parent.dimensionType)})
-                                  </Badge>
-                                );
-                              })()}
-                            </div>
+                            (() => {
+                              const parent = getParentCode(code.parentCodeId);
+                              if (!parent) return <span className="text-muted-foreground">—</span>;
+                              return (
+                                <Badge variant="secondary" className="text-[9px] px-1 py-0">
+                                  {parent.code} ({getDimensionLabel(parent.dimensionType)})
+                                </Badge>
+                              );
+                            })()
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                        </td>
+                        <td className="px-1 py-0.5 hidden md:table-cell text-muted-foreground text-[10px] truncate max-w-[200px]">
                           {code.description || "—"}
-                        </TableCell>
-                        <TableCell>{code.sortOrder || 0}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
+                        </td>
+                        <td className="px-1 py-0.5 text-right">
+                          <div className="flex items-center justify-end gap-0.5">
                             <Button
                               size="icon"
                               variant="ghost"
                               onClick={() => openEditDialog(code)}
                               data-testid={`button-edit-${code.id}`}
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               size="icon"
@@ -695,15 +733,15 @@ export default function MasterWbsCodes() {
                               onClick={() => deleteMutation.mutate(code.id)}
                               data-testid={`button-delete-${code.id}`}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                        </td>
+                      </tr>
                     ))
                   )}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             ) : (
               <TreeView
                 codes={codes || []}
@@ -920,7 +958,7 @@ export default function MasterWbsCodes() {
           </DialogHeader>
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
             {wbsDimensionDefinitions.map((dim, defaultIndex) => (
-              <div key={dim.key} className="grid grid-cols-12 gap-3 items-start p-3 rounded-lg border">
+              <div key={dim.key} className={`grid grid-cols-12 gap-3 items-start p-3 rounded-lg border ${dimensionLabels[dim.key]?.hidden ? "opacity-50" : ""}`}>
                 <div className="col-span-1 flex items-center justify-center pt-2">
                   {dimensionIcons[dim.key]}
                 </div>
@@ -935,10 +973,11 @@ export default function MasterWbsCodes() {
                         onChange={(e) => updateDimensionLabel(dim.key, "code", e.target.value.toUpperCase())}
                         placeholder={dim.key.toUpperCase()}
                         maxLength={10}
+                        disabled={dimensionLabels[dim.key]?.hidden}
                         data-testid={`input-dimension-code-${dim.key}`}
                       />
                     </div>
-                    <div className="col-span-4">
+                    <div className="col-span-3">
                       <label className="text-sm font-medium text-muted-foreground">
                         Display Name
                       </label>
@@ -946,10 +985,11 @@ export default function MasterWbsCodes() {
                         value={dimensionLabels[dim.key]?.label || dim.label}
                         onChange={(e) => updateDimensionLabel(dim.key, "label", e.target.value)}
                         placeholder={dim.label}
+                        disabled={dimensionLabels[dim.key]?.hidden}
                         data-testid={`input-dimension-label-${dim.key}`}
                       />
                     </div>
-                    <div className="col-span-4">
+                    <div className="col-span-3">
                       <label className="text-sm font-medium text-muted-foreground">
                         Description
                       </label>
@@ -957,6 +997,7 @@ export default function MasterWbsCodes() {
                         value={dimensionLabels[dim.key]?.description || dim.description}
                         onChange={(e) => updateDimensionLabel(dim.key, "description", e.target.value)}
                         placeholder={dim.description}
+                        disabled={dimensionLabels[dim.key]?.hidden}
                         data-testid={`input-dimension-desc-${dim.key}`}
                       />
                     </div>
@@ -970,8 +1011,24 @@ export default function MasterWbsCodes() {
                         max="99"
                         value={dimensionLabels[dim.key]?.sortOrder ?? defaultIndex}
                         onChange={(e) => updateDimensionLabel(dim.key, "sortOrder", parseInt(e.target.value) || 0)}
+                        disabled={dimensionLabels[dim.key]?.hidden}
                         data-testid={`input-dimension-sort-${dim.key}`}
                       />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-sm font-medium text-muted-foreground">
+                        N/A
+                      </label>
+                      <div className="flex items-center gap-1.5 h-9">
+                        <Switch
+                          checked={dimensionLabels[dim.key]?.hidden ?? false}
+                          onCheckedChange={(checked) => updateDimensionLabel(dim.key, "hidden", checked)}
+                          data-testid={`switch-dimension-hidden-${dim.key}`}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {dimensionLabels[dim.key]?.hidden ? "Hidden" : "Active"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">

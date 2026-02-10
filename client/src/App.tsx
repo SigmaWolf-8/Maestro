@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Switch, Route } from "wouter";
 import heroWatermark from "@/assets/images/hero-executive-home.png";
 import { queryClient } from "./lib/queryClient";
@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { TabProvider } from "@/components/tab-provider";
 import { TabBar } from "@/components/tab-bar";
 import { CorporateFooter } from "@/components/corporate-footer";
+import { WebViewer } from "@/components/web-viewer";
+import { WebViewerContext } from "@/hooks/use-web-viewer";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import WBS from "@/pages/wbs";
@@ -37,11 +39,12 @@ import SubscriptionManagementPage from "@/pages/subscription-management";
 import BillingDashboardPage from "@/pages/billing-dashboard";
 import AdminPricingPage from "@/pages/admin-pricing";
 import SecurityDashboardPage from "@/pages/security-dashboard";
+import SchedulePage from "@/pages/schedule";
+import ApplicationsPage from "@/pages/applications";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
   AlertsPage,
-  SchedulePage,
   SpecificationsPage,
   PhotosPage,
   EmployeesPage,
@@ -122,6 +125,7 @@ function Router() {
       <Route path="/documents/reports" component={DocumentReportsPage} />
       <Route path="/documents/archives" component={ArchivesPage} />
       <Route path="/documents/smart-inbox" component={SmartInboxPage} />
+      <Route path="/applications" component={ApplicationsPage} />
       
       <Route path="/ai/reports" component={AIReportsPage} />
       
@@ -204,45 +208,72 @@ function ZoomControl() {
 }
 
 function AppLayout() {
+  const [webViewerUrl, setWebViewerUrl] = useState<string | null>(null);
+
+  const handleOpenApp = useCallback((url: string) => {
+    setWebViewerUrl(url);
+  }, []);
+
+  const handleCloseViewer = useCallback(() => {
+    setWebViewerUrl(null);
+  }, []);
+
   const sidebarStyle = {
     "--sidebar-width": "12rem",
     "--sidebar-width-icon": "3rem",
   } as React.CSSProperties;
 
+  const webViewerContextValue = {
+    openApp: handleOpenApp,
+    closeApp: handleCloseViewer,
+    isOpen: !!webViewerUrl,
+  };
+
   return (
-    <SidebarProvider style={sidebarStyle}>
-      <div className="flex h-screen w-full">
-        <AppSidebar currentUser={mockUser} tenantName="Acme Construction Co." />
-        <SidebarInset className="flex flex-col flex-1 min-w-0">
-          <header className="flex items-center justify-between gap-2 h-14 px-4 border-b border-border shrink-0 [&_button]:text-inherit [&_svg]:text-inherit" style={{ backgroundColor: 'hsl(var(--header))', color: 'hsl(var(--header-foreground))' }}>
-            <div className="flex items-center gap-2">
-              <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <HeaderBranding />
-            </div>
-            <div className="flex items-center gap-3">
-              <ZoomControl />
-              <ThemeToggle />
-            </div>
-          </header>
-          <TabBar />
-          <main className="flex-1 overflow-auto flex flex-col relative">
-            <div 
-              className="absolute inset-0 opacity-[0.08] pointer-events-none"
-              style={{
-                backgroundImage: `url(${heroWatermark})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundAttachment: 'fixed'
-              }}
-            />
-            <div className="flex-1 relative z-10">
-              <Router />
-            </div>
-            <CorporateFooter />
-          </main>
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+    <WebViewerContext.Provider value={webViewerContextValue}>
+      <SidebarProvider style={sidebarStyle}>
+        <div className="flex h-screen w-full">
+          <AppSidebar currentUser={mockUser} tenantName="Acme Construction Co." onOpenApp={handleOpenApp} />
+          <SidebarInset className="flex flex-col flex-1 min-w-0">
+            <header className="flex items-center justify-between gap-2 h-14 px-4 border-b border-border shrink-0 [&_button]:text-inherit [&_svg]:text-inherit" style={{ backgroundColor: 'hsl(var(--header))', color: 'hsl(var(--header-foreground))' }}>
+              <div className="flex items-center gap-2">
+                <SidebarTrigger data-testid="button-sidebar-toggle" />
+                <HeaderBranding />
+              </div>
+              <div className="flex items-center gap-3">
+                <ZoomControl />
+                <ThemeToggle />
+              </div>
+            </header>
+            <TabBar />
+            <main className="flex-1 overflow-hidden flex flex-col relative">
+              {webViewerUrl ? (
+                <WebViewer
+                  initialUrl={webViewerUrl}
+                  onClose={handleCloseViewer}
+                />
+              ) : (
+                <>
+                  <div 
+                    className="absolute inset-0 opacity-[0.08] pointer-events-none"
+                    style={{
+                      backgroundImage: `url(${heroWatermark})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      backgroundAttachment: 'fixed'
+                    }}
+                  />
+                  <div className="flex-1 relative z-10 overflow-auto">
+                    <Router />
+                    <CorporateFooter />
+                  </div>
+                </>
+              )}
+            </main>
+          </SidebarInset>
+        </div>
+      </SidebarProvider>
+    </WebViewerContext.Provider>
   );
 }
 

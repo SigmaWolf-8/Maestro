@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from "react";
+import { Fragment, useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Users, Mail, Phone, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Printer, GripVertical } from "lucide-react";
+import { Search, Users, Mail, Phone, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Printer, GripVertical, Layers, X } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Input } from "@/components/ui/input";
@@ -22,14 +22,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useSettings } from "@/components/settings-provider";
 
 interface DirectoryContact {
   id: string;
   category: "Customer" | "Vendor" | "Employee";
   sortId: number;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   company: string;
+  jobNumber: string;
   email: string;
   phone: string;
   jobTitle: string;
@@ -44,7 +52,7 @@ interface DirectoryResponse {
   offset: number;
 }
 
-type SortField = "name" | "company" | "category" | "jobTitle" | "email" | "phone";
+type SortField = "firstName" | "lastName" | "company" | "jobNumber" | "category" | "jobTitle" | "email" | "phone" | "city";
 type SortDirection = "asc" | "desc";
 
 interface ColumnDef {
@@ -53,13 +61,22 @@ interface ColumnDef {
   className?: string;
 }
 
-const defaultColumns: ColumnDef[] = [
-  { field: "category", label: "Type", className: "w-[60px]" },
-  { field: "name", label: "Name" },
+const groupableFields: { field: SortField; label: string }[] = [
+  { field: "category", label: "Type" },
   { field: "company", label: "Company" },
   { field: "jobTitle", label: "Title" },
-  { field: "email", label: "Email" },
-  { field: "phone", label: "Phone" },
+  { field: "city", label: "City" },
+];
+
+const defaultColumns: ColumnDef[] = [
+  { field: "category", label: "Type", className: "w-[80px]" },
+  { field: "firstName", label: "First Name" },
+  { field: "lastName", label: "Last Name" },
+  { field: "company", label: "Company" },
+  { field: "jobNumber", label: "Job #", className: "w-[80px]" },
+  { field: "jobTitle", label: "Title" },
+  { field: "email", label: "Email", className: "w-[160px]" },
+  { field: "phone", label: "Phone", className: "w-[150px]" },
 ];
 
 function hslStringToRgb(hslStr: string): [number, number, number] {
@@ -90,27 +107,35 @@ function hslStringToRgb(hslStr: string): [number, number, number] {
 export default function ContactsDirectoryPage() {
   const { activeTenant } = useSettings();
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortField>("name");
+  const [sortBy, setSortBy] = useState<SortField>("lastName");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(0);
   const [columns, setColumns] = useState<ColumnDef[]>(defaultColumns);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [groupByFields, setGroupByFields] = useState<SortField[]>([]);
   const dragStartRef = useRef<number | null>(null);
   const limit = 50;
 
+  const tenantId = activeTenant?.id || "";
+  const groupByParam = groupByFields.join(",");
+  const effectiveLimit = groupByFields.length > 0 ? 9999 : limit;
+  const effectiveOffset = groupByFields.length > 0 ? 0 : page * limit;
   const queryParams = new URLSearchParams({
+    tenantId,
     search: searchQuery,
     sortBy,
     sortDirection,
     category,
-    limit: limit.toString(),
-    offset: (page * limit).toString(),
+    limit: effectiveLimit.toString(),
+    offset: effectiveOffset.toString(),
+    ...(groupByParam ? { groupBy: groupByParam } : {}),
   }).toString();
 
   const { data, isLoading } = useQuery<DirectoryResponse>({
-    queryKey: ["/api/contacts/directory", searchQuery, sortBy, sortDirection, category, page],
+    queryKey: ["/api/contacts/directory", tenantId, searchQuery, sortBy, sortDirection, category, page, groupByParam],
+    enabled: !!tenantId,
     queryFn: async () => {
       const res = await fetch(`/api/contacts/directory?${queryParams}`);
       if (!res.ok) throw new Error("Failed to fetch contacts");
@@ -130,6 +155,26 @@ export default function ContactsDirectoryPage() {
       setSortDirection("asc");
     }
     setPage(0);
+  };
+
+  const toggleGroupByField = (field: SortField) => {
+    setGroupByFields(prev => {
+      if (prev.includes(field)) {
+        return prev.filter(f => f !== field);
+      }
+      return [...prev, field];
+    });
+    setPage(0);
+  };
+
+  const clearGroupBy = () => {
+    setGroupByFields([]);
+    setPage(0);
+  };
+
+  const getGroupLabel = (field: SortField): string => {
+    const found = groupableFields.find(g => g.field === field);
+    return found?.label || field;
   };
 
   const handleDragStart = (index: number) => {
@@ -188,10 +233,16 @@ export default function ContactsDirectoryPage() {
     switch (field) {
       case "category":
         return getCategoryBadge(contact.category);
-      case "name":
-        return <span className="font-medium text-sm">{contact.fullName || "-"}</span>;
+      case "firstName":
+        return <span className="font-medium text-sm">{contact.firstName || "-"}</span>;
+      case "lastName":
+        return <span className="font-medium text-sm">{contact.lastName || "-"}</span>;
       case "company":
         return <span className="text-sm text-muted-foreground">{contact.company || "-"}</span>;
+      case "jobNumber":
+        return contact.jobNumber ? (
+          <span className="text-sm font-mono text-muted-foreground">{contact.jobNumber}</span>
+        ) : <span className="text-sm">-</span>;
       case "jobTitle":
         return <span className="text-sm text-muted-foreground">{contact.jobTitle || "-"}</span>;
       case "email":
@@ -207,7 +258,7 @@ export default function ContactsDirectoryPage() {
         ) : <span className="text-sm">-</span>;
       case "phone":
         return contact.phone ? (
-          <span className="flex items-center gap-1 text-sm">
+          <span className="flex items-center gap-1 text-sm font-mono">
             <Phone className="h-3 w-3 text-muted-foreground" />
             {contact.phone}
           </span>
@@ -218,13 +269,33 @@ export default function ContactsDirectoryPage() {
   const getRawCellValue = (contact: DirectoryContact, field: SortField): string => {
     switch (field) {
       case "category": return contact.category;
-      case "name": return contact.fullName || "-";
+      case "firstName": return contact.firstName || "-";
+      case "lastName": return contact.lastName || "-";
       case "company": return contact.company || "-";
+      case "jobNumber": return contact.jobNumber || "-";
       case "jobTitle": return contact.jobTitle || "-";
       case "email": return contact.email || "-";
       case "phone": return contact.phone || "-";
+      case "city": return contact.city || "-";
     }
   };
+
+  const buildGroupedRows = () => {
+    if (groupByFields.length === 0) return null;
+    const groups = new Map<string, DirectoryContact[]>();
+    contacts.forEach(c => {
+      const key = groupByFields.map(f => getRawCellValue(c, f) || "-").join(" / ");
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(c);
+    });
+    const sortedKeys = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
+    return sortedKeys.map(key => ({
+      groupLabel: key,
+      contacts: groups.get(key)!,
+    }));
+  };
+
+  const groupedData = buildGroupedRows();
 
   const handlePrintReport = useCallback(() => {
     if (!contacts.length) return;
@@ -248,47 +319,86 @@ export default function ContactsDirectoryPage() {
     doc.text(title, 14, 15);
     doc.setFontSize(9);
     doc.setTextColor(100);
-    doc.text(`${categoryLabel}  |  Generated: ${dateStr}  |  ${total} records  |  Sorted by: ${sortBy} (${sortDirection})`, 14, 22);
+    let subtitle = `${categoryLabel}  |  Generated: ${dateStr}  |  ${total} records  |  Sorted by: ${sortBy} (${sortDirection})`;
+    if (groupByFields.length > 0) {
+      subtitle += `  |  Grouped by: ${groupByFields.map(f => getGroupLabel(f)).join(", ")}`;
+    }
+    doc.text(subtitle, 14, 22);
     doc.setTextColor(0);
 
     const isTypeFiltered = category !== "all";
     const isTypeSorted = sortBy === "category";
     const suppressType = isTypeFiltered || isTypeSorted;
 
-    const reportColumns = columns.filter(col => {
-      if (suppressType && col.field === "category") return false;
-      return true;
-    });
+    const pdfColumns = columns
+      .filter(col => {
+        if (suppressType && col.field === "category") return false;
+        if (col.field === "firstName") return false;
+        return true;
+      })
+      .map(col => {
+        if (col.field === "lastName") return { ...col, field: "lastName" as SortField, label: "Name" };
+        return col;
+      });
 
-    const headLabels = reportColumns.map(col => col.label);
+    const headLabels = pdfColumns.map(col => col.label);
 
-    let lastTypeValue = "";
-    const tableData = contacts.map((c) => {
-      const row = reportColumns.map(col => getRawCellValue(c, col.field));
-      return row;
-    });
+    const getPdfCellValue = (c: DirectoryContact, field: SortField): string => {
+      if (field === "lastName") {
+        const fn = c.firstName || "";
+        const ln = c.lastName || "";
+        return `${fn} ${ln}`.trim() || "-";
+      }
+      return getRawCellValue(c, field);
+    };
 
-    if (isTypeSorted && !isTypeFiltered) {
-      const groupedData: string[][] = [];
+    const tableData: string[][] = [];
+
+    if (groupByFields.length > 0) {
+      const groups = new Map<string, DirectoryContact[]>();
+      contacts.forEach(c => {
+        const key = groupByFields.map(f => getRawCellValue(c, f) || "-").join(" / ");
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(c);
+      });
+      const sortedKeys = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b));
+      sortedKeys.forEach(key => {
+        const groupRow = pdfColumns.map(() => "");
+        groupRow[0] = `--- ${key} ---`;
+        tableData.push(groupRow);
+        groups.get(key)!.forEach(c => {
+          tableData.push(pdfColumns.map(col => getPdfCellValue(c, col.field)));
+        });
+      });
+    } else if (isTypeSorted && !isTypeFiltered) {
+      let lastTypeValue = "";
       contacts.forEach((c) => {
         if (c.category !== lastTypeValue) {
           lastTypeValue = c.category;
-          const groupRow = reportColumns.map(() => "");
+          const groupRow = pdfColumns.map(() => "");
           groupRow[0] = `--- ${c.category} ---`;
-          groupedData.push(groupRow);
+          tableData.push(groupRow);
         }
-        groupedData.push(reportColumns.map(col => getRawCellValue(c, col.field)));
+        tableData.push(pdfColumns.map(col => getPdfCellValue(c, col.field)));
       });
-      tableData.length = 0;
-      tableData.push(...groupedData);
+    } else {
+      contacts.forEach(c => {
+        tableData.push(pdfColumns.map(col => getPdfCellValue(c, col.field)));
+      });
     }
 
     const totalAvailableWidth = doc.internal.pageSize.getWidth() - 28;
-    const colCount = reportColumns.length;
+    const colCount = pdfColumns.length;
     const colWidth = totalAvailableWidth / colCount;
     const colStyles: Record<number, { cellWidth: number }> = {};
-    reportColumns.forEach((_, i) => {
-      colStyles[i] = { cellWidth: colWidth };
+    pdfColumns.forEach((col, i) => {
+      if (col.field === "phone") {
+        colStyles[i] = { cellWidth: Math.max(colWidth, 32) };
+      } else if (col.field === "jobNumber") {
+        colStyles[i] = { cellWidth: Math.max(colWidth, 18) };
+      } else {
+        colStyles[i] = { cellWidth: colWidth };
+      }
     });
 
     autoTable(doc, {
@@ -326,7 +436,7 @@ export default function ContactsDirectoryPage() {
     });
 
     doc.save(`contacts-directory-${new Date().toISOString().split("T")[0]}.pdf`);
-  }, [contacts, columns, category, total, sortBy, sortDirection, activeTenant]);
+  }, [contacts, columns, category, total, sortBy, sortDirection, activeTenant, groupByFields]);
 
   return (
     <div className="flex flex-col gap-3 p-4" data-testid="page-contacts-directory">
@@ -359,7 +469,7 @@ export default function ContactsDirectoryPage() {
 
       <div className="flex flex-col sm:flex-row gap-2">
         <Select value={category} onValueChange={(v) => { setCategory(v); setPage(0); }}>
-          <SelectTrigger className="w-32 h-9" data-testid="select-category">
+          <SelectTrigger className="w-32" data-testid="select-category">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -369,6 +479,64 @@ export default function ContactsDirectoryPage() {
             <SelectItem value="employee">Employees</SelectItem>
           </SelectContent>
         </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={groupByFields.length > 0 ? "default" : "outline"}
+              size="sm"
+              data-testid="button-group-by"
+            >
+              <Layers className="h-4 w-4 mr-1.5" />
+              Group By{groupByFields.length > 0 ? ` (${groupByFields.length})` : ""}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-3" align="start">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold text-muted-foreground mb-1">Group contacts by:</p>
+              {groupableFields.map(gf => (
+                <label
+                  key={gf.field}
+                  className="flex items-center gap-2 cursor-pointer text-sm"
+                  data-testid={`checkbox-group-${gf.field}`}
+                >
+                  <Checkbox
+                    checked={groupByFields.includes(gf.field)}
+                    onCheckedChange={() => toggleGroupByField(gf.field)}
+                  />
+                  {gf.label}
+                </label>
+              ))}
+              {groupByFields.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearGroupBy}
+                  className="mt-1 text-xs"
+                  data-testid="button-clear-group-by"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Clear Grouping
+                </Button>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+        {groupByFields.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {groupByFields.map(f => (
+              <Badge
+                key={f}
+                variant="secondary"
+                className="text-xs cursor-pointer"
+                onClick={() => toggleGroupByField(f)}
+                data-testid={`badge-group-${f}`}
+              >
+                {getGroupLabel(f)}
+                <X className="h-3 w-3 ml-1" />
+              </Badge>
+            ))}
+          </div>
+        )}
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -378,20 +546,20 @@ export default function ContactsDirectoryPage() {
               setSearchQuery(e.target.value);
               setPage(0);
             }}
-            className="pl-9 h-9"
+            className="pl-9"
             data-testid="input-directory-search"
           />
         </div>
       </div>
 
       <div className="border rounded-md overflow-hidden">
-        <Table>
+        <Table className="text-[13px]">
           <TableHeader>
             <TableRow className="bg-muted/50">
               {columns.map((col, index) => (
                 <TableHead
                   key={col.field}
-                  className={`py-2 text-xs font-semibold cursor-pointer select-none ${col.className || ""} ${dragOverIndex === index ? "bg-primary/10" : ""} ${dragIndex === index ? "opacity-50" : ""}`}
+                  className={`py-1.5 px-2 text-xs font-semibold cursor-pointer select-none ${col.className || ""} ${dragOverIndex === index ? "bg-primary/10" : ""} ${dragIndex === index ? "opacity-50" : ""}`}
                   onClick={() => handleSort(col.field)}
                   draggable
                   onDragStart={() => handleDragStart(index)}
@@ -426,6 +594,39 @@ export default function ContactsDirectoryPage() {
                   <p className="text-xs">Try adjusting your search or filter criteria</p>
                 </TableCell>
               </TableRow>
+            ) : groupedData ? (
+              groupedData.map((group) => (
+                <Fragment key={`group-${group.groupLabel}`}>
+                  <TableRow
+                    className="bg-muted/70 border-t"
+                    data-testid={`group-header-${group.groupLabel.replace(/[^a-zA-Z0-9-]/g, "_")}`}
+                  >
+                    <TableCell
+                      colSpan={columns.length}
+                      className="py-1 px-2 text-xs font-semibold"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Layers className="h-3 w-3 text-muted-foreground" />
+                        {group.groupLabel}
+                        <span className="text-muted-foreground font-normal">({group.contacts.length})</span>
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                  {group.contacts.map((contact) => (
+                    <TableRow
+                      key={contact.id}
+                      className="hover-elevate cursor-pointer"
+                      data-testid={`row-contact-${contact.id}`}
+                    >
+                      {columns.map((col) => (
+                        <TableCell key={col.field} className="py-1 px-2">
+                          {getCellValue(contact, col.field)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </Fragment>
+              ))
             ) : (
               contacts.map((contact) => (
                 <TableRow
@@ -434,7 +635,7 @@ export default function ContactsDirectoryPage() {
                   data-testid={`row-contact-${contact.id}`}
                 >
                   {columns.map((col) => (
-                    <TableCell key={col.field} className="py-1.5">
+                    <TableCell key={col.field} className="py-1 px-2">
                       {getCellValue(contact, col.field)}
                     </TableCell>
                   ))}

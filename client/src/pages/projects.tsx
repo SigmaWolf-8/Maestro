@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useSettings } from "@/components/settings-provider";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
 
@@ -73,9 +74,17 @@ export default function Projects() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const { toast } = useToast();
+  const { activeTenant } = useSettings();
 
   const { data: projects, isLoading } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
+    queryKey: ["/api/projects", activeTenant?.id],
+    queryFn: async () => {
+      if (!activeTenant?.id) return [];
+      const res = await fetch(`/api/projects?tenantId=${activeTenant.id}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!activeTenant?.id,
   });
 
   const createMutation = useMutation({
@@ -83,11 +92,12 @@ export default function Projects() {
       return apiRequest("POST", "/api/projects", {
         ...data,
         budget: data.budget ? parseFloat(data.budget) : undefined,
+        tenantId: activeTenant?.id,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", activeTenant?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats", activeTenant?.id] });
       setIsCreateOpen(false);
       toast({
         title: "Project created",
@@ -108,8 +118,8 @@ export default function Projects() {
       return apiRequest("DELETE", `/api/projects/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", activeTenant?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats", activeTenant?.id] });
       toast({
         title: "Project deleted",
         description: "The project has been deleted successfully.",

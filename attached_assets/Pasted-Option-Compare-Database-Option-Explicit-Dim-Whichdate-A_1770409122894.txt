@@ -1,0 +1,2400 @@
+Option Compare Database
+Option Explicit
+Dim Whichdate As String
+Dim WhichSearch As String
+Dim SearchWhat As String
+Dim RunTimer As Boolean
+Dim OldTask As String
+Dim Newtask As Boolean
+Private Sub ActualFinish_AfterUpdate()
+Me.Recalc
+End Sub
+Private Sub ActualStart_AfterUpdate()
+Me.Recalc
+End Sub
+Private Sub ActualStart_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub CalcLenPro_Click()
+End Sub
+Private Sub Cash_Click()
+DoCmd.OpenReport "Job Cash Flow-6 Month", acViewPreview
+DoCmd.OutputTo acOutputReport, "", acFormatPDF, CashFlowLocation & "\" & Me.JobC & "CashFlowForecast.pdf", False
+End Sub
+Private Sub Combo10_AfterUpdate()
+Me.JobC = Me.Combo10.Value
+Me.PageE = True
+Me.PageE_Click
+End Sub
+Private Sub Combo11_AfterUpdate()
+Me.JobC = Me.Combo11.Value
+Me.PageD = True
+Me.PageD_Click
+End Sub
+Private Sub Combo12_AfterUpdate()
+Me.JobC = Me.Combo12.Value
+Me.PageC = True
+Me.PageC_Click
+End Sub
+Private Sub Combo4_AfterUpdate()
+Me.JobC = Me.Combo4.Value
+Me.PageK = True
+Me.PageK_Click
+End Sub
+Private Sub Combo4_GotFocus()
+Me.Combo4.RowSource = Me.Combo4.RowSource
+End Sub
+Private Sub Combo5_AfterUpdate()
+Me.JobC = Me.Combo5.Value
+Me.PageJ = True
+Me.PageJ_Click
+End Sub
+Private Sub Combo5_GotFocus()
+Me.Combo5.RowSource = Me.Combo5.RowSource
+End Sub
+Private Sub Combo6_AfterUpdate()
+Me.JobC = Me.Combo6.Value
+Me.PageI = True
+Me.PageI_Click
+End Sub
+Private Sub Combo6_GotFocus()
+Me.Combo6.RowSource = Me.Combo6.RowSource
+End Sub
+Private Sub Combo7_AfterUpdate()
+Me.JobC = Me.Combo7.Value
+Me.PageH = True
+Me.PageH_Click
+End Sub
+Private Sub Combo7_GotFocus()
+Me.Combo7.RowSource = Me.Combo7.RowSource
+End Sub
+Private Sub Combo8_AfterUpdate()
+Me.JobC = Me.Combo8.Value
+Me.PageG = True
+Me.PageG_Click
+End Sub
+Private Sub Combo8_GotFocus()
+Me.Combo8.RowSource = Me.Combo8.RowSource
+End Sub
+Private Sub Combo9_AfterUpdate()
+Me.JobC = Me.Combo9.Value
+Me.PageF = True
+Me.PageF_Click
+End Sub
+Private Sub Combo9_GotFocus()
+Me.Combo9.RowSource = Me.Combo9.RowSource
+End Sub
+Private Sub Combo10_GotFocus()
+Me.Combo10.RowSource = Me.Combo10.RowSource
+End Sub
+Private Sub Combo11_GotFocus()
+Me.Combo11.RowSource = Me.Combo11.RowSource
+End Sub
+Private Sub Combo12_GotFocus()
+Me.Combo12.RowSource = Me.Combo12.RowSource
+End Sub
+Private Sub Command2_Click()
+MsgBox "Task is projected to start " & Me.Offset & " days from " & Me.PreReq & " completion", vbOKOnly, Me.TaskLen & " working days allowed"
+End Sub
+Private Sub Command2_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer
+    Msg = MsgBox("Do you wish to reveal task length", vbYesNo, "Reveal Length of Task")
+    If Msg = vbYes Then
+        Me.TaskLen.Visible = True
+        Me.Offset.Visible = True
+        Me.TaskLen.SetFocus
+        Me.SqftDay.Visible = True
+        Me.SqftLbl.Visible = True
+        Me.MoneyDay.Visible = True
+        Me.MoneyCode.Visible = True
+        Me.MoneyLbl.Visible = True
+    End If
+End If
+End Sub
+Private Sub Command3_Click()
+Me.Recalc
+'Reports.ScheduleMemoRpt.RecordSource = "Select * from [Task Master] Where [job #]= " & Me.JobC & " And [Supplier/Trade]='" & Me.Supplier_Trade & "' And [Finlist#]>0"
+DoCmd.OpenReport "ScheduleMemoRpt", acViewPreview
+DoCmd.OutputTo acOutputReport, "", acFormatPDF, ScheduleMemoLocation(Me.JobC) & "\" & Me.JobC & "ScMemo_(" & [Supplier/Trade] & ").pdf", False
+End Sub
+Private Sub FinList_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![FinList#]='" & Me.FinList & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]![FinList#]='" & Me.FinList _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+Private Sub FinList_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub Form_AfterInsert()
+If Me.Caption = "Master Task List" Then
+Dim Q As Integer, Yoda As DAO.Database, rs As DAO.Recordset, rsj As DAO.Recordset, Ponum As Single, ref As Single
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From [Task Master]", dbOpenDynaset)
+Set rsj = Yoda.OpenRecordset("Select * From [Job Details]", dbOpenSnapshot)
+
+Q = MsgBox("Would you like to insert this task into all jobs", vbYesNo, "Add to all jobs?")
+If Q = vbYes Then
+    rsj.MoveFirst
+    Do Until rsj.EOF
+        'CurrentDb.Execute "Insert into [Task Master] ([Job #],[Task #],[Stage],[FinList#],[task],[Supplier/Trade],[WhosTask],[PoRefNum],[Ref],[Memo])" _
+        '& " VALUES (" & RsJ![Job #] & "," & Me.TaskNum & ",'" & Me.Stage & "'," & Me.FinList & ",'" & Me.Task & "','" & Me.[Supplier/Trade] _
+        '& "','" & Me.WhosTask & "'," & Me.PORefNum & "," & Me.Ref & ",'" & Me.Memo & "');"
+        With rs
+        .AddNew
+        ![Job #] = rsj![Job #]
+        ![Task #] = Me.TaskNum
+        ![Stage] = Me.Stage
+        ![Super] = Me.Super
+        ![FinList#] = Me.FinList
+        ![Task] = Me.Task
+        ![Supplier/Trade] = Me.Supplier_Trade
+        ![WhosTask] = Me.WhosTask
+        !PORefNum = Me.PORefNum
+        !ref = Me.ref
+        !Memo = Me.Memo
+        .Update
+        End With
+        rsj.MoveNext
+    Loop
+End If
+rs.Close
+rsj.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End If
+Newtask = False
+End Sub
+Private Sub Form_BeforeInsert(Cancel As Integer)
+Newtask = True
+End Sub
+Private Sub Form_Open(Cancel As Integer)
+Me.RecordSource = ""
+If WNetGetUser = "RSalvi" Or WNetGetUser = "Aubrey" Then
+    Me.JobC.RowSource = "SELECT '<MasterList>' from TaskBibleQuery UNION Select TaskBibleQuery.[Job #] FROM TaskBibleQuery; "
+Else
+    Me.JobC.RowSource = "SELECT TaskBibleQuery.[Job #] FROM TaskBibleQuery; "
+End If
+Me.Page1.ForeColor = RGB(255, 0, 0)
+'Me.Page1.FontBold = True
+Me.Page1.Value = True
+If Remote = True Then Me.SpecBtn.Visible = False Else Me.SpecBtn.Visible = True
+InsertStageJobs
+
+If WNetGetUser = "RSalvi" Or WNetGetUser = "Ryan" Then
+    Me.Cash.Visible = True
+Else
+    Me.Cash.Visible = False
+End If
+End Sub
+Private Sub GoalsBtn_Click()
+InsertStageGoalDates (Me.JobC)
+DoCmd.OpenReport "TaskStageGoals-Job", acViewPreview
+End Sub
+Private Sub JobC_DblClick(Cancel As Integer)
+If Me.WhoseJob.Visible = True Then Me.WhoseJob.Visible = False Else Me.WhoseJob.Visible = True
+End Sub
+Private Sub JobC_KeyDown(KeyCode As Integer, Shift As Integer)
+Dim que As Integer, BegJob As Integer
+
+    If KeyCode = 67 And Shift = acCtrlMask Then 'Control and C is pressed
+        que = MsgBox("Do you want to calculate all task lengths for this Job", vbYesNo, "Calculate Task Lengths?")
+        DoCmd.CancelEvent
+    End If
+
+
+
+    If que = vbYes Then
+        CalcTaskLenSF (Me.JobC.Value)
+        CalcTaskLenMoney (Me.JobC.Value)
+    End If
+
+
+End Sub
+Private Sub KT_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![KT]='" & Me.KT & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!KT='" & Me.KT _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+
+End Sub
+Private Sub KTSort_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![KTSort]='" & Me.KTSort & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!KTSort='" & Me.KTSort _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+Private Sub KTSort_DblClick(Cancel As Integer)
+Me.OrderBy = "KTSort"
+Me.OrderByOn = True
+End Sub
+
+Private Sub KTSort_KeyDown(KeyCode As Integer, Shift As Integer)
+    KeysMoveMe (KeyCode)
+End Sub
+
+Private Sub MoneyCode_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+            CurrentDb.Execute "Update [Task Master] Set [Task Master]![MoneyCode]='" & Me.MoneyCode & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!MoneyCode='" & Me.MoneyCode _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+
+Private Sub MoneyCode_KeyDown(KeyCode As Integer, Shift As Integer)
+    KeysMoveMe (KeyCode)
+End Sub
+
+Private Sub MoneyDay_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+            CurrentDb.Execute "Update [Task Master] Set [Task Master]![MoneyDay]='" & Me.MoneyDay & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!MoneyDay='" & Me.MoneyDay _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+
+Private Sub MoneyDay_KeyUp(KeyCode As Integer, Shift As Integer)
+    KeysMoveMe (KeyCode)
+End Sub
+
+Private Sub NACheckBox_Click()
+Me.Task.SetFocus
+DoCmd.GoToRecord , , acNext
+DoCmd.GoToRecord , , acPrevious
+End Sub
+Public Sub O_Click()
+If Me.O.Value = True Then
+    If IsDate(Me.ODate) = False Then Me.ODate.Value = Date
+Else
+    Me.ODate.Value = Null
+End If
+DoCmd.GoToRecord , , acNext
+DoCmd.GoToRecord , , acPrevious
+
+If Me.O = True Then AutoEmailReminder Me.Task, Me.JobC, "O"
+End Sub
+Private Sub ODate_AfterUpdate()
+Me.Recalc
+End Sub
+
+Private Sub ODate_Click()
+Whichdate = "OD"
+End Sub
+Private Sub ODate_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub Offset_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![Offset]='" & Me.Offset & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!Offset='" & Me.Offset _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+Me.Recalc
+End Sub
+
+Private Sub Offset_KeyDown(KeyCode As Integer, Shift As Integer)
+    KeysMoveMe (KeyCode)
+End Sub
+
+Private Sub Page1_Click()
+If Me.Page1 = True Then
+    Me.Page1.ForeColor = RGB(255, 0, 0)
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.Page1.Value = True
+End If
+SetRecords
+End Sub
+Public Sub Page2_Click()
+If Me.Page2 = True Then
+    Me.Page1.Value = False
+    Me.Page2.ForeColor = RGB(255, 0, 0)
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.Page2.Value = True
+End If
+SetRecords
+End Sub
+Private Sub Page3_Click()
+If Me.Page3 = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.ForeColor = RGB(255, 0, 0)
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.Page3.Value = True
+End If
+SetRecords
+End Sub
+Private Sub Page3_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub Page3_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for the entire job.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate ALL projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "All"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "All", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+
+End Sub
+Public Sub PageC_Click()
+If Me.PageC = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = True
+    Me.PageC.ForeColor = RGB(255, 0, 0)
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.PageC.Value = True
+End If
+
+SetRecords
+End Sub
+Private Sub PageC_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub PageC_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for this section.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate section projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "C"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "C", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+End Sub
+Private Sub PageD_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub PageD_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for this section.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate section projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "D"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "D", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+End Sub
+Private Sub PageE_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub PageE_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for this section.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate section projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "E"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "E", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+End Sub
+Private Sub PageF_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub PageF_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for this section.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate section projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "F"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "F", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+End Sub
+Private Sub PageG_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub PageG_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for this section.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate section projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "G"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "G", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+End Sub
+Private Sub PageH_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub PageH_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for this section.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate section projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "H"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "H", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+End Sub
+Private Sub PageI_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub PageI_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for this section.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate section projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "I"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "I", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+End Sub
+Private Sub PageJ_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub PageJ_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for this section.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate section projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "j"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "j", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+End Sub
+Private Sub PageK_DblClick(Cancel As Integer)
+    If InStr(Me.Filter, "kt=true") = False Then
+        Me.Filter = Me.Filter & " And KT=True"
+    End If
+SetNumRec
+End Sub
+Private Sub Pagek_MouseDown(Button As Integer, Shift As Integer, X As Single, Y As Single)
+If Button = acRightButton Then
+    Dim Msg As Integer, msgall As Integer
+    Msg = MsgBox("Clicking the right mouse button will envoke a recalculation of all projected values for this section.  ARE YOU SURE you want to continue", vbYesNo, "Recalculate section projections")
+    If Msg = vbYes Then
+        msgall = MsgBox("Do you want to recalculate entire section?" & vbCrLf & "Choosing no will start calculations from " & Me.Task, vbYesNo, "Recalculate Entire Section?")
+        If msgall = vbYes Then
+            CalcAllProjections Me.JobC, "k"
+            Me.Recalc
+        Else
+            CalcAllProjections Me.JobC, "k", Me.Task
+            Me.Recalc
+        End If
+    End If
+End If
+End Sub
+Public Sub PageD_Click()
+If Me.PageD = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = True
+    Me.PageD.ForeColor = RGB(255, 0, 0)
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.PageD.Value = True
+End If
+
+SetRecords
+End Sub
+Public Sub PageE_Click()
+If Me.PageE = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = True
+    Me.PageE.ForeColor = RGB(255, 0, 0)
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.PageE.Value = True
+End If
+
+SetRecords
+End Sub
+Public Sub PageF_Click()
+If Me.PageF = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = True
+    Me.PageF.ForeColor = RGB(255, 0, 0)
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.PageF.Value = True
+End If
+
+SetRecords
+End Sub
+Public Sub PageG_Click()
+If Me.PageG = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = True
+    Me.PageG.ForeColor = RGB(255, 0, 0)
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.PageG.Value = True
+End If
+
+SetRecords
+End Sub
+Public Sub PageH_Click()
+If Me.PageH = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = True
+    Me.PageH.ForeColor = RGB(255, 0, 0)
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.PageH.Value = True
+End If
+
+SetRecords
+End Sub
+Public Sub PageI_Click()
+If Me.PageI = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = True
+    Me.PageI.ForeColor = RGB(255, 0, 0)
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.PageI.Value = True
+End If
+
+SetRecords
+End Sub
+Public Sub PageJ_Click()
+If Me.PageJ = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = True
+    Me.PageJ.ForeColor = RGB(255, 0, 0)
+    Me.PageK.Value = False
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.PageJ.Value = True
+End If
+
+SetRecords
+End Sub
+Public Sub PageK_Click()
+If Me.PageK = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = True
+    Me.PageK.ForeColor = RGB(255, 0, 0)
+    Me.Page7.Value = False
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.PageK.Value = True
+End If
+
+SetRecords
+End Sub
+Private Sub Page7_Click()
+If Me.Page7 = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = False
+    Me.Page7.ForeColor = RGB(255, 0, 0)
+    Me.Page10.Value = False
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page10.ForeColor = RGB(0, 0, 0)
+Else
+    Me.Page7.Value = True
+End If
+SetRecords
+End Sub
+Private Sub Page10_Click()
+If Me.Page10 = True Then
+    Me.Page1.Value = False
+    Me.Page2.Value = False
+    Me.Page3.Value = False
+    Me.PageC.Value = False
+    Me.PageD.Value = False
+    Me.PageE.Value = False
+    Me.PageF.Value = False
+    Me.PageG.Value = False
+    Me.PageH.Value = False
+    Me.PageI.Value = False
+    Me.PageJ.Value = False
+    Me.PageK.Value = True
+    Me.Page7.Value = False
+    Me.Page10.ForeColor = RGB(255, 0, 0)
+        Me.Page1.ForeColor = RGB(0, 0, 0)
+        Me.Page2.ForeColor = RGB(0, 0, 0)
+        Me.Page3.ForeColor = RGB(0, 0, 0)
+        Me.PageC.ForeColor = RGB(0, 0, 0)
+        Me.PageD.ForeColor = RGB(0, 0, 0)
+        Me.PageE.ForeColor = RGB(0, 0, 0)
+        Me.PageF.ForeColor = RGB(0, 0, 0)
+        Me.PageG.ForeColor = RGB(0, 0, 0)
+        Me.PageH.ForeColor = RGB(0, 0, 0)
+        Me.PageI.ForeColor = RGB(0, 0, 0)
+        Me.PageJ.ForeColor = RGB(0, 0, 0)
+        Me.PageK.ForeColor = RGB(0, 0, 0)
+        Me.Page7.ForeColor = RGB(0, 0, 0)
+Else
+    Me.Page10.Value = True
+End If
+SetRecords
+End Sub
+Private Sub PORefNum_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![PORefNum]='" & Me.PORefNum & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!PORefNum='" & Me.PORefNum _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+Private Sub PORefNum_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub PreReq_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![prereq]='" & Me.PreReq & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!prereq='" & Me.PreReq _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+Me.Recalc
+End Sub
+Private Sub PrjdFinish_AfterUpdate()
+Me.Recalc
+End Sub
+Private Sub PrjdFinish_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub PrjdStart_AfterUpdate()
+Me.Recalc
+End Sub
+Private Sub PrjdStart_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+     
+     If Shift = acCtrlMask And KeyCode = vbKeyA Then
+        Dim TaskLen As Integer
+        TaskLen = Nz(Me.TaskLen, 1)
+        If IsDate(Me.PrjdStart) = False Then Me.PrjdStart = Date
+        Me.PrjdFinish = EndDate(Nz(Me.PrjdStart, Date), TaskLen)
+    End If
+
+End Sub
+Private Sub Ref_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![Ref]='" & Me.ref & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!Ref='" & Me.ref _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+
+Private Sub Ref_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub Sorty_Click()
+Dim Q As Integer, rs As New ADODB.Recordset, Yoda As New ADODB.Connection, num As Long
+rs.Open "Select [Task #],Task from [Task List] order by [Task #]", CurrentProject.Connection, adOpenDynamic, adLockOptimistic
+
+Q = MsgBox("Would you like to resort all jobs in the task bible", vbYesNo, "Resort Bible")
+
+If Q = vbYes Then
+        Screen.MousePointer = 11
+        DoCmd.Echo True, "Updating Task Master...........Please be patient"
+                rs.MoveFirst
+                num = 10
+                Do Until rs.EOF
+                    rs![Task #] = num
+                    rs.Update
+                    DoCmd.Echo True, "Updating " & rs!Task & "-------completion"
+                    CurrentProject.Connection.Execute ("Update [Task Master] Set [Task #]=" & num & " where Task='" & rs!Task & "'")
+                    num = num + 10
+                    rs.MoveNext
+                Loop
+        Screen.MousePointer = 1
+Else
+    Q = MsgBox("Are you sure you want to resort the master task list", vbYesNo, "Resort Task List")
+        Screen.MousePointer = 11
+        DoCmd.Echo True, "Updating Task List...........Please be patient"
+        If Q = vbYes Then
+            rs.MoveFirst
+                num = 10
+                Do Until rs.EOF
+                    rs![Task #] = num
+                    rs.Update
+                    num = num + 10
+                    rs.MoveNext
+                Loop
+        End If
+        Screen.MousePointer = 1
+        'Dim rss As DAO.Recordset
+        'Set rss = Me.RecordsetClone
+        'rss.MoveFirst
+        '    Me.Bookmark = rss.Bookmark
+        '        Num = 10
+        '        Do Until rss.EOF
+        '            Me.[Task #] = Num
+        '            rss.MoveNext
+        '            If Not rss.EOF Then Me.Bookmark = rss.Bookmark
+        '            Num = Num + 10
+        '        Loop
+End If
+rs.Close
+Set rs = Nothing
+End Sub
+Private Sub SpecBtn_Click()
+If Me.JobC > 619 Or Me.JobC > 99 And Me.JobC < 160 Then
+If Me.JobC > 960 And Me.JobC < 998 Then
+Else
+
+DoCmd.OpenForm "PassWord"
+Forms.Password.PasswordBox.Value = "SUPER"
+
+DoCmd.OpenForm "SpecForm"
+    Forms!SpecForm.Job.Value = Me.JobC.Value
+    Forms!SpecForm.Job_AfterUpdate
+    
+Forms.Password.PasswordBox.Value = ""
+Forms.Password.Visible = False
+
+With Forms.SpecForm
+'.Job.Locked = True
+.COBtn.Visible = False
+.CalculateFin.Visible = False
+.MasterSpecLists.Visible = False
+.PrintBTN.Visible = False
+.Sort.Visible = False
+.ShowAll.Visible = False
+.HeaderNote.Locked = True
+.SortNum.Visible = False
+.NA.Visible = False
+.UD.Visible = False
+.Fintitle.Locked = True
+.Spec.Locked = True
+End With
+
+End If
+End If
+End Sub
+Private Sub COBtn_Click()
+   
+DoCmd.OpenForm "PassWord"
+Forms.Password.PasswordBox.Value = "SUPER"
+   
+    DoCmd.OpenForm "ChangeOrders"
+    Forms!ChangeOrders.Job.Value = Me.JobC
+    Forms!ChangeOrders.Job_AfterUpdate
+
+Forms.Password.PasswordBox.Value = ""
+Forms.Password.Visible = False
+
+
+With Forms.ChangeOrders
+'.Job.Locked = True
+.CONUMBER.Locked = True
+.CONUMBER.Locked = True
+.NewCO.Visible = False
+.Export.Visible = False
+.HEADERNOTES.Locked = True
+.SortNum.Locked = True
+.Change.Locked = True
+.Price.Locked = True
+.Complete.Locked = True
+.Notes.Locked = True
+.Remove.Visible = False
+.DPLbl.Visible = False
+.DP.Visible = False
+End With
+End Sub
+Private Sub Form_Load()
+Me.JobC.SetFocus
+End Sub
+Private Sub BuildingPer_AfterUpdate()
+Dim Tm As DAO.Database
+    Set Tm = CurrentDb
+Dim records As String
+    records = "Select * From [Job Details] Where [Job #]=" & Me.JobC
+Dim rs As DAO.Recordset
+    Set rs = Tm.OpenRecordset(records, dbOpenDynaset)
+rs.Edit
+rs![Building Permit #] = Me.BuildingPer
+rs.Update
+                'Free Memory
+                Set Tm = Nothing
+                Set rs = Nothing
+End Sub
+Public Sub C_Click()
+If Me.C = True Then
+    If IsDate(Me.ActualFinish) = False Then Me.ActualFinish = Date
+Else
+    Me.ActualFinish = Null
+End If
+
+DoCmd.GoToRecord , , acNext
+DoCmd.GoToRecord , , acPrevious
+
+If Me.C = True Then AutoEmailReminder Me.Task, Me.JobC, "C"
+End Sub
+Private Sub Customer_DblClick(Cancel As Integer)
+DoCmd.OpenForm "CustomerDetails"
+End Sub
+Public Sub JobC_AfterUpdate() 'All Jobs Listed Combo Box
+Dim Yoda As DAO.Database, exists As Boolean, Estexists As Boolean, tbd As TableDef, Strloc As String, Newname As String, records As String, rs As DAO.Recordset
+Set Yoda = CurrentDb
+
+If Me.JobC = "<MasterList>" Then
+    Me.Task.Locked = False
+    'Me.RecordSource = "Select * From [Task List]"
+    Me.Caption = "Master Task List"
+    Me.BuildingPer = ""
+    Me.Customer = ""
+    Me.TaskNum.Locked = False
+    SetRecords
+    MasterList (False)
+    Me.Sorty.Visible = True
+    Me.AllowDeletions = True
+    Me.SqftDay.Visible = True
+    Me.MoneyDay.Visible = True
+    Me.MoneyCode.Visible = True
+    Me.SqftLbl.Visible = True
+    Me.MoneyLbl.Visible = True
+    Me.TaskLenlbl.Visible = True
+    Me.TaskLen.Visible = True
+    Me.KTLbl.Visible = True
+    Me.KT.Visible = True
+    Me.OffsetLbl.Visible = True
+    Me.Offset.Visible = True
+    Me.PreReq.Visible = True
+    Me.PreReqLbl.Visible = True
+    Me.KTSortLbl.Visible = True
+    Me.KTSort.Visible = True
+    'Me.RecordSelectors = True
+    Me.GoalsBtn.Visible = False
+Else
+    Me.Sorty.Visible = False
+    Me.Task.Locked = True
+    MasterList (True)
+    Me.TaskNum.Locked = True
+    SetRecords
+    GetJobDetails 'Run Public Procedure
+    SetTitle
+    If TaskCO = False Then Me.COBtn.Visible = False
+    If TaskCO = True Then Me.COBtn.Visible = True
+    Me.AllowDeletions = True
+    Me.TaskLenlbl.Visible = False
+    Me.JobC.SetFocus
+    Me.TaskLen.Visible = False
+    Me.SqftDay.Visible = False
+    Me.MoneyDay.Visible = False
+    Me.MoneyCode.Visible = False
+    Me.SqftLbl.Visible = False
+    Me.MoneyLbl.Visible = False
+    Me.KTLbl.Visible = False
+    Me.KT.Visible = False
+    Me.OffsetLbl.Visible = False
+    Me.Offset.Visible = False
+    Me.PreReq.Visible = False
+    Me.PreReqLbl.Visible = False
+    Me.KTSortLbl.Visible = False
+    Me.KTSort.Visible = False
+    Me.GoalsBtn.Visible = True
+    
+    
+    'Check to see if specs table exists yet
+    For Each tbd In Yoda.TableDefs
+        If tbd.Name = Me.JobC & "s" Then exists = True
+        If tbd.Name = Me.JobC & "est" Then Estexists = True
+    Next
+        Select Case exists
+            Case Is = False
+                On Error GoTo Err_NotFoundAddNew
+                Strloc = "\\SALVIDC\MSAccess\The_Maestro\BE\Yodabackend.accdb"
+                Newname = Me.JobC & "s"
+                DoCmd.TransferDatabase acLink, "Microsoft Access", Strloc, acTable, Newname, Newname
+                Yoda.TableDefs.Refresh
+            End Select
+'''''''''''''''''''''''''''''''''''''''''''''''''''''
+    'Link to est table
+        Select Case Estexists
+            Case Is = False
+                On Error GoTo Err_NotFoundAddNew
+                Strloc = "\\SALVIDC\MSAccess\The_Maestro\BE\Yodabackend.accdb"
+                Newname = Me.JobC & "Est"
+                DoCmd.TransferDatabase acLink, "Microsoft Access", Strloc, acTable, Newname, Newname
+                Yoda.TableDefs.Refresh
+            End Select
+''''''''''''''''''''''''''''''''''''''''''''''
+End If
+
+Exit Sub:
+Err_NotFoundAddNew:
+Me.DP = False
+Me.Recalc
+End Sub
+Private Sub SqftDay_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+            CurrentDb.Execute "Update [Task Master] Set [Task Master]![SqftDay]='" & Me.SqftDay & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!SqftDay='" & Me.SqftDay _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+
+Private Sub SqftDay_KeyDown(KeyCode As Integer, Shift As Integer)
+    KeysMoveMe (KeyCode)
+End Sub
+
+Private Sub Stage_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![Stage]='" & Me.Stage & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!Stage='" & Me.Stage _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+Private Sub Stage_DblClick(Cancel As Integer)
+Me.OrderBy = "Stage"
+Me.OrderByOn = True
+End Sub
+Private Sub Stage_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub PO___DblClick(Cancel As Integer)
+GoHyperlink (POPDFLocation) & Me.[PO #] & ".pdf", True
+End Sub
+Public Sub OpenPOREPORT()
+Dim YodaPO As DAO.Database, records As String, rs As DAO.Recordset, PoReferenceNum As Single, tbd As TableDef, Estexists As Boolean
+    Set YodaPO = CurrentDb
+    records = "Select * From PONumbers Where PONum=" & Nz(Me.[PO #], 0)
+    Set rs = YodaPO.OpenRecordset(records, dbOpenDynaset)
+If rs.EOF Then
+    MsgBox "Sorry Yoda cannot find this PO, it was printed before my time", vbOKOnly, "Purchase Order Not Found"
+Else
+    'Make Sure est table exists
+    For Each tbd In YodaPO.TableDefs
+    If tbd.Name = rs!Job & "Est" Then Estexists = True
+    Next
+    If Estexists = True Then
+        PoReferenceNum = rs!PO
+        DoCmd.OpenForm "Password"
+        Forms.Password.PasswordBox.Value = "Yoda"
+        DoCmd.OpenForm "EMaster"
+        Forms.Emaster.Visible = False
+        Forms.Emaster.Job = rs!Job
+        Forms.Password.PasswordBox.Value = "Super"
+        Forms.Password.Visible = False
+        DoCmd.OpenForm "POMaster"
+        Forms.POMaster.Visible = False
+       Forms.POMaster.Job.Value = rs!Job
+        Forms.POMaster.PO.Value = PoReferenceNum
+        Forms!POMaster.PO_AfterUpdate
+        Forms.POMaster.Hide_Click
+        TaskMasterPo
+        Forms!POMaster.Ponum = Me.PO__
+        Forms!POMaster.Recalc
+        DoCmd.OpenReport "POReport", acViewPreview
+        DoCmd.RunCommand acCmdZoom100
+        DoCmd.MoveSize 0, 0, 13000, 9400
+        Forms.Password.PasswordBox.Value = ""
+        DoCmd.Close acForm, "POMaster"
+        DoCmd.Close acForm, "Emaster"
+    Else 'Attempt to relink tables
+        On Error GoTo Err_LinkEstErr
+        Dim Tablename As String, Strloc As String, Newname As String, Opt As Integer
+        'First check backend for error If it isn't on the backend we can trap the error
+        Tablename = rs!Job & "Est"
+        Newname = rs!Job & "EstTemp"
+
+        Strloc = "\\SALVIDC\MSAccess\The_Maestro\BE\Yodabackend.accdb"
+        'Has to be imported and then deleted because Link does not cause error if not found
+       DoCmd.TransferDatabase acImport, "Microsoft Access", Strloc, acTable, Tablename, Newname
+        DoCmd.Rename Newname, acTable, Newname
+        DoCmd.TransferDatabase acLink, "Microsoft Access", Strloc, acTable, Tablename, Newname
+        DoCmd.DeleteObject acTable, Newname
+        DoCmd.Rename Tablename, acTable, Newname & "1"
+       
+Letsgo:
+                Exit Sub
+Err_LinkEstErr:
+                If err.Number = 3011 Then
+                'Check YodaBackendARCHIVE since file does not exist in Backend
+                Tablename = Forms.Taskbibleform.JobC.Value & "Est"
+                Strloc = "\\SALVIDC\MSAccess\The_Maestro\BE\YodaBackendARCHIVE.accdb"
+                DoCmd.TransferDatabase acLink, "Microsoft Access", Strloc, acTable, Tablename, Tablename
+                    GoTo Letsgo:
+            Else
+                Opt = MsgBox("The Estimate table could not be found on the BackEnd" & vbCrLf & "Please Notify a Yoda Master", vbCritical, "The Maestro Warns")
+           End If
+    End If
+End If
+                   'Free Memory
+                    rs.Close
+                    YodaPO.Close
+                    Set YodaPO = Nothing
+                    Set rs = Nothing
+End Sub
+Private Sub PrintTaskBible_Click()
+Dim WhichReport As Integer
+If Me.Page1.Value = True Then
+        MsgBox "Sorry this feature is currently disabled", vbOKOnly, "Try Again Later"
+End If
+If Me.Page2.Value = True Then
+        MsgBox "Sorry this feature is currently disabled", vbOKOnly, "Try Again Later"
+End If
+If Me.Page3.Value = True Then
+        DoCmd.OpenReport "TaskStageRptAll", acViewPreview
+End If
+If Me.PageC.Value = True Or Me.PageD.Value = True Or Me.PageE.Value = True Or Me.PageF.Value = True _
+Or Me.PageG.Value = True Or Me.PageH.Value = True Or Me.PageI.Value = True Or Me.PageJ.Value = True Or Me.PageK.Value = True Then
+        WhichReport = MsgBox("Print Projected Schedule?", vbYesNo, "Print Which Report?")
+        If WhichReport = vbYes Then DoCmd.OpenReport "TaskStageRpt", acViewPreview
+End If
+
+
+
+If Me.Page7.Value = True Then
+    DoCmd.OpenReport "GeorgesFinReport", acNormal
+End If
+If Me.Page10.Value = True Then
+        MsgBox "Sorry this feature is currently disabled", vbOKOnly, "Try Again Later"
+End If
+End Sub
+Public Sub GetJobDetails()
+On Error GoTo err
+Dim Taskey As DAO.Database
+    Set Taskey = CurrentDb
+Dim rs As DAO.Recordset
+    Set rs = Taskey.OpenRecordset("Job Details")
+ 
+Dim cr As String
+cr = Me.JobC
+rs.FindFirst "[Job #]=" & cr
+If rs.NoMatch Then 'Do Nothing
+Else
+Me.BuildingPer = rs![Building Permit #]
+Me.WhoseJob = rs![Site Super]
+End If
+
+
+Set rs = OpenForSeek("Customer Information")
+rs.Index = "PrimaryKey"
+rs.Seek "=", Me.JobC
+If rs.NoMatch Then 'Do Nothing
+Else
+Dim LName As String, FName As String
+LName = rs![Last Name]
+FName = Nz(rs![First Names], "")
+Me.Customer = Namey(LName, FName)
+End If
+            'Free Memory
+            Taskey.Close
+            Set Taskey = Nothing
+            Set rs = Nothing
+Exit Sub
+err:
+MsgBox err.Number & "--" & err.Description, vbOKOnly, "The Maestro Warns"
+End Sub
+Private Sub Super_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![Super]='" & Me.Super & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!Super='" & Me.Super _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+Private Sub Super_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub Supplier_Trade_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![Supplier/Trade]='" & Me.[Supplier/Trade] & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]![Supplier/Trade]='" & Me.[Supplier/Trade] & "' Where [Task Master]!Task='" & Me.Task _
+                & "' Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF
+                End If
+        End If
+Else
+    Dim Yoda As DAO.Database
+        Set Yoda = CurrentDb
+    Dim rs As DAO.Recordset
+        Set rs = Yoda.OpenRecordset("Select * From [Supplier/Trade Details] Where [Supplier/Trade Name]='" & Me.Supplier_Trade.Value & "'")
+    If rs.EOF Then
+        MsgBox "Task Master cannot find this Trade" & vbCrLf & "Please add them to the database", vbOKCancel, "Task Master"
+        DoCmd.OpenForm ("St")
+        Forms!St.Section(acFooter).Visible = True
+        Forms!St.Section(acHeader).Visible = False
+        Forms!St.ContBtn.Visible = False
+        Forms!St.TaskContBtn.Visible = True
+        Forms!St.ASt.Value = Me.Supplier_Trade.Value
+        Forms!St.Refresh
+        Forms!St.AName.SetFocus
+    
+        Me.Supplier_Trade.RowSource = Me.Supplier_Trade.RowSource
+        Me.Refresh
+    Else
+    End If
+End If
+End If
+End Sub
+Private Sub Supplier_Trade_Dirty(Cancel As Integer)
+OldTask = Me.Task
+End Sub
+
+Private Sub Supplier_Trade_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub Task_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![Task]='" & Me.Task & "' Where [Task Master]!Task='" & OldTask & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!Task='" & Me.Task _
+                & "' Where [Task Master]!Task='" & OldTask & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & OldTask & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF _
+                & " OR [Task Master]!Task='" & OldTask & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF
+                End If
+        End If
+End If
+End If
+End Sub
+Private Sub Task_Dirty(Cancel As Integer)
+OldTask = Nz(Me.Task, 0)
+End Sub
+Private Sub PrjdStart_Click()
+Whichdate = "PS"
+End Sub
+Private Sub PrjdFinish_Click()
+Whichdate = "PF"
+End Sub
+Private Sub ActualFinish_Click()
+Whichdate = "AF"
+End Sub
+Private Sub Searches_Click()
+DoCmd.OpenForm ("TaskSearch")
+End Sub
+Private Sub FindNext_Click()
+Dim rs As DAO.Recordset
+    Set rs = Me.RecordsetClone
+Dim cr As String
+    cr = Forms.TaskSearch.Search
+
+Select Case Forms.TaskSearch.SearchOptions.Value
+    Case Is = 4 ' Task Search
+        rs.FindNext "Instr(1,[Task], '" & cr & "')>0"
+            If rs.NoMatch Then
+                Me.Task.SetFocus
+                Me.FindNext.Visible = False
+                Forms.TaskSearch.SetFocus
+                DoCmd.Close
+            Else
+                Me.Bookmark = rs.Bookmark
+                Me.Task.SetFocus
+            End If
+    Case Is = 5 'Supplier Search
+        rs.FindNext "Instr(1,[Supplier/Trade], '" & cr & "')>0"
+            If rs.NoMatch Then
+                Me.Supplier_Trade.SetFocus
+                Me.FindNext.Visible = False
+                Forms.TaskSearch.SetFocus
+                DoCmd.Close
+            Else
+                Me.Bookmark = rs.Bookmark
+                Me.Supplier_Trade.SetFocus
+            End If
+    Case Is = 6 'PO Search
+        rs.FindNext "Instr(1,[PO #], '" & cr & "')>0"
+            If rs.NoMatch Then
+                Me.PO__.SetFocus
+                Me.FindNext.Visible = False
+                Forms.TaskSearch.SetFocus
+                DoCmd.Close
+            Else
+                Me.Bookmark = rs.Bookmark
+                Me.PO__.SetFocus
+            End If
+End Select
+                'Free Memory
+                rs.Close
+                Set rs = Nothing
+End Sub
+
+Private Sub TaskLen_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![TaskLen]='" & Me.TaskLen & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!TaskLen='" & Me.TaskLen _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+Else
+    Me.Task.SetFocus
+    Me.TaskLen.Visible = False
+    Me.Offset.Visible = False
+    Me.SqftDay.Visible = False
+    Me.SqftLbl.Visible = False
+    Me.MoneyDay.Visible = False
+    Me.MoneyLbl.Visible = False
+    Me.MoneyCode.Visible = False
+    Me.Recalc
+End If
+End If
+End Sub
+Private Sub TaskLen_KeyDown(KeyCode As Integer, Shift As Integer)
+    KeysMoveMe (KeyCode)
+End Sub
+
+Private Sub TaskNum_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![Task #]='" & Me.TaskNum & "' Where [Task Master]!Task='" & OldTask & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]![Task #]='" & Me.TaskNum _
+                & "' Where [Task Master]!Task='" & OldTask & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+Private Sub TaskNum_DblClick(Cancel As Integer)
+Me.OrderBy = "[Task #]"
+Me.OrderByOn = True
+End Sub
+
+Private Sub TaskNum_Dirty(Cancel As Integer)
+OldTask = Nz(Me.Task, 0)
+End Sub
+Private Sub Task_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+
+    If Shift = 2 And KeyCode = vbKeyU Then
+        Forms.Taskbibleform.Task.Locked = False
+        Forms.Taskbibleform.Task.Locked = False
+        DoCmd.Beep
+    End If
+    If Shift = 2 And KeyCode = vbKeyL Then
+        Forms.Taskbibleform.Task.Locked = True
+        Forms.Taskbibleform.Task.Locked = True
+        DoCmd.Beep
+    End If
+
+End Sub
+Private Sub TaskNum_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+
+    If Shift = 2 And KeyCode = vbKeyU Then
+        Forms.Taskbibleform.TaskNum.Locked = False
+        Forms.Taskbibleform.TaskNum.Locked = False
+        DoCmd.Beep
+    End If
+    If Shift = 2 And KeyCode = vbKeyL Then
+        Forms.Taskbibleform.TaskNum.Locked = True
+        Forms.Taskbibleform.TaskNum.Locked = True
+        DoCmd.Beep
+    End If
+
+End Sub
+Private Sub O_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub C_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub PO___KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub Prjd_Start_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub Prjd_Finish_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub ActualFinish_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub NACheckBox_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Private Sub Memo_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Public Sub SetTitle()
+On Error GoTo err:
+Dim Taskey As DAO.Database, rs As DAO.Recordset
+
+If Me.JobC <> "<MasterList>" Then
+    Set Taskey = CurrentDb
+    Set rs = Taskey.OpenRecordset("Select * From [Job Details] Where [job #]=" & Me.JobC, dbOpenSnapshot)
+    If Not rs.BOF Then
+            If FlagDP(Me.JobC) = True Then
+                Form.Caption = "DEAL PENDING See Change Orders- " & " Job #" & Me.JobC & " Listed----Lot " & rs!Lot & _
+                    ", Block " & rs!Block & ", Plan " & rs!Plan & "-----The " & rs!Model & _
+                    " Located at " & rs!Address
+            Else
+                Form.Caption = "Bible " & Me.JobC & "-" & rs!Address & ", Lot " & rs!Lot & _
+                    ", Block " & rs!Block & ", Plan " & rs!Plan & "__The " & rs!Model & _
+                    " (Main=" & Main(Me.JobC) & " Upper=" & Up(Me.JobC) & " Lower=" & Low(Me.JobC) & " Gar=" & Gar(Me.JobC) & ")"
+                    
+            End If
+    Else
+        Form.Caption = "Current job does not exist"
+    End If
+    rs.Close
+    Taskey.Close
+    Set rs = Nothing
+    Set Taskey = Nothing
+End If
+
+Exit Sub
+err:
+MsgBox err.Number & "--" & err.Description, vbOKOnly, "The Maestro Warns"
+End Sub
+Public Function TaskCO() As Boolean
+Dim Yoda As DAO.Database
+    Set Yoda = CurrentDb
+Dim rs As DAO.Recordset
+    
+    
+    Set rs = Yoda.OpenRecordset("Select * From CONumbers Where Job=" & Me.JobC, dbOpenDynaset)
+            If Not rs.EOF Then
+                TaskCO = True
+            Else
+                TaskCO = False
+            End If
+End Function
+Public Function FlagDP(Joby) As Boolean
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+
+Set rs = Yoda.OpenRecordset("Select * From CoNumbers where Job=" & Joby & " And DP=True", dbOpenSnapshot)
+If Not rs.EOF Then
+    FlagDP = True
+Else
+    FlagDP = False
+End If
+End Function
+Public Sub MasterList(Joby As Boolean)
+If Joby = True Then
+    'Job List
+    Me.O.Visible = True
+    Me.C.Visible = True
+    Me.[Ordered_Label].Visible = True
+    Me.[Completed_Label].Visible = True
+    Me.PO__.Visible = True
+    Me.PO___Label.Visible = True
+    Me.PrjdStart.Visible = True
+    Me.PrjdFinish.Visible = True
+    Me.ActualFinish.Visible = True
+    Me.ActualStart.Visible = True
+    Me.ODate.Visible = True
+    Me.ODateLbl.Visible = True
+    Me.Prjd_Start_Label.Visible = True
+    Me.Prjd_Finish_Label.Visible = True
+    Me.ActualStartLbl.Visible = True
+    Me.Actual_Finish_Label.Visible = True
+    Me.Stage.Visible = False
+    Me.WhosTask.Visible = False
+    Me.WhosTaskLbl.Visible = False
+    Me.FinList.Visible = False
+    Me.FinListLbl.Visible = False
+    Me.NotesLbl.Visible = True
+    Me.ref.Visible = False
+    Me.RefLbl.Visible = False
+    Me.PORefNum.Visible = False
+    Me.PORefNumLbl.Visible = False
+    Me.Super.Visible = False
+    Me.SuperLbl.Visible = False
+        'Me.Memo.Width = 3000
+        'Me.Memo.Move (11962)
+        Me.Task.Move (450)
+        Me.Task_Label.Move (750)
+        'Me.Supplier_Trade.Move (4170)
+        'Me.STLbl.Move (4450)
+        'Me.NACheckBox.Move (7500)
+        'Me.NaLBL.Move (7380)
+Else
+    'Master List
+    Me.O.Visible = False
+    Me.C.Visible = False
+    Me.[Ordered_Label].Visible = False
+    Me.[Completed_Label].Visible = False
+    Me.PO__.Visible = False
+    Me.PO___Label.Visible = False
+    Me.ODate.Visible = False
+    Me.ODateLbl.Visible = False
+    Me.PrjdStart.Visible = False
+    Me.PrjdFinish.Visible = False
+    Me.Task.SetFocus
+    Me.ActualFinish.Visible = False
+    Me.ActualStart.Visible = False
+    Me.Prjd_Start_Label.Visible = False
+    Me.Prjd_Finish_Label.Visible = False
+    Me.ActualStartLbl.Visible = False
+    Me.Actual_Finish_Label.Visible = False
+    Me.Stage.Visible = True
+    Me.WhosTask.Visible = True
+    Me.WhosTaskLbl.Visible = True
+    Me.FinList.Visible = True
+    Me.FinListLbl.Visible = True
+    Me.ref.Visible = True
+    Me.RefLbl.Visible = True
+    Me.PORefNum.Visible = True
+    Me.PORefNumLbl.Visible = True
+    Me.Super.Visible = True
+    Me.SuperLbl.Visible = True
+        Me.Task.Move (1640)
+        Me.Task_Label.Move (1940)
+        'Me.Supplier_Trade.Move (5280)
+        'Me.STLbl.Move (5570)
+        'Me.NACheckBox.Move (14400)
+        'Me.NaLBL.Move (14450)
+        'Me.Memo.Width = 3270
+        'Me.Memo.Move (10990)
+End If
+End Sub
+Private Sub HR_Click()
+Dim rs As DAO.Recordset
+If Me.HR.Caption = "Reveal" Then Me.HR.Caption = "Hide" Else Me.HR.Caption = "Reveal"
+
+If Me.HR.Caption = "Reveal" Then
+    Me.Filter = "[Completed]=False"
+    Me.FilterOn = True
+    Set rs = Me.RecordsetClone
+    If Not rs.EOF Then rs.MoveLast
+    Me.Title = rs.RecordCount & " tasks fltrd"
+    Set rs = Nothing
+Else
+    Me.Filter = ""
+    Me.FilterOn = False
+    Set rs = Me.RecordsetClone
+    If Not rs.EOF Then rs.MoveLast
+    Me.Title = rs.RecordCount & " tasks"
+    Set rs = Nothing
+End If
+
+End Sub
+Private Sub Goals()
+DoCmd.OpenReport "TaskStageGoals-Job"
+End Sub
+Private Sub Toggle1_Click()
+DoCmd.OpenTable "Holidays"
+End Sub
+
+Private Sub WhoseJob_AfterUpdate()
+Dim Tm As DAO.Database, rs As DAO.Recordset, records As String
+    Set Tm = CurrentDb
+    records = "Select * From [Job Details] Where [Job #]=" & Me.JobC
+    Set rs = Tm.OpenRecordset(records, dbOpenDynaset)
+        If Not rs.EOF Then
+            rs.Edit
+            rs![Site Super] = Me.WhoseJob
+            rs.Update
+        End If
+                'Free Memory
+                rs.Close
+                Tm.Close
+                Set Tm = Nothing
+                Set rs = Nothing
+End Sub
+
+Private Sub WhosTask_AfterUpdate()
+If Newtask = False Then
+    Dim Q As Integer, Q2 As Integer, RIS As Integer, RIF As Integer, Rss As Integer, RSF As Integer, RCS As Integer, RCF As Integer
+If Me.Caption = "Master Task List" Then
+    Q = MsgBox("Do you want to change all jobs in the Task Bible", vbYesNo, "Change all Jobs?")
+        If Q = vbYes Then
+        CurrentDb.Execute "Update [Task Master] Set [Task Master]![WhosTask]='" & Me.WhosTask & "' Where [Task Master]!Task='" & Me.Task & "'"
+        Else
+            Q2 = MsgBox("Do you want to select a range of jobs to change in the Task Bible", vbYesNo, "Change some Jobs?")
+                If Q2 = vbYes Then
+                    RCS = InputBox("Cascades Start", "Enter a starting Cascades-Ironwood range", 0)
+                    RCF = InputBox("Cascdes End", "Enter an end to Cascades-Ironwood range", 0)
+                    RIS = InputBox("Ironwood Start", "Enter a starting Ironwood range", 0)
+                    RIF = InputBox("Ironwood End", "Enter an end to Ironwood range", 0)
+                    Rss = InputBox("Salvi Start", "Enter a starting Salvi range", 0)
+                    RSF = InputBox("Salvi End", "Enter an end to Salvi range", 0)
+                CurrentDb.Execute "Update [Task Master] Set [Task Master]!WhosTask='" & Me.WhosTask _
+                & "' Where [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RCS & " and " & RCF _
+                & " Or [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & RIS & " and " & RIF _
+                & " OR [Task Master]!Task='" & Me.Task & "' And [Task Master]![Job #] Between " & Rss & " and " & RSF
+                End If
+        End If
+End If
+End If
+End Sub
+Private Sub WhosTask_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe (KeyCode)
+End Sub
+Public Sub SetRecords()
+On Error GoTo err
+Dim rs As DAO.Recordset, num As Integer
+Me.TaskNum.ForeColor = RGB(0, 0, 0)
+Me.Task.ForeColor = RGB(0, 0, 0)
+Me.Supplier_Trade.ForeColor = RGB(0, 0, 0)
+Me.PO__.ForeColor = RGB(0, 0, 0)
+Me.ODate.ForeColor = RGB(0, 0, 0)
+Me.PrjdStart.ForeColor = RGB(0, 0, 0)
+Me.PrjdFinish.ForeColor = RGB(0, 0, 0)
+Me.ActualFinish.ForeColor = RGB(0, 0, 0)
+Me.Memo.ForeColor = RGB(0, 0, 0)
+
+If Me.JobC <> "<MasterList>" Then
+    If Me.Page1 = True Then 'Complete List
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage<>'B'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.Page2 = True Then 'Po Check list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='B'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.Page3 = True Then 'Super 1 List
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Super=1" _
+        & " Or [Job #]=" & Me.JobC & " And [N/A]=False and Super=12" _
+        & " Or [Job #]=" & Me.JobC & " And [N/A]=False and Super=13" _
+        & " Or [Job #]=" & Me.JobC & " And [N/A]=False and Super=14" _
+        & " Or [Job #]=" & Me.JobC & " And [N/A]=False and Super=123" _
+        & " Or [Job #]=" & Me.JobC & " And [N/A]=False and Super=124" _
+        & " Or [Job #]=" & Me.JobC & " And [N/A]=False and Super=134" _
+        & " Or [Job #]=" & Me.JobC & " And [N/A]=False and Super=1234"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageC = True Then 'Cribbing Stage check list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='C'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageD = True Then 'Framing Stage check list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='D'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageE = True Then 'Mechanical Stage check list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='E'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageF = True Then 'Exterior Stage check list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='F'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageG = True Then 'Basement Stage check list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='G'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageH = True Then 'Taping Stage check list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='H'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageI = True Then 'Finishing Stage check list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='I'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageJ = True Then 'Flooring Stage check list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='J'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageK = True Then 'Wrap up
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and Stage='K'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+  
+    If Me.Page7 = True Then 'Final stages list
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=False and [FinList#]>0"
+        Me.OrderBy = "[FinList#]"
+        Me.OrderByOn = True
+        Me.Command3.Visible = True
+    Else
+        Me.Command3.Visible = False
+    End If
+    If Me.Page10 = True Then 'N/A'd Tasks
+        Me.RecordSource = "Select * from [Task Master] where [Job #]=" & Me.JobC & " And [N/A]=True"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+            If Me.HR.Caption = "Reveal" Then
+                Me.Filter = "[Completed]=False"
+                Me.FilterOn = True
+            Else
+                Me.Filter = ""
+                Me.FilterOn = False
+            End If
+               
+                Set rs = Me.RecordsetClone
+                If Not rs.EOF Then rs.MoveLast
+                num = rs.AbsolutePosition + 1
+                If Me.HR.Caption = "Reveal" Then Me.Title = num & " tasks fltrd" Else Me.Title = num & " tasks"
+                rs.Close
+                Set rs = Nothing
+End If
+If Me.JobC = "<MasterList>" Then
+    If Me.Page1 = True Then 'Complete List
+        Me.RecordSource = "Select * from [Task List]"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.Page2 = True Then 'Po Check list
+        Me.RecordSource = "Select * from [Task List] where Stage='B'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.Page3 = True Then 'Super 1 List
+        Me.RecordSource = "Select * from [Task List] where Super=1" _
+        & " Or Super=12" _
+        & " Or Super=13" _
+        & " Or Super=14" _
+        & " Or Super=123" _
+        & " Or Super=124" _
+        & " Or Super=134" _
+        & " Or Super=1234"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    
+    If Me.PageC = True Then 'Cribbing Stage check list
+        Me.RecordSource = "Select * from [Task List] where Stage='C'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageD = True Then 'Framing Stage check list
+        Me.RecordSource = "Select * from [Task List] where Stage='D'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageE = True Then 'Mechanical Stage check list
+        Me.RecordSource = "Select * from [Task List] where Stage='E'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageF = True Then 'Exterior Stage check list
+        Me.RecordSource = "Select * from [Task List] where Stage='F'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageG = True Then 'Basement Stage check list
+        Me.RecordSource = "Select * from [Task List] where Stage='G'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageH = True Then 'Taping Stage check list
+        Me.RecordSource = "Select * from [Task List] where Stage='H'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageI = True Then 'Finishing Stage check list
+        Me.RecordSource = "Select * from [Task List] where Stage='I'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageJ = True Then 'Flooring Stage check list
+        Me.RecordSource = "Select * from [Task List] where Stage='J'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.PageK = True Then 'Wrap up
+        Me.RecordSource = "Select * from [Task List] where Stage='K'"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+    If Me.Page7 = True Then 'Final stages list
+        Me.RecordSource = "Select * from [Task List] where [FinList#]>0"
+        Me.OrderBy = "[FinList#]"
+        Me.OrderByOn = True
+    End If
+    If Me.Page10 = True Then 'N/A'd Tasks
+        Me.RecordSource = "Select * from [Task List] where [N/A]=True"
+        Me.OrderBy = "[Task #]"
+        Me.OrderByOn = True
+    End If
+                
+If Me.HR.Caption = "Reveal" Then
+    Me.Filter = "[Completed]=False"
+    Me.FilterOn = True
+Else
+    Me.Filter = ""
+    Me.FilterOn = False
+End If
+                
+                Set rs = Me.RecordsetClone
+                If Not rs.EOF Then rs.MoveLast
+                num = rs.AbsolutePosition + 1
+                If Me.HR.Caption = "Reveal" Then Me.Title = num & " tasks fltrd" Else Me.Title = num & " tasks"
+                rs.Close
+                Set rs = Nothing
+End If
+SetTitle
+    
+    If Me.JobC <> "<MasterList>" Then
+        If FlagDP(Me.JobC) = True Then
+            Me.DP = True
+            Me.Recalc
+        Else
+            Me.DP = False
+        End If
+    Else
+        Me.DP = False
+    End If
+Exit Sub
+err:
+MsgBox err.Number & "--" & err.Description, vbOKOnly, "The Maestro Warns-JOB DOESN'T EXIST"
+Me.RecordSource = ""
+End Sub
+Function SetNumRec()
+Dim rs As DAO.Recordset, num As Integer
+                Set rs = Me.RecordsetClone
+                If Not rs.EOF Then rs.MoveLast
+                num = rs.AbsolutePosition + 1
+                If Me.HR.Caption = "Reveal" Then Me.Title = num & " tasks fltrd" Else Me.Title = num & " tasks"
+                rs.Close
+                Set rs = Nothing
+End Function
+
+
+

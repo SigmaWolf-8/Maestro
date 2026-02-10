@@ -32,15 +32,36 @@ export default function Dashboard() {
   }, []);
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
-    queryKey: ["/api/dashboard/stats"],
+    queryKey: ["/api/dashboard/stats", activeTenant?.id],
+    queryFn: async () => {
+      if (!activeTenant?.id) return { totalProjects: 0, activeProjects: 0, completedProjects: 0, totalWbsNodes: 0, completedWbsNodes: 0, teamMembers: 0, budgetTotal: 0, budgetUsed: 0 };
+      const res = await fetch(`/api/dashboard/stats?tenantId=${activeTenant.id}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!activeTenant?.id,
   });
 
   const { data: recentProjects, isLoading: projectsLoading } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
+    queryKey: ["/api/projects", activeTenant?.id],
+    queryFn: async () => {
+      if (!activeTenant?.id) return [];
+      const res = await fetch(`/api/projects?tenantId=${activeTenant.id}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!activeTenant?.id,
   });
 
   const { data: recentWbsNodes, isLoading: wbsLoading } = useQuery<WbsNode[]>({
-    queryKey: ["/api/wbs"],
+    queryKey: ["/api/wbs", activeTenant?.id],
+    queryFn: async () => {
+      if (!activeTenant?.id) return [];
+      const res = await fetch(`/api/wbs?tenantId=${activeTenant.id}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!activeTenant?.id,
   });
 
   const formatCurrency = (value: number) => {

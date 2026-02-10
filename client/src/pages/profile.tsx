@@ -28,6 +28,7 @@ export default function Profile() {
   const [smtpPort, setSmtpPort] = useState("587");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [emailJustSaved, setEmailJustSaved] = useState(false);
 
   const { data: emailConfig, refetch: refetchEmailConfig } = useQuery<{
     configured: boolean;
@@ -88,15 +89,16 @@ export default function Profile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/email-config"] });
       setSmtpPassword("");
+      setEmailJustSaved(true);
       toast({
         title: "Email Settings Saved",
-        description: "Your email configuration has been saved. You can now send emails from your account.",
+        description: "Your email and password have been saved securely. You can now send emails from the app.",
       });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to save email settings.",
+        description: "Failed to save email settings. Please try again.",
         variant: "destructive",
       });
     },
@@ -125,10 +127,18 @@ export default function Profile() {
   });
 
   const handleSaveEmail = () => {
-    if (!smtpEmail.trim() || !smtpPassword.trim()) {
+    if (!smtpEmail.trim()) {
       toast({
         title: "Missing Information",
-        description: "Please enter both email address and password.",
+        description: "Please enter an email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!smtpPassword.trim() && !emailConfig?.configured) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter a password.",
         variant: "destructive",
       });
       return;
@@ -357,8 +367,11 @@ export default function Profile() {
                   id="smtpPassword"
                   type={showPassword ? "text" : "password"}
                   value={smtpPassword}
-                  onChange={(e) => setSmtpPassword(e.target.value)}
-                  placeholder="Enter password"
+                  onChange={(e) => {
+                    setSmtpPassword(e.target.value);
+                    setEmailJustSaved(false);
+                  }}
+                  placeholder={emailConfig?.configured ? "Password saved - enter new to change" : "Enter password"}
                   className="pl-10 pr-10"
                   data-testid="input-smtp-password"
                 />
@@ -424,7 +437,7 @@ export default function Profile() {
           <div className="flex justify-end pt-2">
             <Button
               onClick={handleSaveEmail}
-              disabled={saveEmailMutation.isPending || !smtpEmail.trim() || !smtpPassword.trim()}
+              disabled={saveEmailMutation.isPending || !smtpEmail.trim() || (!smtpPassword.trim() && !emailConfig?.configured)}
               data-testid="button-save-email"
             >
               <Save className="h-4 w-4 mr-2" />

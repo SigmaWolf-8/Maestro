@@ -48,6 +48,9 @@ import {
   DollarSign,
   Wallet,
   Shield,
+  AppWindow,
+  ExternalLink,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
@@ -76,8 +79,8 @@ import {
 } from "@/components/ui/collapsible";
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { UserRole, NavigationItem } from "@shared/schema";
-import { WebViewer } from "@/components/web-viewer";
+import type { UserRole, NavigationItem, TenantApplication } from "@shared/schema";
+
 
 const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
@@ -125,6 +128,7 @@ const iconMap: Record<string, LucideIcon> = {
   DollarSign,
   Wallet,
   Shield,
+  AppWindow,
 };
 
 interface NavigationTree extends NavigationItem {
@@ -217,17 +221,18 @@ interface AppSidebarProps {
     email: string;
   };
   tenantName?: string;
+  onOpenApp?: (url: string) => void;
 }
 
 export function AppSidebar({
   currentUser,
   tenantName = "Acme Construction",
+  onOpenApp,
 }: AppSidebarProps) {
   const [location] = useLocation();
   const { state } = useSidebar();
   const { activeTenant, tenants, setActiveTenant } = useSettings();
   const { user: authUser } = useAuth();
-  const [showWebViewer, setShowWebViewer] = useState(false);
   
   const displayFirstName = authUser?.firstName || currentUser?.profile?.firstName || "User";
   const displayLastName = authUser?.lastName || currentUser?.profile?.lastName || "";
@@ -237,14 +242,23 @@ export function AppSidebar({
   const { data: navigationItems = [] } = useQuery<NavigationItem[]>({
     queryKey: ["/api/navigation", activeTenant?.id],
     queryFn: async () => {
-      const url = activeTenant?.id 
-        ? `/api/navigation?tenantId=${activeTenant.id}` 
-        : "/api/navigation";
-      const res = await fetch(url);
+      if (!activeTenant?.id) return [];
+      const res = await fetch(`/api/navigation?tenantId=${activeTenant.id}`);
       if (!res.ok) throw new Error("Failed to fetch navigation");
       return res.json();
     },
-    enabled: true,
+    enabled: !!activeTenant?.id,
+  });
+
+  const { data: tenantApps = [] } = useQuery<TenantApplication[]>({
+    queryKey: ["/api/tenant-applications", activeTenant?.id],
+    queryFn: async () => {
+      if (!activeTenant?.id) return [];
+      const res = await fetch(`/api/tenant-applications?tenantId=${activeTenant.id}`);
+      if (!res.ok) throw new Error("Failed to fetch applications");
+      return res.json();
+    },
+    enabled: !!activeTenant?.id,
   });
 
   const navigationTree = useMemo(() => {
@@ -270,8 +284,8 @@ export function AppSidebar({
             <button
               onClick={() => {
                 const companyUrl = activeTenant?.config?.branding?.companyUrl;
-                if (companyUrl) {
-                  setShowWebViewer(true);
+                if (companyUrl && onOpenApp) {
+                  onOpenApp(companyUrl);
                 }
               }}
               className={`flex w-full h-[83px] items-center justify-center ${activeTenant?.config?.branding?.companyUrl ? 'cursor-pointer hover-elevate' : 'cursor-default'}`}
@@ -288,8 +302,8 @@ export function AppSidebar({
             <button
               onClick={() => {
                 const companyUrl = activeTenant?.config?.branding?.companyUrl;
-                if (companyUrl) {
-                  setShowWebViewer(true);
+                if (companyUrl && onOpenApp) {
+                  onOpenApp(companyUrl);
                 }
               }}
               className={`flex w-full h-[92px] items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg ${activeTenant?.config?.branding?.companyUrl ? 'cursor-pointer hover-elevate' : 'cursor-default'}`}
@@ -302,13 +316,6 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
 
-      {showWebViewer && activeTenant?.config?.branding?.companyUrl && (
-        <WebViewer
-          initialUrl={activeTenant.config.branding.companyUrl}
-          onClose={() => setShowWebViewer(false)}
-        />
-      )}
-
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
@@ -319,6 +326,8 @@ export function AppSidebar({
                   item={item}
                   isActive={isActive}
                   collapsed={state === "collapsed"}
+                  tenantApps={tenantApps}
+                  onOpenApp={(url) => onOpenApp?.(url)}
                 />
               ))}
             </SidebarMenu>
@@ -392,15 +401,18 @@ interface NavMenuItemProps {
   item: NavigationTree;
   isActive: (path?: string | null) => boolean;
   collapsed: boolean;
+  tenantApps?: TenantApplication[];
+  onOpenApp?: (url: string) => void;
 }
 
-function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
+function NavMenuItem({ item, isActive, collapsed, tenantApps = [], onOpenApp }: NavMenuItemProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { setOpen } = useSidebar();
   const Icon = item.icon || Folder;
-  const hasChildren = item.children && item.children.length > 0;
+  const isApplications = item.title === "Applications";
+  const hasChildren = (item.children && item.children.length > 0) || isApplications;
   const active =
-    isActive(item.path) || item.children?.some((c) => isActive(c.path));
+    isActive(item.path) || item.children?.some((c) => isActive(c.path)) || (isApplications && isActive("/applications"));
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -415,6 +427,7 @@ function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
         <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
           <CollapsibleTrigger asChild>
             <SidebarMenuButton
+              tooltip={item.title}
               className={
                 active ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""
               }
@@ -432,25 +445,57 @@ function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <SidebarMenuSub>
-              {item.children.map((child) => {
-                const ChildIcon = child.icon || Folder;
-                return (
-                  <SidebarMenuSubItem key={child.id}>
+              {isApplications ? (
+                <>
+                  {tenantApps.map((app) => {
+                    const AppIcon = (app.iconName && iconMap[app.iconName]) || ExternalLink;
+                    return (
+                      <SidebarMenuSubItem key={app.id}>
+                        <SidebarMenuSubButton
+                          className="cursor-pointer"
+                          data-testid={`app-link-${app.name.toLowerCase().replace(/\s+/g, "-")}`}
+                          onClick={() => onOpenApp?.(app.url)}
+                        >
+                          <AppIcon className="h-4 w-4" />
+                          <span>{app.name}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    );
+                  })}
+                  <SidebarMenuSubItem>
                     <SidebarMenuSubButton
                       asChild
-                      isActive={isActive(child.path)}
+                      isActive={isActive("/applications")}
+                      data-testid="nav-manage-applications"
                     >
-                      <Link
-                        href={child.path || "#"}
-                        data-testid={`nav-${child.title.toLowerCase().replace(/\s+/g, "-")}`}
-                      >
-                        <ChildIcon className="h-4 w-4" />
-                        <span>{child.title}</span>
+                      <Link href="/applications">
+                        <Plus className="h-4 w-4" />
+                        <span>Manage Apps</span>
                       </Link>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
-                );
-              })}
+                </>
+              ) : (
+                item.children.map((child) => {
+                  const ChildIcon = child.icon || Folder;
+                  return (
+                    <SidebarMenuSubItem key={child.id}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={isActive(child.path)}
+                      >
+                        <Link
+                          href={child.path || "#"}
+                          data-testid={`nav-${child.title.toLowerCase().replace(/\s+/g, "-")}`}
+                        >
+                          <ChildIcon className="h-4 w-4" />
+                          <span>{child.title}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  );
+                })
+              )}
             </SidebarMenuSub>
           </CollapsibleContent>
         </Collapsible>
@@ -463,6 +508,7 @@ function NavMenuItem({ item, isActive, collapsed }: NavMenuItemProps) {
       <SidebarMenuButton
         asChild={!!item.path}
         isActive={active || false}
+        tooltip={item.title}
         data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
       >
         {item.path ? (

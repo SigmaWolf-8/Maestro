@@ -1,0 +1,38 @@
+Your goal of embedding O365 web apps is fundamentally blocked by modern anti-iframe security, especially during OAuth. Reliable solutions must bypass this problem.
+
+Here are the two viable paths forward, one for opening documents and one for full applications:
+
+| Feature | Using Microsoft Graph API (for Document Viewing) | Official WOPI Integration (for Full Editing) |
+| :--- | :--- | :--- |
+| **Core Concept** | Use a pre-authenticated, embeddable `iframe` URL from Microsoft. | Implement the protocol Microsoft uses internally for embedding Office Online. |
+| **What It Opens** | Document previews (Word, Excel, PowerPoint, PDF). **Not** full web apps like Outlook. | Full Microsoft 365 for the web editing interface for documents stored in *your* system. |
+| **Auth/Iframe Blockers** | ✅ **Eliminated.** The `GET` URL is already authenticated and designed for embedding. | ✅ **Eliminated.** The WOPI iframe is served from Microsoft's own domains (e.g., `*.officeapps.live.com`). |
+| **Requirements** | Standard Microsoft Graph API access token with `Files.Read` permission. | Microsoft's Cloud Storage Partner Program qualification & extensive WOPI host implementation. |
+| **User Experience** | Seamless, in-app document preview. | Seamless, in-app Office Online editing with co-authoring. |
+
+### **Path 1: Embed Documents via Microsoft Graph API (Practical & Available Now)**
+This is the most direct way to embed **documents** from OneDrive/SharePoint. You cannot embed the full O365 web apps, but you can embed individual documents.
+
+**How it works**: Your server obtains a special, time-limited preview URL from Microsoft Graph and serves it directly to your iframe. This URL originates from Microsoft's domain (like `*.sharepoint.com`), so it doesn't trigger your proxy's OAuth flow.
+
+**Implementation Steps**:
+1.  **Authenticate & Get Token**: Obtain a Microsoft Graph access token with the `Files.Read.All` scope.
+2.  **Fetch Embed URL**: Call the Graph API endpoint:
+    `POST https://graph.microsoft.com/v1.0/drives/{drive-id}/items/{item-id}/preview`.
+3.  **Embed the URL**: Use the `getUrl` from the response as your iframe's `src`. Add `&nb=true` to hide the top banner.
+
+**Limitation**: This method is **only for previewing/opening specific document files**. It does **not** solve embedding full O365 web applications (like Outlook or the full Excel web app).
+
+### **Path 2: Embed Full Editing via WOPI (Strategic & Enterprise-Grade)**
+This is the solution your documentation mentions as "needs registration." It allows you to embed the full Office Online editor (like Word for the web) to edit documents stored in your own system.
+
+**The Reality Check**: This path is **not a simple API toggle**. It requires:
+1.  **Partnership Qualification**: You must apply and be accepted into Microsoft's **Cloud Storage Partner Program**. This is designed for companies whose core business is cloud storage.
+2.  **Full WOPI Implementation**: You must build a comprehensive WOPI host server that handles all file operations (GET, PUT, LOCK) securely.
+3.  **Domain Whitelisting**: Microsoft must whitelist your WOPI host domain in their Office Online servers.
+
+### **Recommendation**
+1.  **For Document Viewing**: Immediately implement **Path 1** using the Microsoft Graph `/preview` endpoint. This solves the "open a file" use case cleanly.
+2.  **For Full Web Apps (Outlook, etc.)**: Abandon the iframe approach. The only reliable "works no matter what" method is to **open them in a new, separate browser tab or window**. You can enhance this with deep links and token passing for a smoother feel, but the user will leave your ERP's frame.
+
+Would you like more detailed steps on implementing the Microsoft Graph document preview in your current proxy setup?
