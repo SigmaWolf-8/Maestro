@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import {
   Shield,
   Globe,
@@ -28,6 +30,16 @@ import {
   CreditCard,
   Settings2,
   Receipt,
+  Cloud,
+  Key,
+  Link2,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Archive,
+  Layers,
+  HardDrive,
+  Hash,
 } from "lucide-react";
 import { SiGithub } from "react-icons/si";
 import BillingDashboard from "./billing-dashboard";
@@ -141,6 +153,19 @@ const API_ENDPOINTS: ApiEndpoint[] = [
   { method: "GET", path: "/api/auth/email-config", description: "Get user email configuration", category: "Authentication" },
   { method: "POST", path: "/api/auth/email-config", description: "Save user email configuration", category: "Authentication" },
   { method: "DELETE", path: "/api/auth/email-config", description: "Delete user email configuration", category: "Authentication" },
+  { method: "POST", path: "/api/plenumnet/indexing/generate-id", description: "Generate tribonacci ID", category: "PlenumNET" },
+  { method: "POST", path: "/api/plenumnet/indexing/wbs-shard", description: "Allocate WBS shard", category: "PlenumNET" },
+  { method: "POST", path: "/api/plenumnet/indexing/distribution", description: "Analyze shard distribution", category: "PlenumNET" },
+  { method: "GET", path: "/api/plenumnet/indexing/test-functions", description: "Test SQL functions", category: "PlenumNET" },
+  { method: "POST", path: "/api/plenumnet/indexing/install-functions", description: "Install SQL functions", category: "PlenumNET" },
+  { method: "GET", path: "/api/plenumnet/indexing/next-worker/:shard", description: "Get next worker for shard", category: "PlenumNET" },
+  { method: "GET", path: "/api/plenumnet/indexing/skip-lookup/:shard", description: "Skip lookup for shard", category: "PlenumNET" },
+  { method: "POST", path: "/api/plenumnet/compression/compress", description: "Compress data via ternary pipeline", category: "PlenumNET" },
+  { method: "POST", path: "/api/plenumnet/compression/decompress", description: "Decompress ternary data", category: "PlenumNET" },
+  { method: "POST", path: "/api/plenumnet/tern/encode", description: "Encode to .tern format", category: "PlenumNET" },
+  { method: "POST", path: "/api/plenumnet/tern/decode", description: "Decode from .tern format", category: "PlenumNET" },
+  { method: "POST", path: "/api/documents/:id/upload-tern", description: "Upload document as .tern", category: "PlenumNET" },
+  { method: "GET", path: "/api/documents/:id/download-tern", description: "Download document from .tern", category: "PlenumNET" },
 ];
 
 const METHOD_COLORS: Record<string, string> = {
@@ -209,7 +234,7 @@ function ApiCategorySection({ category, endpoints }: { category: string; endpoin
 
 export default function MaestroDevPage() {
   const [apiFilter, setApiFilter] = useState("");
-  const [activeTab, setActiveTab] = useState<"kong" | "github" | "api-docs" | "billing">("kong");
+  const [activeTab, setActiveTab] = useState<"kong" | "github" | "api-docs" | "billing" | "azure" | "plenumnet">("kong");
   const [billingSubTab, setBillingSubTab] = useState<"subscriptions" | "invoices" | "admin-pricing">("subscriptions");
 
   const { data: kongTimestamp, isLoading: timestampLoading, refetch: refetchTimestamp } = useQuery<any>({
@@ -225,6 +250,42 @@ export default function MaestroDevPage() {
   useQuery<any>({
     queryKey: ["/api/kong/docs"],
   });
+
+  const { data: azureStatus, isLoading: azureLoading, refetch: refetchAzure } = useQuery<any>({
+    queryKey: ["/api/auth/azure/status"],
+    refetchInterval: false,
+  });
+
+  const { data: tribFunctions, isLoading: tribLoading, refetch: refetchTrib } = useQuery<any>({
+    queryKey: ["/api/plenumnet/indexing/test-functions"],
+    enabled: activeTab === "plenumnet",
+  });
+
+  const { data: shardDistribution, refetch: refetchDistribution } = useQuery<any>({
+    queryKey: ["/api/plenumnet/indexing/distribution"],
+    queryFn: async () => {
+      const keys = Array.from({ length: 28 }, (_, i) => `wbs-dim-${String(i + 1).padStart(2, "0")}`);
+      const res = await apiRequest("POST", "/api/plenumnet/indexing/distribution", { keys });
+      return res.json();
+    },
+    enabled: activeTab === "plenumnet",
+  });
+
+  const { data: compressionTest, refetch: refetchCompression } = useQuery<any>({
+    queryKey: ["/api/plenumnet/compression/stats"],
+    queryFn: async () => {
+      const testData = "PlenumNET ternary compression benchmark test. ".repeat(20);
+      const res = await apiRequest("POST", "/api/plenumnet/compression/compress", { data: testData });
+      return res.json();
+    },
+    enabled: activeTab === "plenumnet",
+  });
+
+  const { data: msStatus, isLoading: msStatusLoading, refetch: refetchMsStatus } = useQuery<any>({
+    queryKey: ["/api/microsoft/status"],
+    refetchInterval: false,
+  });
+
 
   const categories = API_ENDPOINTS.reduce<Record<string, ApiEndpoint[]>>((acc, ep) => {
     if (!acc[ep.category]) acc[ep.category] = [];
@@ -253,6 +314,8 @@ export default function MaestroDevPage() {
 
   const tabs = [
     { id: "kong" as const, label: "Kong Konnect Gateway", icon: Shield },
+    { id: "plenumnet" as const, label: "PlenumNET Platform", icon: Layers },
+    { id: "azure" as const, label: "Azure Configuration", icon: Cloud },
     { id: "github" as const, label: "GitHub & Repository", icon: GitBranch },
     { id: "api-docs" as const, label: "API Reference", icon: Code },
     { id: "billing" as const, label: "Billing", icon: DollarSign },
@@ -491,6 +554,262 @@ export default function MaestroDevPage() {
               </CardContent>
             </Card>
           )}
+        </div>
+      )}
+
+      {activeTab === "azure" && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Shield className="h-3.5 w-3.5" />
+                  Azure AD Single Sign-On
+                  <Button variant="ghost" size="icon" onClick={() => refetchAzure()} className="ml-auto" data-testid="button-refresh-azure">
+                    <RefreshCw className="h-3 w-3" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-2 pt-0 space-y-2">
+                {azureLoading ? (
+                  <div className="text-xs text-muted-foreground">Loading...</div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Status</span>
+                      <Badge variant={azureStatus?.azureAD?.configured ? "default" : "secondary"} className="text-[10px]" data-testid="badge-azure-ad-status">
+                        {azureStatus?.azureAD?.configured ? "Configured" : "Not Configured"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Active Provider</span>
+                      <span className="text-xs font-medium" data-testid="text-active-auth-provider">
+                        {azureStatus?.activeProvider === "azure_ad" ? "Azure AD" : "Replit OIDC"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Tenant ID</span>
+                      <code className="text-[10px] font-mono" data-testid="text-azure-tenant-id">
+                        {azureStatus?.azureAD?.tenantId || "Not set"}
+                      </code>
+                    </div>
+                    <Separator />
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-medium">Required Environment Variables</div>
+                      {[
+                        { key: "AZURE_AD_TENANT_ID", desc: "Azure AD directory (tenant) ID" },
+                        { key: "AZURE_AD_CLIENT_ID", desc: "Application (client) ID" },
+                        { key: "AZURE_AD_CLIENT_SECRET", desc: "Client secret value" },
+                        { key: "AZURE_AD_REDIRECT_URI", desc: "OAuth callback URL" },
+                      ].map((env) => (
+                        <div key={env.key} className="flex items-center gap-2 py-0.5" data-testid={`env-${env.key.toLowerCase().replace(/_/g, '-')}`}>
+                          <Key className="h-2.5 w-2.5 text-muted-foreground" />
+                          <code className="text-[10px] font-mono flex-1">{env.key}</code>
+                          <span className="text-[10px] text-muted-foreground hidden lg:inline">{env.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Separator />
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium">OAuth Endpoints</div>
+                      <div className="font-mono text-[10px] text-muted-foreground space-y-0.5 pl-2">
+                        <div>Authority: login.microsoftonline.com/&#123;tenant&#125;</div>
+                        <div>Authorize: /oauth2/v2.0/authorize</div>
+                        <div>Token: /oauth2/v2.0/token</div>
+                        <div>Callback: /api/auth/azure/callback</div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs"
+                        onClick={() => window.open("https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade", "_blank")}
+                        data-testid="button-open-azure-portal"
+                      >
+                        <ExternalLink className="mr-1 h-3 w-3" />
+                        Azure Portal
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs"
+                        onClick={() => window.open("https://entra.microsoft.com", "_blank")}
+                        data-testid="button-open-entra"
+                      >
+                        <ExternalLink className="mr-1 h-3 w-3" />
+                        Entra Admin
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Cloud className="h-3.5 w-3.5" />
+                  Microsoft 365 Integration
+                  <Button variant="ghost" size="icon" onClick={() => refetchMsStatus()} className="ml-auto" data-testid="button-refresh-ms-status">
+                    <RefreshCw className="h-3 w-3" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-2 pt-0 space-y-2">
+                {msStatusLoading ? (
+                  <div className="text-xs text-muted-foreground">Loading...</div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Graph API</span>
+                      <Badge variant={msStatus?.configured ? "default" : "secondary"} className="text-[10px]" data-testid="badge-ms365-status">
+                        {msStatus?.configured ? "Configured" : "Not Configured"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">User Connected</span>
+                      <Badge variant={msStatus?.connected ? "default" : "outline"} className="text-[10px]" data-testid="badge-ms365-connected">
+                        {msStatus?.connected ? "Yes" : "No"}
+                      </Badge>
+                    </div>
+                    <Separator />
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-medium">Required Environment Variables</div>
+                      {[
+                        { key: "MICROSOFT_CLIENT_ID", desc: "App registration client ID" },
+                        { key: "MICROSOFT_CLIENT_SECRET", desc: "App registration secret" },
+                        { key: "MICROSOFT_TENANT_ID", desc: "Directory tenant ID (or 'common')" },
+                      ].map((env) => (
+                        <div key={env.key} className="flex items-center gap-2 py-0.5" data-testid={`env-${env.key.toLowerCase().replace(/_/g, '-')}`}>
+                          <Key className="h-2.5 w-2.5 text-muted-foreground" />
+                          <code className="text-[10px] font-mono flex-1">{env.key}</code>
+                          <span className="text-[10px] text-muted-foreground hidden lg:inline">{env.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Separator />
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium">API Scopes</div>
+                      <div className="flex flex-wrap gap-1">
+                        {["User.Read", "Files.ReadWrite.All", "openid", "profile", "email", "offline_access"].map((scope) => (
+                          <Badge key={scope} variant="outline" className="text-[10px] font-mono">{scope}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium">Features</div>
+                      <div className="space-y-0.5">
+                        {[
+                          { name: "OneDrive File Storage", enabled: msStatus?.configured },
+                          { name: "Office Online Editing", enabled: msStatus?.configured },
+                          { name: "In-App Preview (Graph /preview)", enabled: msStatus?.configured },
+                          { name: "Azure AD SSO", enabled: azureStatus?.azureAD?.configured },
+                        ].map((feat) => (
+                          <div key={feat.name} className="flex items-center gap-2 py-0.5" data-testid={`feature-${feat.name.toLowerCase().replace(/[\s/()]/g, '-')}`}>
+                            {feat.enabled ? (
+                              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            ) : (
+                              <XCircle className="h-3 w-3 text-muted-foreground/50" />
+                            )}
+                            <span className="text-[10px]">{feat.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Link2 className="h-3.5 w-3.5" />
+                Azure API Routes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-2 pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="text-xs font-medium">Azure AD Authentication</div>
+                  <div className="space-y-0.5">
+                    {[
+                      { method: "GET", path: "/api/auth/azure/login", desc: "Initiate Azure AD login" },
+                      { method: "GET", path: "/api/auth/azure/callback", desc: "OAuth callback handler" },
+                      { method: "GET", path: "/api/auth/azure/status", desc: "Get auth configuration status" },
+                    ].map((ep) => (
+                      <div key={ep.path} className="flex items-center gap-2 py-0.5 group/row" data-testid={`azure-ep-${ep.path.replace(/[/:]/g, '-')}`}>
+                        <MethodBadge method={ep.method} />
+                        <code className="text-[10px] font-mono text-muted-foreground flex-1 truncate">{ep.path}</code>
+                        <span className="text-[10px] text-muted-foreground hidden lg:inline">{ep.desc}</span>
+                        <CopyButton text={ep.path} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium">Microsoft Graph (365)</div>
+                  <div className="space-y-0.5">
+                    {[
+                      { method: "GET", path: "/api/microsoft/status", desc: "Connection status" },
+                      { method: "GET", path: "/api/microsoft/auth-url", desc: "Get OAuth URL" },
+                      { method: "GET", path: "/api/microsoft/callback", desc: "OAuth callback" },
+                      { method: "POST", path: "/api/microsoft/connect", desc: "Connect account" },
+                      { method: "POST", path: "/api/microsoft/disconnect", desc: "Disconnect account" },
+                      { method: "GET", path: "/api/microsoft/files", desc: "List OneDrive files" },
+                      { method: "POST", path: "/api/microsoft/upload", desc: "Upload to OneDrive" },
+                      { method: "GET", path: "/api/microsoft/preview/:fileId", desc: "Get embeddable preview URL" },
+                      { method: "POST", path: "/api/microsoft/sync/:fileId", desc: "Sync from OneDrive" },
+                    ].map((ep) => (
+                      <div key={ep.path} className="flex items-center gap-2 py-0.5 group/row" data-testid={`ms-ep-${ep.path.replace(/[/:]/g, '-')}`}>
+                        <MethodBadge method={ep.method} />
+                        <code className="text-[10px] font-mono text-muted-foreground flex-1 truncate">{ep.path}</code>
+                        <span className="text-[10px] text-muted-foreground hidden lg:inline">{ep.desc}</span>
+                        <CopyButton text={ep.path} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Setup Guide
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-2 pt-0 space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="text-xs font-medium">Azure AD SSO Setup</div>
+                  <ol className="text-[10px] text-muted-foreground space-y-0.5 pl-3 list-decimal">
+                    <li>Register app in Azure Portal &gt; App registrations</li>
+                    <li>Set redirect URI to: <code className="font-mono">/api/auth/azure/callback</code></li>
+                    <li>Create client secret under Certificates &amp; secrets</li>
+                    <li>Add required API permissions: User.Read</li>
+                    <li>Set AZURE_AD_TENANT_ID, AZURE_AD_CLIENT_ID, AZURE_AD_CLIENT_SECRET</li>
+                    <li>Set AZURE_AD_REDIRECT_URI to your production callback URL</li>
+                  </ol>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium">Microsoft 365 / Graph Setup</div>
+                  <ol className="text-[10px] text-muted-foreground space-y-0.5 pl-3 list-decimal">
+                    <li>Register app (or reuse Azure AD registration)</li>
+                    <li>Add API permissions: Files.ReadWrite.All, User.Read</li>
+                    <li>Enable offline_access for refresh tokens</li>
+                    <li>Set MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET</li>
+                    <li>Optionally set MICROSOFT_TENANT_ID (defaults to 'common')</li>
+                    <li>Users connect via Settings &gt; Microsoft 365 panel</li>
+                  </ol>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -750,6 +1069,352 @@ export default function MaestroDevPage() {
               </CardContent>
             </Card>
           </div>
+        </div>
+      )}
+
+      {activeTab === "plenumnet" && (
+        <div className="space-y-3" data-testid="tab-plenumnet-content">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Hash className="h-3.5 w-3.5" />
+                  Tribonacci Indexing
+                  <Button variant="ghost" size="icon" onClick={() => refetchTrib()} className="ml-auto" data-testid="button-refresh-trib">
+                    <RefreshCw className="h-3 w-3" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-2 pt-0 space-y-1.5">
+                {tribLoading ? (
+                  <div className="text-xs text-muted-foreground">Loading...</div>
+                ) : tribFunctions?.success ? (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Status</span>
+                      <Badge variant="default" className="text-[10px]" data-testid="badge-trib-status">
+                        <CheckCircle2 className="h-2.5 w-2.5 mr-1" />Installed
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Shard Count</span>
+                      <span className="text-xs font-semibold">28</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">WBS Dimensions</span>
+                      <span className="text-xs font-semibold">13</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Hash Algorithm</span>
+                      <span className="text-xs font-mono">trad_hash_28</span>
+                    </div>
+                    <Separator className="my-1" />
+                    <div className="text-[10px] text-muted-foreground">SQL Functions:</div>
+                    <div className="space-y-0.5">
+                      {["trad_hash_28", "tribonacci_hash", "generate_trib_id", "next_worker", "skip_lookup"].map((fn) => (
+                        <div key={fn} className="flex items-center gap-2 py-0.5" data-testid={`fn-${fn}`}>
+                          <CheckCircle2 className="h-2.5 w-2.5 text-green-600" />
+                          <code className="text-[10px] font-mono">{fn}</code>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-xs text-muted-foreground">
+                    <XCircle className="h-3 w-3 inline mr-1" />Functions not installed
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Archive className="h-3.5 w-3.5" />
+                  Ternary Compression
+                  <Button variant="ghost" size="icon" onClick={() => refetchCompression()} className="ml-auto" data-testid="button-refresh-compression">
+                    <RefreshCw className="h-3 w-3" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-2 pt-0 space-y-1.5">
+                {compressionTest ? (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Pipeline</span>
+                      <span className="text-xs font-medium">zlib + ternary + RLE</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Original</span>
+                      <span className="text-xs font-semibold" data-testid="text-original-size">{compressionTest.originalLength} B</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">Compressed</span>
+                      <span className="text-xs font-semibold" data-testid="text-compressed-size">{compressionTest.compressedLength} B</span>
+                    </div>
+                    {compressionTest.stats && (
+                      <>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">Ratio</span>
+                          <Badge variant="default" className="text-[10px]" data-testid="badge-compression-ratio">
+                            {compressionTest.stats.compressionRatio?.toFixed(1)}%
+                          </Badge>
+                        </div>
+                        <Separator className="my-1" />
+                        <div className="text-[10px] text-muted-foreground">Stage Sizes:</div>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px]">zlib</span>
+                            <span className="text-[10px] font-mono">{compressionTest.stats.stages?.zlibSize} B</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px]">ternary</span>
+                            <span className="text-[10px] font-mono">{compressionTest.stats.stages?.ternarySize} B</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px]">RLE</span>
+                            <span className="text-[10px] font-mono">{compressionTest.stats.stages?.rleSize} B</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-xs text-muted-foreground">Running benchmark...</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <HardDrive className="h-3.5 w-3.5" />
+                  .tern File Format
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-2 pt-0 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">Magic Bytes</span>
+                  <code className="text-[10px] font-mono" data-testid="text-magic-bytes">TERN (0x5445524E)</code>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">Format Version</span>
+                  <span className="text-xs font-semibold">1</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">Header</span>
+                  <span className="text-xs">JSON metadata</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">Body</span>
+                  <span className="text-xs">Compressed data</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">Encryption</span>
+                  <span className="text-xs">Optional phase split</span>
+                </div>
+                <Separator className="my-1" />
+                <div className="text-[10px] text-muted-foreground">File Structure:</div>
+                <div className="font-mono text-[10px] text-muted-foreground space-y-0.5 pl-2">
+                  <div>[4B] Magic: TERN</div>
+                  <div>[4B] Header length (uint32)</div>
+                  <div>[nB] JSON header</div>
+                  <div>[...] Compressed data body</div>
+                </div>
+                <Separator className="my-1" />
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-[10px] text-muted-foreground">Extension rename to .xTzip planned</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Database className="h-3.5 w-3.5" />
+                Shard Distribution (28-fold Tribonacci)
+                <Button variant="ghost" size="icon" onClick={() => refetchDistribution()} className="ml-auto" data-testid="button-refresh-distribution">
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-3 pb-2 pt-0">
+              {shardDistribution?.distribution ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">Total Keys: <span className="font-semibold text-foreground">{shardDistribution.totalKeys}</span></span>
+                    <span className="text-muted-foreground">Shard Count: <span className="font-semibold text-foreground">{shardDistribution.shardCount}</span></span>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1" data-testid="shard-distribution-grid">
+                    {Array.from({ length: 28 }, (_, i) => {
+                      const shard = shardDistribution.distribution[String(i)];
+                      const count = shard?.count || 0;
+                      const maxCount = Math.max(...Object.values(shardDistribution.distribution as Record<string, { count: number }>).map((s) => s.count), 1);
+                      const intensity = count > 0 ? Math.max(20, Math.round((count / maxCount) * 100)) : 0;
+                      return (
+                        <div
+                          key={i}
+                          className="flex flex-col items-center gap-0.5 p-1 rounded border text-center"
+                          data-testid={`shard-cell-${i}`}
+                          title={shard ? `Keys: ${shard.keys.join(", ")}` : "Empty"}
+                        >
+                          <span className="text-[9px] font-mono text-muted-foreground">{i}</span>
+                          <div
+                            className="w-full h-3 rounded-sm"
+                            style={{
+                              backgroundColor: count > 0
+                                ? `hsl(var(--primary) / ${intensity}%)`
+                                : "hsl(var(--muted))",
+                            }}
+                          />
+                          <span className="text-[9px] font-semibold">{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2.5 h-2.5 rounded-sm bg-muted border" />
+                      <span>Empty</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2.5 h-2.5 rounded-sm bg-primary/30" />
+                      <span>Low</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2.5 h-2.5 rounded-sm bg-primary/70" />
+                      <span>Medium</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2.5 h-2.5 rounded-sm bg-primary" />
+                      <span>High</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-xs text-muted-foreground">Loading distribution...</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Server className="h-3.5 w-3.5" />
+                  PlenumNET API Endpoints
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-2 pt-0">
+                <div className="space-y-1">
+                  {[
+                    { path: "/api/plenumnet/indexing/generate-id", method: "POST", desc: "Generate tribonacci ID" },
+                    { path: "/api/plenumnet/indexing/wbs-shard", method: "POST", desc: "Allocate WBS shard" },
+                    { path: "/api/plenumnet/indexing/distribution", method: "POST", desc: "Analyze shard distribution" },
+                    { path: "/api/plenumnet/indexing/test-functions", method: "GET", desc: "Test SQL functions" },
+                    { path: "/api/plenumnet/indexing/install-functions", method: "POST", desc: "Install SQL functions" },
+                    { path: "/api/plenumnet/compression/compress", method: "POST", desc: "Compress data" },
+                    { path: "/api/plenumnet/compression/decompress", method: "POST", desc: "Decompress data" },
+                    { path: "/api/plenumnet/tern/encode", method: "POST", desc: "Encode to .tern format" },
+                    { path: "/api/plenumnet/tern/decode", method: "POST", desc: "Decode from .tern format" },
+                  ].map((ep) => (
+                    <div key={ep.path} className="flex items-center gap-2 py-0.5 group/row" data-testid={`pn-endpoint-${ep.path.replace(/[/:]/g, '-')}`}>
+                      <MethodBadge method={ep.method} />
+                      <code className="text-[10px] font-mono text-muted-foreground flex-1 truncate">{ep.path}</code>
+                      <span className="text-[10px] text-muted-foreground hidden lg:inline">{ep.desc}</span>
+                      <CopyButton text={ep.path} />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Layers className="h-3.5 w-3.5" />
+                  WBS Dimension Mapping
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-2 pt-0">
+                <div className="text-[10px] text-muted-foreground mb-1.5">
+                  28-fold tribonacci coverage mapped to 13D WBS structure
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                  {[
+                    { dim: "D1", label: "Division", shards: "0-1" },
+                    { dim: "D2", label: "Phase", shards: "2-3" },
+                    { dim: "D3", label: "Category", shards: "4-5" },
+                    { dim: "D4", label: "SubCategory", shards: "6-7" },
+                    { dim: "D5", label: "Package", shards: "8-9" },
+                    { dim: "D6", label: "Element", shards: "10-11" },
+                    { dim: "D7", label: "SubElement", shards: "12-13" },
+                    { dim: "D8", label: "Detail", shards: "14-15" },
+                    { dim: "D9", label: "SubDetail", shards: "16-17" },
+                    { dim: "D10", label: "Item", shards: "18-19" },
+                    { dim: "D11", label: "SubItem", shards: "20-21" },
+                    { dim: "D12", label: "Component", shards: "22-23" },
+                    { dim: "D13", label: "Variant", shards: "24-27" },
+                  ].map((d) => (
+                    <div key={d.dim} className="flex items-center justify-between py-0.5 border-b last:border-b-0" data-testid={`dim-mapping-${d.dim.toLowerCase()}`}>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="secondary" className="text-[9px] min-w-[28px] justify-center">{d.dim}</Badge>
+                        <span className="text-[10px]">{d.label}</span>
+                      </div>
+                      <code className="text-[9px] font-mono text-muted-foreground">[{d.shards}]</code>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {tribFunctions?.success && tribFunctions.results && (
+            <Card>
+              <CardHeader className="py-2 px-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                  Live Function Test Results
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pb-2 pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                  <div className="space-y-0.5">
+                    <div className="text-[10px] font-medium">trad_hash_28</div>
+                    <code className="text-[10px] font-mono text-muted-foreground block" data-testid="result-trad-hash">
+                      Shard: {tribFunctions.results.trad_hash_28?.shard_index}
+                    </code>
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="text-[10px] font-medium">tribonacci_hash</div>
+                    <code className="text-[10px] font-mono text-muted-foreground block truncate" data-testid="result-trib-hash">
+                      {tribFunctions.results.tribonacci_hash?.hash_value}
+                    </code>
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="text-[10px] font-medium">generate_trib_id</div>
+                    <code className="text-[10px] font-mono text-muted-foreground block truncate" data-testid="result-trib-id">
+                      {tribFunctions.results.generate_trib_id?.trib_id}
+                    </code>
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="text-[10px] font-medium">next_worker</div>
+                    <code className="text-[10px] font-mono text-muted-foreground block" data-testid="result-next-worker">
+                      Next: {tribFunctions.results.next_worker?.next_shard}
+                    </code>
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="text-[10px] font-medium">skip_lookup</div>
+                    <code className="text-[10px] font-mono text-muted-foreground block" data-testid="result-skip-lookup">
+                      Worker: {tribFunctions.results.skip_lookup?.worker_index}
+                    </code>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

@@ -1,16 +1,16 @@
 # The Maestro - Construction ERP | GitHub Roadmap
 
-**Architecture Version:** 3.3.0 | **Last Updated:** February 6, 2026
+**Architecture Version:** 3.3.1 | **Last Updated:** February 24, 2026
 
 ---
 
 ## Project Summary
 
-The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system for residential construction and land development firms. Built with React 18, Express.js, PostgreSQL (Drizzle ORM), and TypeScript, it provides a 13-dimensional Work Breakdown Structure engine, SaaS billing with Canadian tax compliance, Microsoft 365 integration, and post-quantum security via the PlenumNET/Salvi Framework.
+The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system for residential construction and land development firms. Built with React 18, Express.js, PostgreSQL (Drizzle ORM), and TypeScript, it provides a 13-dimensional Work Breakdown Structure engine, SaaS billing with Canadian tax compliance, ONLYOFFICE document editing, Resend-powered transactional email, and post-quantum security via the PlenumNET/Salvi Framework.
 
 ---
 
-## Current Release: v3.3.0 (February 6, 2026)
+## Current Release: v3.3.1 (February 24, 2026)
 
 ### Completed Features
 
@@ -23,7 +23,7 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 | 13-Dimensional WBS Engine | Done | Master codes, hierarchical nodes, templates, status tracking, import |
 | Team Management | Done | Role-based access control (viewer, accountant, project_manager, admin) |
 | Multi-Company Branding | Done | Per-tenant themes, fonts, logos |
-| Settings & Customization | Done | Per-company branding options |
+| Settings & Customization | Done | Per-company branding options, SMTP/email config, ONLYOFFICE config |
 
 #### People & Contacts
 | Feature | Status | Details |
@@ -31,22 +31,48 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 | Vendors & Pricing | Done | Legacy MS Access VBA form recreation with auto-save |
 | Customers | Done | Legacy form recreation with detailed data entry |
 | Contacts Directory | Done | Unified searchable/filterable directory for all contacts |
+| BambooHR Integration | Done | Employee directory, detail view, photo retrieval, iframe portal, collapsible HR sub-menu |
 
 #### Document Management
 | Feature | Status | Details |
 |---------|--------|---------|
-| File Manager | Done | Drag-and-drop, 13-dimensional WBS filtering/meta-tagging |
+| File Manager | Done | Drag-and-drop upload, 13-dimensional WBS filtering/meta-tagging, project selector (14th dimension), auto-collapse viewer, back navigation |
+| WBS Tag Editor | Done | Sidebar transforms from filter mode (checkboxes) to tag editor mode (dropdowns) when document selected |
 | WOPI Host Protocol | Done | All 12 endpoints: Discovery, CheckFileInfo, GetFile, PutFile, Lock, Unlock, RefreshLock, UnlockAndRelock, GetLock, Delete, Rename, ShareUrl |
-| Office Online Editing | Done | Inline Word/Excel/PowerPoint editing via WOPI |
+| ONLYOFFICE Integration | Ready | Per-tenant ONLYOFFICE Document Server configuration with connection testing; requires external Document Server deployment to activate in-browser Word/Excel/PowerPoint editing |
 | Document Locks | Done | 30-minute expiry, lock lifecycle, mutation validation |
 | Kong Security Gateway | Done | API, WOPI, AI Report, Events services with security policies |
+| Price Master Catalogue | Done | Item management with compile lists, WBS tagging, and pricing workflows |
+| Sign Here (SalviSign) | Done | Embedded e-signature app via iframe with fullscreen support and secure sandbox isolation |
+
+#### PQTI-Integrated Document Lifecycle (v3.3.1)
+| Feature | Status | Details |
+|---------|--------|---------|
+| Document Lifecycle Page | Done | Unified interactive dashboard with five subsystems: Classification, Review, Archive, Field Queue, Event Bus |
+| Classification Engine | Done | Full-document classification pipeline with entity extraction, WBS resolution, multi-signal scoring, full-text search index, universal intake paths |
+| Review Pipeline | Done | Auto-start reviews, WBS-based reviewer assignment, approve/reject workflow, multi-reviewer sessions, version locking |
+| Archive Assembly | Done | 13-level WBS tree walk, version-locked primaries + drafts, manifest generation with review history and SHA-3 hashes |
+| Field Upload Queue | Done | Upload queue with priority ordering (safety > general), chunk tracking, status management, progress UI |
+| Unified Event Bus | Done | Append-only event log, publish/subscribe, standardized event schema, subscriber registration, dead-letter handling, replay capability |
+
+#### Email & Communications (v3.3.1)
+| Feature | Status | Details |
+|---------|--------|---------|
+| Resend Email Service | Done | Transactional email via Resend API (matching SalviSign), branded HTML templates, company-level configuration |
+| SMTP Fallback | Done | Per-user and per-tenant SMTP configuration via Nodemailer as fallback when Resend unavailable |
+| Email Settings UI | Done | Company-level email configuration in Settings with test email and provider selection |
+| Vendor Email Workflows | Ready | Email send capability from Vendors page; ready for auto-send workflow configuration |
 
 #### Microsoft 365 Integration
 | Feature | Status | Details |
 |---------|--------|---------|
 | Azure AD OAuth | Done | MS Graph OAuth flow, token DB persistence |
 | OneDrive File Ops | Done | File operations via MS Graph API |
-| Email Sending | Done | Per-user SMTP configuration |
+
+#### Scheduling (v3.3.1)
+| Feature | Status | Details |
+|---------|--------|---------|
+| Schedule Management | Done | Task templates, project scheduling, WBS integration |
 
 #### Security & Access Control
 | Feature | Status | Details |
@@ -87,6 +113,8 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 | PlenumNET API | Done | 15 endpoints for ternary ops, phase encryption, timing, hashing, demos |
 | Security Dashboard | Done | Interactive page with live GF(3) tables, encryption demos, hash tool |
 | BigInt JSON Serialization | Done | Recursive `serializeBigInts` utility across all API responses |
+| Ternary Compression | Done | Transparent compression service using ternary encoding + RLE + zlib pipeline |
+| .tern File Format | Done | Binary document format with TERN magic bytes, JSON header, compressed data body, optional phase encryption |
 
 #### Production Hardening (v3.3.0)
 | Feature | Status | Details |
@@ -100,23 +128,24 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 | Azure AD SSO Scaffolding | Done | OAuth2 code exchange, MS Graph profile fetch, JWT parsing middleware, multi-tenant support |
 | Migration Tooling | Done | generate-migration.sh, validate-schema.sh scripts, enhanced CI workflow with schema diff detection |
 | System Status API | Done | `/api/system/status` exposing Stripe, Algorand, Hedera, Azure AD, and all v3.3 feature readiness |
+| Data Encryption at Rest | Done | PlenumNET phase-encryption for database field-level encryption with transparent encrypt/decrypt |
 
 ### Architecture Summary
 
 | Layer | Count | Technology |
 |-------|-------|------------|
-| Client Pages | 22 | React 18, shadcn/ui, TanStack Query v5 |
-| API Routers | 13 | Express.js domain routers |
-| Backend Services | 12 | TypeScript service classes |
+| Client Pages | 31 | React 18, shadcn/ui, TanStack Query v5 |
+| API Routers | 18 | Express.js domain routers |
+| Backend Services | 21 | TypeScript service classes |
 | Middleware Layers | 3 | Rate limiter, request logger, Azure AD auth |
 | Ledger Adapters | 2 | Algorand, Hedera (pluggable pattern) |
-| Database Tables | 28 | PostgreSQL via Drizzle ORM |
-| Schema Domains | 7 | Per-domain barrel exports |
+| Database Tables | 50 | PostgreSQL via Drizzle ORM |
+| Schema Domains | 10 | Per-domain barrel exports |
 | CI/CD Workflows | 4 | GitHub Actions |
 | Migration Scripts | 2 | Bash (generate + validate) |
 | PlenumNET Modules | 5 | Local libternary engine |
-| Total API Endpoints | 55+ | RESTful JSON |
-| Total Lines of Code | ~23,000+ | TypeScript (pages + API + services + schema + middleware) |
+| Total API Endpoints | 100+ | RESTful JSON |
+| Total Lines of Code | ~41,000+ | TypeScript (pages + API + services + schema + middleware) |
 
 ### CI/CD Pipeline
 | Workflow | Trigger | Purpose |
@@ -125,6 +154,45 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 | `deploy.yml` | Push to main | Pre-deploy validation + Replit deployment |
 | `db-migration.yml` | PRs with schema changes | Auto-detect, comment migration checklist |
 | `security.yml` | Weekly (cron) | Dependency audit + secret leak scanning |
+
+---
+
+## What's New in v3.3.1 (February 24, 2026)
+
+### Document Lifecycle System
+Complete implementation of the PQTI-Integrated Document Lifecycle with five fully interactive subsystems:
+- **Classification Engine** — Automated document classification with entity extraction and 13-dimensional WBS resolution
+- **Review Pipeline** — One-click review initiation, multi-reviewer approval/rejection workflows, version locking with audit trails
+- **Archive Assembly** — Hierarchical archive generation across all 13 WBS dimensions with SHA-3 integrity hashes
+- **Field Upload Queue** — Priority-ordered upload management with chunk tracking for large files
+- **Unified Event Bus** — Centralized event system with publish/subscribe, dead-letter handling, and cross-module event replay
+
+### File Manager UX Overhaul
+- Drag-and-drop upload zone moved into the document selector sidebar for cleaner layout
+- WBS sidebar transforms between **filter mode** (checkboxes for narrowing results) and **tag editor mode** (dropdowns for assigning WBS to selected document)
+- **Project selector** added as 14th WBS dimension — filter by project or assign projects to documents
+- Document list **auto-collapses** when viewing a document to maximize reading space
+- **Back arrow** navigation to return to the full document list
+- Proper URL synchronization when navigating between Document section pages
+
+### Email System (Resend API)
+- Integrated Resend API for transactional email delivery, matching SalviSign's proven email infrastructure
+- Three-tier email fallback: Resend API → User SMTP → Tenant SMTP
+- Company-level email settings UI in Settings page with test email capability
+- Ready for automated vendor notification workflows
+
+### Additional Improvements
+- Price Master catalogue with compile lists and WBS tagging
+- Schedule management with task templates and project scheduling
+- BambooHR integration for employee directory and HR portal
+- Ternary compression service and .tern binary file format
+- Database field-level encryption via PlenumNET phase-encryption
+- ONLYOFFICE Document Server configuration UI with connection testing (requires external server)
+
+### Corrections from v3.3.0
+- **Email Sending** status corrected from "Done" to properly reflect the new Resend API implementation with working delivery
+- **Office Online Editing** status corrected to "Ready" — WOPI protocol is fully implemented (12 endpoints), ONLYOFFICE configuration UI is built, but requires an external ONLYOFFICE Document Server to be deployed and connected
+- **LibreOffice** clarification — LibreOffice is used by SalviSign for server-side document conversion (DOCX/XLSX to PDF); The Maestro uses **ONLYOFFICE Document Server** for in-browser Office document editing. These are separate tools serving different purposes
 
 ---
 
@@ -142,15 +210,27 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 - [x] **Structured Logging** - JSON request logging with correlation IDs, error classification, duration tracking, error handler middleware
 - [x] **System Status API** - `/api/system/status` endpoint exposing all integration readiness
 
+### v3.3.1 - Document Lifecycle & Email
+**Released:** February 24, 2026
+
+- [x] **PQTI Document Lifecycle** - Five interactive subsystems: Classification Engine, Review Pipeline, Archive Assembly, Field Upload Queue, Unified Event Bus
+- [x] **File Manager UX** - WBS tag editor, project selector, auto-collapse, drag-drop in sidebar, back navigation
+- [x] **Resend Email** - Transactional email via Resend API with company-level configuration and test capability
+- [x] **Price Master** - Item catalogue with compile lists, WBS tagging, and pricing workflows
+- [x] **Schedule Management** - Task templates, project scheduling, WBS integration
+- [x] **BambooHR Integration** - Employee directory, HR portal, photo retrieval
+
 ### v3.4 - Advanced Document & Collaboration
 **Target:** Q2 2026
 
+- [ ] **ONLYOFFICE Server Deployment** - Deploy and connect ONLYOFFICE Document Server for live in-browser Office editing
 - [ ] **Real-time Collaboration** - WebSocket-based real-time updates for projects, WBS nodes, and documents
 - [ ] **Document Versioning UI** - User-facing version history with diff view and rollback
 - [ ] **Batch Document Operations** - Bulk upload, download, move, and WBS re-tagging
 - [ ] **Advanced Search** - Full-text search across documents, projects, contacts with faceted filtering
 - [ ] **Notification System** - In-app notifications for assignments, approvals, document changes, and billing events
 - [ ] **Audit Trail Dashboard** - Admin-facing comprehensive audit log viewer with filtering and export
+- [ ] **Automated Email Workflows** - Auto-send vendor notifications, purchase order confirmations, and approval reminders
 
 ### v3.5 - Reporting & Analytics
 **Target:** Q3 2026
@@ -188,10 +268,21 @@ The Maestro is a modular, multi-tenant Enterprise Resource Planning (ERP) system
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| v3.3.1 | Feb 24, 2026 | Document Lifecycle (5 subsystems), File Manager UX overhaul, Resend email, Price Master, Schedule, BambooHR, 50 database tables, 100+ endpoints |
 | v3.3.0 | Feb 6, 2026 | Production hardening: rate limiting, structured logging, Stripe live integration, Algorand/Hedera adapters, Azure AD SSO, migration tooling, system status API |
 | v3.2.1 | Feb 6, 2026 | SaaS billing, Canadian tax compliance, real PlenumNET/Salvi Framework, Security Dashboard |
 | v3.1 | Feb 6, 2026 | Modularized routing (11 routers), complete WOPI protocol (12 endpoints), MS Graph token persistence |
 | v3.0 | Feb 6, 2026 | WOPI infrastructure, AI Analytics, Smart Inbox, Kong gateway, PlenumNET framework |
+
+---
+
+## Document Editing Clarification
+
+**ONLYOFFICE Document Server** is The Maestro's chosen solution for in-browser Office document editing (Word, Excel, PowerPoint). The WOPI protocol (12 endpoints) and configuration UI are fully built. To activate editing, an ONLYOFFICE Document Server instance must be deployed and its URL configured in Settings.
+
+**LibreOffice** is used by the companion SalviSign app for server-side document format conversion (DOCX/XLSX/CSV → PDF). It is not used within The Maestro itself.
+
+These are complementary tools: ONLYOFFICE handles interactive editing within The Maestro, while LibreOffice handles automated format conversion within SalviSign.
 
 ---
 
@@ -203,8 +294,9 @@ This is a private enterprise project. For feature requests or bug reports, pleas
 - `security` - Security-related issues (use responsible disclosure)
 - `billing` - SaaS billing and subscription issues
 - `plenumnet` - PlenumNET/Salvi Framework items
-- `wopi` - Document and Office Online integration
+- `documents` - Document management, ONLYOFFICE, and lifecycle
 - `wbs` - Work Breakdown Structure engine
+- `email` - Email delivery and notification workflows
 
 ---
 

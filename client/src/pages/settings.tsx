@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useSettings, type TenantBranding, type CompanyType, type FontStyleOption } from "@/components/settings-provider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save, Mail, Briefcase, ImagePlus, PanelLeft } from "lucide-react";
+import { Palette, Type, Image, RotateCcw, Check, Building2, RefreshCw, Plus, Save, Mail, Briefcase, ImagePlus, PanelLeft, Layers, Database, Archive, Shield, Hash, CheckCircle2, XCircle, Send, Server, TestTube } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const colorPresets = [
@@ -140,6 +141,155 @@ function hexToHsl(hex: string): string {
   } catch {
     return "0 0% 50%";
   }
+}
+
+function PlenumNetSettingsCard() {
+  const { toast } = useToast();
+  const [installLoading, setInstallLoading] = useState(false);
+
+  const { data: tribStatus, isLoading: tribLoading, refetch: refetchTrib } = useQuery<any>({
+    queryKey: ["/api/plenumnet/indexing/test-functions"],
+  });
+
+  const handleInstallFunctions = async () => {
+    setInstallLoading(true);
+    try {
+      const res = await fetch("/api/plenumnet/indexing/install-functions", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: "SQL Functions Installed", description: `Installed ${data.functions.length} tribonacci functions.` });
+        refetchTrib();
+      } else {
+        toast({ title: "Installation Failed", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Installation Failed", variant: "destructive" });
+    } finally {
+      setInstallLoading(false);
+    }
+  };
+
+  return (
+    <Card data-testid="card-plenumnet-settings">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Layers className="h-5 w-5" />
+          <CardTitle className="text-lg">PlenumNET Platform</CardTitle>
+        </div>
+        <CardDescription>
+          Advanced security, compression, and storage engine configuration
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="border rounded-md p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Hash className="h-4 w-4" />
+              <span className="text-sm font-medium">Tribonacci Indexing</span>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">SQL Functions</span>
+                {tribLoading ? (
+                  <Badge variant="secondary" className="text-[10px]">Checking...</Badge>
+                ) : tribStatus?.success ? (
+                  <Badge variant="default" className="text-[10px]" data-testid="badge-trib-installed">
+                    <CheckCircle2 className="h-2.5 w-2.5 mr-1" />Installed
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px]" data-testid="badge-trib-not-installed">
+                    <XCircle className="h-2.5 w-2.5 mr-1" />Not Installed
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Shard Count</span>
+                <span className="text-xs font-semibold">28</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">WBS Dimensions</span>
+                <span className="text-xs font-semibold">13</span>
+              </div>
+            </div>
+            {!tribStatus?.success && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full text-xs"
+                onClick={handleInstallFunctions}
+                disabled={installLoading}
+                data-testid="button-install-trib-functions"
+              >
+                <Database className="h-3 w-3 mr-1" />
+                {installLoading ? "Installing..." : "Install Functions"}
+              </Button>
+            )}
+          </div>
+
+          <div className="border rounded-md p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Archive className="h-4 w-4" />
+              <span className="text-sm font-medium">Ternary Compression</span>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Status</span>
+                <Badge variant="default" className="text-[10px]" data-testid="badge-compression-active">
+                  <CheckCircle2 className="h-2.5 w-2.5 mr-1" />Active
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Pipeline</span>
+                <span className="text-xs">zlib + ternary + RLE</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Mode</span>
+                <span className="text-xs">Automatic</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Threshold</span>
+                <span className="text-xs">64 bytes min</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border rounded-md p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="text-sm font-medium">.tern File Format</span>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Status</span>
+                <Badge variant="default" className="text-[10px]" data-testid="badge-tern-active">
+                  <CheckCircle2 className="h-2.5 w-2.5 mr-1" />Active
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Format</span>
+                <span className="text-xs">TERN v1</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Encryption</span>
+                <span className="text-xs">Phase split (optional)</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">Extension</span>
+                <span className="text-xs text-muted-foreground">.tern (renaming to .xTzip)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="border rounded-md p-3 bg-muted/30">
+          <p className="text-xs text-muted-foreground">
+            PlenumNET features are applied automatically to document storage. Compression and .tern encoding activate when documents exceed the size threshold.
+            Phase encryption is applied based on the document's encryption settings. Tribonacci indexing distributes documents across 28 shards mapped to the 13-dimensional WBS structure.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function Settings() {
@@ -1002,29 +1152,315 @@ export default function Settings() {
         </Card>
       </div>
 
-      {/* Email Configuration Section - now per-user */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Email Configuration
-          </CardTitle>
-          <CardDescription>
-            Email settings are now configured per user in your Profile
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-md p-4 bg-muted/30 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Each user now configures their own email account so emails are sent from their personal address.
-              Go to your Profile page to set up your email credentials.
-            </p>
-            <Button variant="outline" size="sm" asChild data-testid="button-go-to-profile-email">
-              <a href="/profile">Go to Profile Settings</a>
+      <PlenumNetSettingsCard />
+
+      <EmailConfigCard tenantId={activeTenant?.id || ""} />
+    </div>
+  );
+}
+
+function EmailConfigCard({ tenantId }: { tenantId: string }) {
+  const { toast } = useToast();
+
+  const { data: emailConfig, isLoading } = useQuery<any>({
+    queryKey: [`/api/email/config?tenantId=${tenantId}`],
+    enabled: !!tenantId,
+  });
+
+  const [activeTab, setActiveTab] = useState(emailConfig?.provider === "smtp" ? "smtp" : "resend");
+  const [resendApiKey, setResendApiKey] = useState("");
+  const [resendFromEmail, setResendFromEmail] = useState("");
+  const [resendFromName, setResendFromName] = useState("");
+  const [smtpEmail, setSmtpEmail] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpHost, setSmtpHost] = useState("smtp.office365.com");
+  const [smtpPort, setSmtpPort] = useState("587");
+  const [testEmail, setTestEmail] = useState("");
+
+  useEffect(() => {
+    if (emailConfig) {
+      if (emailConfig.provider === "smtp") setActiveTab("smtp");
+      if (emailConfig.resend?.fromEmail) setResendFromEmail(emailConfig.resend.fromEmail);
+      if (emailConfig.resend?.fromName) setResendFromName(emailConfig.resend.fromName);
+      if (emailConfig.smtp?.email) setSmtpEmail(emailConfig.smtp.email);
+      if (emailConfig.smtp?.host) setSmtpHost(emailConfig.smtp.host);
+      if (emailConfig.smtp?.port) setSmtpPort(String(emailConfig.smtp.port));
+    }
+  }, [emailConfig]);
+
+  const saveConfigMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/email/config", { tenantId, ...data });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/email/config?tenantId=${tenantId}`] });
+      toast({ title: "Email configuration saved" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to save", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const testConnectionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/email/test-resend", { apiKey: resendApiKey || "check" });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.success) {
+        toast({ title: "Connection successful", description: data.message });
+      } else {
+        toast({ title: "Connection failed", description: data.message, variant: "destructive" });
+      }
+    },
+  });
+
+  const sendTestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/email/send-test", { tenantId, to: testEmail });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.success) {
+        toast({ title: "Test email sent!", description: `Delivered via ${data.provider}` });
+      } else {
+        toast({ title: "Send failed", description: data.message, variant: "destructive" });
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "Send failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleSaveResend = () => {
+    saveConfigMutation.mutate({
+      provider: "resend",
+      resendApiKey: resendApiKey || undefined,
+      resendFromEmail,
+      resendFromName,
+    });
+  };
+
+  const handleSaveSmtp = () => {
+    saveConfigMutation.mutate({
+      provider: "smtp",
+      smtpEmail,
+      smtpPassword: smtpPassword || undefined,
+      smtpHost,
+      smtpPort: parseInt(smtpPort) || 587,
+    });
+  };
+
+  const currentProvider = emailConfig?.provider || "none";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="h-5 w-5" />
+          Email Configuration
+          {currentProvider !== "none" && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
+              {currentProvider === "resend" ? "Resend" : "SMTP"} Active
+            </Badge>
+          )}
+        </CardTitle>
+        <CardDescription>
+          Configure how The Maestro sends emails for notifications, vendor communications, and workflows
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="resend" data-testid="tab-resend">
+              <Send className="h-4 w-4 mr-2" />
+              Resend API
+            </TabsTrigger>
+            <TabsTrigger value="smtp" data-testid="tab-smtp">
+              <Server className="h-4 w-4 mr-2" />
+              SMTP Server
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="resend" className="space-y-4 mt-4">
+            <div className="bg-muted/30 border rounded-md p-3">
+              <p className="text-sm text-muted-foreground">
+                Resend is a modern email API used by SalviSign and recommended for reliable delivery. 
+                Get your API key at <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com</a>.
+              </p>
+            </div>
+
+            {emailConfig?.resend?.usingEnvKey && (
+              <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-md p-3">
+                <p className="text-sm text-green-700 dark:text-green-300 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Using system-level Resend API key (environment variable)
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="resendApiKey">API Key</Label>
+                <Input
+                  id="resendApiKey"
+                  type="password"
+                  placeholder={emailConfig?.resend?.hasApiKey ? "••••••••••••••••" : "re_xxxxxxxxxx"}
+                  value={resendApiKey}
+                  onChange={(e) => setResendApiKey(e.target.value)}
+                  data-testid="input-resend-api-key"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {emailConfig?.resend?.hasApiKey ? "API key is saved. Enter a new one to replace it." : "Enter your Resend API key"}
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="resendFromEmail">From Email Address</Label>
+                <Input
+                  id="resendFromEmail"
+                  type="email"
+                  placeholder="notifications@yourdomain.com"
+                  value={resendFromEmail}
+                  onChange={(e) => setResendFromEmail(e.target.value)}
+                  data-testid="input-resend-from-email"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Must be from a verified domain in your Resend account, or use onboarding@resend.dev for testing
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="resendFromName">From Name (optional)</Label>
+                <Input
+                  id="resendFromName"
+                  placeholder="The Maestro ERP"
+                  value={resendFromName}
+                  onChange={(e) => setResendFromName(e.target.value)}
+                  data-testid="input-resend-from-name"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSaveResend}
+                disabled={saveConfigMutation.isPending || (!resendApiKey && !emailConfig?.resend?.hasApiKey)}
+                data-testid="button-save-resend"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saveConfigMutation.isPending ? "Saving..." : "Save Resend Config"}
+              </Button>
+              {(resendApiKey || emailConfig?.resend?.hasApiKey) && (
+                <Button
+                  variant="outline"
+                  onClick={() => testConnectionMutation.mutate()}
+                  disabled={testConnectionMutation.isPending}
+                  data-testid="button-test-resend"
+                >
+                  <TestTube className="h-4 w-4 mr-2" />
+                  {testConnectionMutation.isPending ? "Testing..." : "Test Connection"}
+                </Button>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="smtp" className="space-y-4 mt-4">
+            <div className="bg-muted/30 border rounded-md p-3">
+              <p className="text-sm text-muted-foreground">
+                Connect directly to an SMTP mail server. This is the fallback if Resend is not configured.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="smtpEmail">Email Address</Label>
+                <Input
+                  id="smtpEmail"
+                  type="email"
+                  placeholder="company@yourdomain.com"
+                  value={smtpEmail}
+                  onChange={(e) => setSmtpEmail(e.target.value)}
+                  data-testid="input-smtp-email"
+                />
+              </div>
+              <div>
+                <Label htmlFor="smtpPassword">Password / App Password</Label>
+                <Input
+                  id="smtpPassword"
+                  type="password"
+                  placeholder={emailConfig?.smtp?.configured ? "••••••••" : "Enter password"}
+                  value={smtpPassword}
+                  onChange={(e) => setSmtpPassword(e.target.value)}
+                  data-testid="input-smtp-password"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  For Microsoft 365, use an App Password from account.microsoft.com
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="smtpHost">SMTP Host</Label>
+                  <Input
+                    id="smtpHost"
+                    placeholder="smtp.office365.com"
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                    data-testid="input-smtp-host"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="smtpPort">Port</Label>
+                  <Input
+                    id="smtpPort"
+                    placeholder="587"
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(e.target.value)}
+                    data-testid="input-smtp-port"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleSaveSmtp}
+              disabled={saveConfigMutation.isPending || !smtpEmail}
+              data-testid="button-save-smtp"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saveConfigMutation.isPending ? "Saving..." : "Save SMTP Config"}
+            </Button>
+          </TabsContent>
+        </Tabs>
+
+        <div className="border-t pt-4 mt-4">
+          <Label className="text-sm font-medium">Send Test Email</Label>
+          <div className="flex gap-2 mt-2">
+            <Input
+              type="email"
+              placeholder="your-email@example.com"
+              value={testEmail}
+              onChange={(e) => setTestEmail(e.target.value)}
+              className="flex-1"
+              data-testid="input-test-email"
+            />
+            <Button
+              variant="outline"
+              onClick={() => sendTestMutation.mutate()}
+              disabled={sendTestMutation.isPending || !testEmail || currentProvider === "none"}
+              data-testid="button-send-test-email"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {sendTestMutation.isPending ? "Sending..." : "Send Test"}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          {currentProvider === "none" && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              Configure Resend or SMTP above before sending test emails
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

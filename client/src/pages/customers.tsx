@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Building,
   Search,
-  User,
   MapPin,
   Phone,
   Globe,
@@ -319,194 +318,179 @@ export default function CustomersForm() {
         <Card>
           <CardHeader className="py-3 px-4">
             <CardTitle className="flex items-center gap-2 text-base">
-              <User className="h-4 w-4" />
-              Customer Information
+              <Users className="h-4 w-4" />
+              Contacts
+              {customer && <span className="text-xs text-muted-foreground" data-testid="text-contacts-count">({customerContacts?.length || 0})</span>}
               {editMode && <Badge variant="secondary" className="text-xs">Editing</Badge>}
+              {customer && (
+                <div className="ml-auto">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7"
+                    disabled={!editMode}
+                    onClick={() => {
+                      if (!customer?.id || !tenantId) return;
+                      apiRequest("POST", `/api/customers/${customerId}/contacts`, {
+                        tenantId,
+                        firstName: "",
+                        lastName: "",
+                        jobTitle: "",
+                        businessPhone: "",
+                        emailAddress: "",
+                        isPrimary: (customerContacts?.length || 0) === 0,
+                      }).then(() => {
+                        queryClient.invalidateQueries({ queryKey: ["/api/customers", customerId, "contacts"] });
+                        toast({ title: "Contact Added", description: "New contact created" });
+                      });
+                    }}
+                    data-testid="button-add-customer-contact"
+                  >
+                    <Plus className="mr-1 h-3 w-3" />
+                    Add Contact
+                  </Button>
+                </div>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
             {dataLoading && selectedJobNum ? (
               <div className="space-y-2">
-                {[...Array(6)].map((_, i) => (
-                  <Skeleton key={i} className="h-8 w-full" />
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
             ) : customer ? (
-              <>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label htmlFor="firstName" className="text-xs">First Name</Label>
-                    <Input
-                      id="firstName"
-                      className="h-8"
-                      defaultValue={customer.firstName || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "firstName", e.target.value)}
-                      data-testid="input-first-name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName" className="text-xs">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      className="h-8"
-                      defaultValue={customer.lastName || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "lastName", e.target.value)}
-                      data-testid="input-last-name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="address" className="text-xs">Address</Label>
-                    <Input
-                      id="address"
-                      className="h-8"
-                      defaultValue={customer.address || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "address", e.target.value)}
-                      data-testid="input-address"
-                    />
-                  </div>
+              contactsLoading ? (
+                <div className="space-y-2">
+                  {[...Array(2)].map((_, i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
                 </div>
-
-                <div className="grid grid-cols-4 gap-3">
-                  <div>
-                    <Label htmlFor="city" className="text-xs">City</Label>
-                    <Input
-                      id="city"
-                      className="h-8"
-                      defaultValue={customer.city || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "city", e.target.value)}
-                      data-testid="input-city"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="stateProvince" className="text-xs">State/Province</Label>
-                    <Input
-                      id="stateProvince"
-                      className="h-8"
-                      defaultValue={customer.stateProvince || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "stateProvince", e.target.value)}
-                      data-testid="input-state"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="zipPostalCode" className="text-xs">ZIP/Postal</Label>
-                    <Input
-                      id="zipPostalCode"
-                      className="h-8"
-                      defaultValue={customer.zipPostalCode || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "zipPostalCode", e.target.value)}
-                      data-testid="input-zip"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="countryRegion" className="text-xs">Country</Label>
-                    <Input
-                      id="countryRegion"
-                      className="h-8"
-                      defaultValue={customer.countryRegion || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "countryRegion", e.target.value)}
-                      data-testid="input-country"
-                    />
-                  </div>
+              ) : (customerContacts?.length || 0) > 0 ? (
+                <div className="space-y-1" data-testid="customer-contacts-list">
+                  {customerContacts?.map((contact, idx) => (
+                    <div
+                      key={contact.id}
+                      className="rounded-md border px-2 py-1"
+                      data-testid={`customer-contact-row-${contact.id}`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-xs font-semibold text-foreground">{idx + 1}.</span>
+                        {contact.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
+                        <span className="text-xs font-semibold text-foreground truncate">
+                          {[contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unnamed Contact'}
+                        </span>
+                        <div className="ml-auto flex items-center gap-0.5">
+                          {contact.emailAddress && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => window.open(`mailto:${contact.emailAddress}`, '_blank')}
+                              data-testid={`button-email-customer-contact-${contact.id}`}
+                            >
+                              <Mail className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                          {editMode && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteCustomerContact.mutate(contact.id)}
+                              data-testid={`button-delete-customer-contact-${contact.id}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
+                        <div>
+                          <Label className="text-xs text-foreground font-medium">First Name</Label>
+                          <Input
+                            key={`cc-firstName-${contact.id}`}
+                            defaultValue={contact.firstName || ""}
+                            disabled={!editMode}
+                            onBlur={(e) => handleContactFieldBlur(contact.id, "firstName", e.target.value)}
+                            className="h-6 text-xs"
+                            data-testid={`input-cc-first-name-${contact.id}`}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-foreground font-medium">Last Name</Label>
+                          <Input
+                            key={`cc-lastName-${contact.id}`}
+                            defaultValue={contact.lastName || ""}
+                            disabled={!editMode}
+                            onBlur={(e) => handleContactFieldBlur(contact.id, "lastName", e.target.value)}
+                            className="h-6 text-xs"
+                            data-testid={`input-cc-last-name-${contact.id}`}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-foreground font-medium">Job Title</Label>
+                          <Input
+                            key={`cc-jobTitle-${contact.id}`}
+                            defaultValue={contact.jobTitle || ""}
+                            disabled={!editMode}
+                            onBlur={(e) => handleContactFieldBlur(contact.id, "jobTitle", e.target.value)}
+                            className="h-6 text-xs"
+                            data-testid={`input-cc-job-title-${contact.id}`}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 mt-1">
+                        <div>
+                          <Label className="text-xs text-foreground font-medium">Business Phone</Label>
+                          <Input
+                            key={`cc-businessPhone-${contact.id}`}
+                            defaultValue={contact.businessPhone || ""}
+                            disabled={!editMode}
+                            onBlur={(e) => handleContactFieldBlur(contact.id, "businessPhone", e.target.value)}
+                            className="h-6 text-xs"
+                            data-testid={`input-cc-business-phone-${contact.id}`}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-foreground font-medium">Mobile Phone</Label>
+                          <Input
+                            key={`cc-mobilePhone-${contact.id}`}
+                            defaultValue={contact.mobilePhone || ""}
+                            disabled={!editMode}
+                            onBlur={(e) => handleContactFieldBlur(contact.id, "mobilePhone", e.target.value)}
+                            className="h-6 text-xs"
+                            data-testid={`input-cc-mobile-phone-${contact.id}`}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-foreground font-medium">Email</Label>
+                          <Input
+                            key={`cc-email-${contact.id}`}
+                            type="email"
+                            defaultValue={contact.emailAddress || ""}
+                            disabled={!editMode}
+                            onBlur={(e) => handleContactFieldBlur(contact.id, "emailAddress", e.target.value)}
+                            className="h-6 text-xs"
+                            data-testid={`input-cc-email-${contact.id}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-
-                <Separator className="my-2" />
-
-                <div className="grid grid-cols-4 gap-3">
-                  <div>
-                    <Label htmlFor="homePhone" className="text-xs">Home Phone</Label>
-                    <Input
-                      id="homePhone"
-                      className="h-8"
-                      defaultValue={customer.homePhone || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "homePhone", e.target.value)}
-                      data-testid="input-home-phone"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="workPhone" className="text-xs">Work Phone</Label>
-                    <Input
-                      id="workPhone"
-                      className="h-8"
-                      defaultValue={customer.workPhone || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "workPhone", e.target.value)}
-                      data-testid="input-work-phone"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="mobilePhone" className="text-xs">Mobile</Label>
-                    <Input
-                      id="mobilePhone"
-                      className="h-8"
-                      defaultValue={customer.mobilePhone || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "mobilePhone", e.target.value)}
-                      data-testid="input-mobile-phone"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="mobilePhone2" className="text-xs">Mobile 2</Label>
-                    <Input
-                      id="mobilePhone2"
-                      className="h-8"
-                      defaultValue={customer.mobilePhone2 || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "mobilePhone2", e.target.value)}
-                      data-testid="input-mobile-phone-2"
-                    />
-                  </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No contacts assigned to this customer</p>
+                  {editMode && (
+                    <p className="text-xs mt-1">Click "Add Contact" to create one</p>
+                  )}
                 </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <Label htmlFor="email1" className="text-xs">Email 1</Label>
-                    <Input
-                      id="email1"
-                      type="email"
-                      className="h-8"
-                      defaultValue={customer.email1 || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "email1", e.target.value)}
-                      data-testid="input-email1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email2" className="text-xs">Email 2</Label>
-                    <Input
-                      id="email2"
-                      type="email"
-                      className="h-8"
-                      defaultValue={customer.email2 || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "email2", e.target.value)}
-                      data-testid="input-email2"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="webPage" className="text-xs">Web Page</Label>
-                    <Input
-                      id="webPage"
-                      className="h-8"
-                      defaultValue={customer.webPage || ""}
-                      disabled={!editMode}
-                      onBlur={(e) => handleFieldBlur("customer", "webPage", e.target.value)}
-                      data-testid="input-webpage"
-                    />
-                  </div>
-                </div>
-              </>
+              )
             ) : (
               <div className="text-center py-6 text-muted-foreground">
-                <User className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Select a job number to view customer details</p>
+                <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Select a job number to view contacts</p>
               </div>
             )}
           </CardContent>
@@ -744,170 +728,6 @@ export default function CustomersForm() {
           </CardContent>
         </Card>
       </div>
-
-      {customer && (
-        <Card>
-          <CardHeader className="py-2 px-4">
-            <CardTitle className="flex items-center gap-2 text-sm">
-              <Users className="h-3.5 w-3.5" />
-              <span data-testid="text-contacts-count">Contacts ({customerContacts?.length || 0})</span>
-              <div className="ml-auto flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  disabled={!editMode}
-                  onClick={() => {
-                    if (!customer?.id || !tenantId) return;
-                    apiRequest("POST", `/api/customers/${customerId}/contacts`, {
-                      tenantId,
-                      firstName: "",
-                      lastName: "",
-                      jobTitle: "",
-                      businessPhone: "",
-                      emailAddress: "",
-                      isPrimary: (customerContacts?.length || 0) === 0,
-                    }).then(() => {
-                      queryClient.invalidateQueries({ queryKey: ["/api/customers", customerId, "contacts"] });
-                      toast({ title: "Contact Added", description: "New contact created" });
-                    });
-                  }}
-                  data-testid="button-add-customer-contact"
-                >
-                  <Plus className="mr-1 h-3 w-3" />
-                  Add Contact
-                </Button>
-              </div>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-3 pt-0">
-            {contactsLoading ? (
-              <div className="space-y-2">
-                {[...Array(2)].map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : (customerContacts?.length || 0) > 0 ? (
-              <div className="space-y-1" data-testid="customer-contacts-list">
-                {customerContacts?.map((contact, idx) => (
-                  <div
-                    key={contact.id}
-                    className="rounded-md border px-2 py-1"
-                    data-testid={`customer-contact-row-${contact.id}`}
-                  >
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-xs font-semibold text-foreground">{idx + 1}.</span>
-                      {contact.isPrimary && <Badge variant="secondary" className="text-xs">Primary</Badge>}
-                      <span className="text-xs font-semibold text-foreground truncate">
-                        {[contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unnamed Contact'}
-                      </span>
-                      <div className="ml-auto flex items-center gap-0.5" style={{ visibility: 'visible' }}>
-                        {contact.emailAddress && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => window.open(`mailto:${contact.emailAddress}`, '_blank')}
-                            data-testid={`button-email-customer-contact-${contact.id}`}
-                          >
-                            <Mail className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {editMode && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteCustomerContact.mutate(contact.id)}
-                            data-testid={`button-delete-customer-contact-${contact.id}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-6 gap-1">
-                      <div>
-                        <Label className="text-xs text-foreground font-medium">First Name</Label>
-                        <Input
-                          key={`cc-firstName-${contact.id}`}
-                          defaultValue={contact.firstName || ""}
-                          disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(contact.id, "firstName", e.target.value)}
-                          className="h-6 text-xs"
-                          data-testid={`input-cc-first-name-${contact.id}`}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-foreground font-medium">Last Name</Label>
-                        <Input
-                          key={`cc-lastName-${contact.id}`}
-                          defaultValue={contact.lastName || ""}
-                          disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(contact.id, "lastName", e.target.value)}
-                          className="h-6 text-xs"
-                          data-testid={`input-cc-last-name-${contact.id}`}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-foreground font-medium">Job Title</Label>
-                        <Input
-                          key={`cc-jobTitle-${contact.id}`}
-                          defaultValue={contact.jobTitle || ""}
-                          disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(contact.id, "jobTitle", e.target.value)}
-                          className="h-6 text-xs"
-                          data-testid={`input-cc-job-title-${contact.id}`}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-foreground font-medium">Business Phone</Label>
-                        <Input
-                          key={`cc-businessPhone-${contact.id}`}
-                          defaultValue={contact.businessPhone || ""}
-                          disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(contact.id, "businessPhone", e.target.value)}
-                          className="h-6 text-xs"
-                          data-testid={`input-cc-business-phone-${contact.id}`}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-foreground font-medium">Mobile Phone</Label>
-                        <Input
-                          key={`cc-mobilePhone-${contact.id}`}
-                          defaultValue={contact.mobilePhone || ""}
-                          disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(contact.id, "mobilePhone", e.target.value)}
-                          className="h-6 text-xs"
-                          data-testid={`input-cc-mobile-phone-${contact.id}`}
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-foreground font-medium">Email</Label>
-                        <Input
-                          key={`cc-email-${contact.id}`}
-                          type="email"
-                          defaultValue={contact.emailAddress || ""}
-                          disabled={!editMode}
-                          onBlur={(e) => handleContactFieldBlur(contact.id, "emailAddress", e.target.value)}
-                          className="h-6 text-xs"
-                          data-testid={`input-cc-email-${contact.id}`}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-3 text-muted-foreground">
-                <Users className="h-5 w-5 mx-auto mb-1 opacity-50" />
-                <p className="text-xs">No contacts assigned to this customer</p>
-                {editMode && (
-                  <p className="text-xs mt-1">Click "Add Contact" to create one</p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* Create New Customer Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

@@ -1,0 +1,762 @@
+Option Compare Database
+Option Explicit
+
+Public LastSortNum As Single
+Public LastMargin As Single
+Public LastCategory As String
+Public Newrec As Boolean
+Public PrevPSValue As String
+Public PrevVendor As String
+Private Sub Archived_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Code_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Category_AfterUpdate()
+Me.Combo88.RowSource = Me.Combo88.RowSource
+Me.Category.RowSource = Me.Category.RowSource
+End Sub
+Private Sub Category_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Combo88_AfterUpdate()
+Dim CatValue As String
+
+CatValue = Nz(Me.Combo88, "0")
+
+If CatValue = "0" Or CatValue = "" Then
+    Me.Filter = ""
+    Me.FilterOn = False
+Else
+    Me.Filter = "[Category]='" & Me.Combo88.Value & "'"
+    Me.FilterOn = True
+End If
+
+End Sub
+Private Sub Command0_Click()
+    DoCmd.OpenReport "PMReport", acViewPreview
+    DoCmd.PrintOut , , , , 1
+    DoCmd.OutputTo acOutputReport, "", acFormatPDF, VendorPriceLocation(Me.Vendor) & "\" & Year(Date) & "_PM_CostReport.pdf", False
+    DoCmd.Close acReport, "PMReport"
+End Sub
+Private Sub Command1_Click()
+    DoCmd.OutputTo acOutputReport, "PMReport", acFormatPDF, VendorPriceLocation(Me.Vendor) & "\" & Year(Date) & "_PM_CostReport.pdf", False
+End Sub
+Private Sub Command3_Click()
+Me.VendorCopy.Visible = True
+Me.VendorCopy.SetFocus
+Me.VendorCopy.Dropdown
+End Sub
+Private Sub Command39_Click()
+If Me.PELbl.Visible = True Then Me.PELbl.Visible = False Else Me.PELbl.Visible = True
+If Me.PECostLink.Visible = True Then Me.PECostLink.Visible = False Else Me.PECostLink.Visible = True
+If Me.PECostLinkLbl.Visible = True Then Me.PECostLinkLbl.Visible = False Else Me.PECostLinkLbl.Visible = True
+If Me.PEItem.Visible = True Then Me.PEItem.Visible = False Else Me.PEItem.Visible = True
+If Me.PEItemLbl.Visible = True Then Me.PEItemLbl.Visible = False Else Me.PEItemLbl.Visible = True
+If Me.CostTypeLbl.Visible = True Then Me.CostTypeLbl.Visible = False Else Me.CostTypeLbl.Visible = True
+If Me.CostType.Visible = True Then Me.CostType.Visible = False Else Me.CostType.Visible = True
+If Me.FilterDiv.Visible = True Then Me.FilterDiv.Visible = False Else Me.FilterDiv.Visible = True
+If Me.FilterSubDiv.Visible = True Then Me.FilterSubDiv.Visible = False Else Me.FilterSubDiv.Visible = True
+If Me.DefVend.Visible = True Then Me.DefVend.Visible = False Else Me.DefVend.Visible = True
+If Me.DefVendLbl.Visible = True Then Me.DefVendLbl.Visible = False Else Me.DefVendLbl.Visible = True
+End Sub
+
+Private Sub Command6_Click()
+Me.VendorCopySec.Visible = True
+Me.VendorCopySec.SetFocus
+Me.VendorCopySec.Dropdown
+End Sub
+Private Sub Comments_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub CopyRec_Click()
+CurrentDb.Execute "INSERT INTO pm (ID, Title, SortNum, PS, ProductNum, OldPriceEffective, OldPrice, OldPriceEB, OldPriceEBO, Price, PriceEB, PriceEBO, MU, LastUpdate, NewUpdate, NewUpdateEB, NewUpdateEBO, Effective, Comments, Vendor, Category, PUP, PMCompile, SellPrice, [Content Type]) SELECT PM.ID, PM.Title, " & Me.SortNum + 1 & ", [PS] & ' Copy' AS Expr1, PM.ProductNum, PM.OldPriceEffective, PM.OldPrice, PM.OldPriceEB, PM.OldPriceEBO, PM.Price, PM.PriceEB, PM.PriceEBO, PM.MU, PM.LastUpdate, PM.NewUpdate, PM.NewUpdateEB, PM.NewUpdateEBO, PM.Effective, PM.Comments, PM.Vendor, PM.Category, PM.PUP, PM.PMCompile, PM.SellPrice, PM.[Content Type] From PM WHERE (((PM.PS)= '" & Me.PS & "'));"
+
+
+If Me.PMCompile = True Then
+    MsgBox "This item has a calculated price, therefore all items that are part of its compilated value will also be copied." & vbCrLf & "Click on the + button to edit items in the calculation", vbOKOnly, "Price Master Compilation"
+    CurrentDb.Execute "INSERT INTO PMCompile (ID, Title, SortNum, Vendor, PSSub, SubVendor, Quantity, Qnotes, ExpressionValue, Price, Subtotal, ExpressionValue2, Quantity2, QNotes2, Subtotal2, ExpressionValue3, Quantity3, QNotes3, LineTotal, PS) SELECT PMCompile.ID, PMCompile.Title, PMCompile.SortNum, PMCompile.Vendor, PMCompile.PSSub, PMCompile.SubVendor, PMCompile.Quantity, PMCompile.Qnotes, PMCompile.ExpressionValue, PMCompile.Price, PMCompile.Subtotal, PMCompile.ExpressionValue2, PMCompile.Quantity2, PMCompile.QNotes2, PMCompile.Subtotal2, PMCompile.ExpressionValue3, PMCompile.Quantity3, PMCompile.QNotes3, PMCompile.LineTotal, PMCompile.PS & ' Copy' From PMCompile WHERE (((PMCompile.PS)= '" & Me.PS & "'));"
+End If
+
+Me.Requery
+End Sub
+Private Sub CostType_AfterUpdate()
+PEItem_AfterUpdate
+Me.Recalc
+End Sub
+
+Private Sub DefVend_Click()
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rsd As DAO.Recordset, que As Integer
+Set Yoda = CurrentDb
+
+
+Me.Recalc
+
+Set rs = Yoda.OpenRecordset("Select * From dbo_itemVendorDetail where itemid=" & Me.PEItem & " and IsSelected=True", dbOpenDynaset, dbSeeChanges)
+
+If Not rs.EOF Then rs.MoveLast
+'MsgBox rs.RecordCount
+If rs.RecordCount > 0 Then
+    que = MsgBox("There is already another default material vendor selected" & vbCrLf & "Are you sure you would like to change the default vendor", vbYesNo, "Change Default Vendor?")
+    If que = vbYes Then
+        CurrentDb.Execute "Update dbo_itemVendorDetail set IsSelected=False where itemid= " & Me.PEItem & ""
+        CurrentDb.Execute "Update PM set DefVend=False Where PEItem='" & Me.PEItem & "' And Vendor <> '" & Me.Vendor & "' and costtype='51'"
+        Me.DefVend.Value = True
+    Else
+        Me.DefVend.Value = False
+        Me.Recalc
+    End If
+End If
+
+PEItem_AfterUpdate
+
+
+
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub Division_AfterUpdate()
+
+Me.PEItem.SetFocus
+Me.Division.Visible = False
+Me.divisionlbl.Visible = False
+SetItemRowSource
+
+Me.Subdivision.RowSource = "SELECT DISTINCT dbo_Division.Code, dbo_SubDivision.Description FROM dbo_Division INNER JOIN dbo_SubDivision ON dbo_Division.DivisionID = dbo_SubDivision.DivisionID WHERE (((dbo_Division.Code) = " & Forms.navformorder.NavigationSubform.Form.Division.Column(0) & ")) ORDER BY dbo_Division.Code;"
+
+End Sub
+
+Private Sub Effective_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub FilterDiv_Click()
+If Me.FilterDiv = True Then
+        Me.Division.Visible = True
+        Me.Division.SetFocus
+        Me.Division.Dropdown
+        Me.divisionlbl.Visible = True
+    
+    Else
+        Me.Division.Visible = False
+        Me.divisionlbl.Visible = False
+        Me.divisionlbl.Visible = False
+        SetItemRowSource
+    End If
+End Sub
+Private Sub FilterSubDiv_Click()
+If Me.FilterSubDiv = True Then
+        Me.Subdivision.Visible = True
+        Me.Subdivision.SetFocus
+        Me.Subdivision.Dropdown
+        Me.SubdivisionLbl.Visible = True
+    Else
+        Me.Subdivision.Visible = False
+        Me.SubdivisionLbl.Visible = False
+        Me.SubdivisionLbl.Visible = False
+        SetItemRowSource
+    End If
+
+End Sub
+
+Private Sub Form_AfterInsert()
+Dim Sorty As Integer
+Sorty = Nz(Me.SortNum, 0)
+If Sorty = 0 Then
+    Me.SortNum = LastSortNum + 10
+End If
+    Me.MU = Round(LastMargin, 2)
+    Me.Category = LastCategory
+    Newrec = False
+
+End Sub
+Private Sub Form_BeforeInsert(Cancel As Integer)
+Newrec = True
+Dim rs As DAO.Recordset, currentRS As String
+Set rs = Me.RecordsetClone
+
+If rs.BOF = False Then rs.MoveFirst
+If rs.RecordCount > 0 Then
+    rs.MoveLast
+    LastSortNum = Nz(rs!SortNum, 0)
+    LastMargin = Round(Nz(rs!MU, 1), 2)
+    LastCategory = Nz(rs!Category, "")
+Else
+    LastSortNum = 0
+End If
+
+rs.Close
+Set rs = Nothing
+End Sub
+Private Sub Form_Delete(Cancel As Integer)
+Dim Msg As Integer
+Cancel = True
+Msg = MsgBox("Are you sure you wish to delete this item." & vbCrLf & "Doing so will also delete all items of calculated values", vbYesNo)
+If Msg = vbYes Then
+    CurrentDb.Execute "Delete PMCompile.* From PMCompile Where PMCompile.ps='" & Me.PS.Value & "' and PMCompile.Vendor='" & Me.Vendor & "'"
+    Cancel = False
+End If
+End Sub
+Private Sub Form_Dirty(Cancel As Integer)
+If Me.Dirty Then Me.Dirty = False
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+If Forms.Password.PasswordBox = Pass And AllowEnter(Me.Name) = True Then Me.Visible = True Else Me.Visible = False
+Me.AllowAdditions = AllowAdd(Me.Name)
+Me.AllowEdits = AllowEdit(Me.Name)
+Me.AllowDeletions = AllowDelete(Me.Name)
+
+Me.BorderBox.BackColor = YodaBorderColour
+Me.FormHeader.BackColor = YodaHeadColour
+Me.FormFooter.BackColor = YodaFootColour
+
+Me.Vendor.SetFocus
+End Sub
+Private Sub Label12_DblClick(Cancel As Integer)
+Me.OrderBy = "PORefNUM"
+Me.OrderByOn = True
+End Sub
+Private Sub Label15_DblClick(Cancel As Integer)
+Me.OrderBy = "Code"
+Me.OrderByOn = True
+End Sub
+Private Sub Label3_DblClick(Cancel As Integer)
+Me.OrderBy = "Supplier/Trade"
+Me.OrderByOn = True
+End Sub
+Private Sub Label6_DblClick(Cancel As Integer)
+Me.OrderBy = "PO"
+Me.OrderByOn = True
+End Sub
+Private Sub Locked_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub LastUpdate_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub MU_AfterUpdate()
+Me.Recalc
+End Sub
+Private Sub MU_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub PECostLink_AfterUpdate()
+Me.PECostLink.RowSource = Me.PECostLink.RowSource
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From dbo_Cost Where Description='" & Me.PECostLink.Column(1) & "'", dbOpenDynaset, dbSeeChanges)
+
+If Not rs.EOF Then
+    rs.Edit
+    rs!basecost = Me.Price
+    rs.Update
+End If
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+Me.Recalc
+End Sub
+Public Sub PEItem_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rsd As DAO.Recordset
+Set Yoda = CurrentDb
+
+Select Case Me.CostType.Column(1)
+Case Is = "Material"
+    'First Check to make Sure Vendor Exists
+    Set rs = Yoda.OpenRecordset("Select * From dbo_Vendor Where Company='" & Me.Vendor & "'", dbOpenDynaset, dbSeeChanges)
+    If rs.EOF Then
+        MsgBox "This Vendor does not exist as a material supplier in the Pro Est Database" & vbCrLf & "Go to the Vendor form in The Maestro and add vendor first", vbOKOnly, "Add Vendor"
+    Else
+        Set rs = Yoda.OpenRecordset("Select * from dbo_ItemDetail where itemID=" & Nz(Me.PEItem, "1") & "", dbOpenDynaset, dbSeeChanges)
+        Set rsd = Yoda.OpenRecordset("Select VendorID,Company from dbo_Vendor where Company='" & Me.Vendor & "'", dbOpenSnapshot)
+If Not rs.EOF Then
+        rs.Edit
+        rs!VendorID = rsd!VendorID
+        rs.Update
+        'Update Dbo_ItemCostDetail Table
+        If Me.DefVend = True Then
+            Set rs = Yoda.OpenRecordset("Select * from Dbo_ItemCostDetail where itemID=" & Me.PEItem & " And CosttypeID=" & Me.CostType & "", dbOpenDynaset, dbSeeChanges)
+            If Not rs.EOF Then
+                rs.Edit
+                rs!Cost = Me.Price
+                rs.Update
+            Else
+                'rs.AddNew
+                'rs.update
+            End If
+                
+            'Update Dbo_ItemVendorDetail Table
+            Set rs = Yoda.OpenRecordset("Select * from Dbo_ItemVendorDetail where itemID=" & Me.PEItem & " And VendorID=" & rsd!VendorID & "", dbOpenDynaset, dbSeeChanges)
+            If Not rs.EOF Then
+                rs.Edit
+                rs!VendorID = rsd!VendorID
+                rs!basecost = Me.Price
+                rs!Cost = Me.Price
+                rs!Partnumber = Me.SKU
+                rs!editedby = 1
+                rs!Editedon = Date
+                rs!IsSelected = True
+                rs.Update
+            Else
+                rs.AddNew
+                rs!Itemid = Me.PEItem
+                rs!VendorID = rsd!VendorID
+                rs!basecost = Me.Price
+                rs!Cost = Me.Price
+                rs!Partnumber = Me.SKU
+                rs!CreatedBy = 1
+                rs!Createdon = Date
+                rs!IsSelected = True
+                rs.Update
+            End If
+            rsd.Close
+            Set rsd = Nothing
+        
+        Else 'Vendor is not Default
+            'Update Dbo_ItemVendorDetail Table
+            Set rs = Yoda.OpenRecordset("Select * from Dbo_ItemVendorDetail where itemID=" & Me.PEItem & " And VendorID=" & rsd!VendorID & "", dbOpenDynaset, dbSeeChanges)
+            
+            If Not rs.EOF Then
+                rs.Edit
+                rs!VendorID = rsd!VendorID
+                rs!basecost = Me.Price
+                rs!Cost = Me.Price
+                rs!Partnumber = Me.SKU
+                rs!editedby = 1
+                rs!Editedon = Date
+                rs!IsSelected = False
+                rs.Update
+            Else
+                rs.AddNew
+                rs!Itemid = Me.PEItem
+                rs!VendorID = rsd!VendorID
+                rs!basecost = Me.Price
+                rs!Cost = Me.Price
+                rs!Partnumber = Me.SKU
+                rs!CreatedBy = 1
+                rs!Createdon = Date
+                rs!IsSelected = False
+                rs.Update
+            End If
+        
+            rsd.Close
+            Set rsd = Nothing
+        End If
+End If
+    End If
+
+rs.Close
+Set rs = Nothing
+Set rsd = Nothing
+
+
+
+Case Is = "Labor"
+        If Me.DefVend = True Then
+            'Update Item Cost detail table
+            Set rs = Yoda.OpenRecordset("Select * from Dbo_ItemCostDetail where itemID=" & Me.PEItem & " And CosttypeID=" & Me.CostType & "", dbOpenDynaset, dbSeeChanges)
+            If Not rs.EOF Then
+                rs.Edit
+                rs!Cost = Me.Price
+                rs.Update
+            Else
+                rs.AddNew
+                rs!Itemid = Me.PEItem
+                rs!costtypeID = Me.CostType
+                rs!Cost = Me.Price
+                rs!CreatedBy = 1
+                rs!Createdon = Now
+                rs.Update
+            End If
+        End If
+
+
+Case Is = "SubContractor"
+    'First Check to make Sure SubTrade Exists
+    Set rs = Yoda.OpenRecordset("Select * From dbo_SubContractor Where Company='" & Me.Vendor & "'", dbOpenDynaset, dbSeeChanges)
+    If rs.EOF Then
+        MsgBox "This Subtrade does not exist in the Pro Est Database" & vbCrLf & "Goto the Vendor form in The Maestro and add vendor first", vbOKOnly, "Add Subtrade"
+    End If
+        If Me.DefVend = True Then
+            'Update Item Detail table
+            Set rs = Yoda.OpenRecordset("Select * from dbo_ItemDetail where itemID=" & Me.PEItem & "", dbOpenDynaset, dbSeeChanges)
+            Set rsd = Yoda.OpenRecordset("Select SubContractorID,Company from dbo_Subcontractor where Company='" & Me.Vendor & "'", dbOpenSnapshot)
+            rs.Edit
+            rs!SubContractorID = rsd!SubContractorID
+            rs.Update
+            'Update Item Cost detail table
+            Set rs = Yoda.OpenRecordset("Select * from Dbo_ItemCostDetail where itemID=" & Me.PEItem & " And CosttypeID=" & Me.CostType & "", dbOpenDynaset, dbSeeChanges)
+            If Not rs.EOF Then
+                rs.Edit
+                rs!Cost = Me.Price
+                rs.Update
+            Else
+                rs.AddNew
+                rs!Itemid = Me.PEItem
+                rs!costtypeID = Me.CostType
+                rs!Cost = Me.Price
+                rs!CreatedBy = 1
+                rs!Createdon = Now
+                rs.Update
+            End If
+        End If
+
+Case Is = "Equipment"
+        If Me.DefVend = True Then
+            'Update Item Cost detail table
+            Set rs = Yoda.OpenRecordset("Select * from Dbo_ItemCostDetail where itemID=" & Me.PEItem & " And CosttypeID=" & Me.CostType & "", dbOpenDynaset, dbSeeChanges)
+            If Not rs.EOF Then
+                rs.Edit
+                rs!Cost = Me.Price
+                rs.Update
+            Else
+                rs.AddNew
+                rs!Itemid = Me.PEItem
+                rs!costtypeID = Me.CostType
+                rs!Cost = Me.Price
+                rs!CreatedBy = 1
+                rs!Createdon = Now
+                rs.Update
+            End If
+        End If
+
+Case Is = "Other"
+        If Me.DefVend = True Then
+            'Update Item Cost detail table
+            Set rs = Yoda.OpenRecordset("Select * from Dbo_ItemCostDetail where itemID=" & Me.PEItem & " And CosttypeID=" & Me.CostType & "", dbOpenDynaset, dbSeeChanges)
+            If Not rs.EOF Then
+                rs.Edit
+                rs!Cost = Me.Price
+                rs.Update
+            Else
+                rs.AddNew
+                rs!Itemid = Me.PEItem
+                rs!costtypeID = Me.CostType
+                rs!Cost = Me.Price
+                rs!CreatedBy = 1
+                rs!Createdon = Now
+                rs.Update
+            End If
+        End If
+
+
+rs.Close
+Set rs = Nothing
+End Select
+
+
+Yoda.Close
+
+Set Yoda = Nothing
+Me.Recalc
+End Sub
+
+Private Sub PMCatSortNum_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From PMCatSort Where Category='" & Me.Category & "' and Vendor='" & Me.Vendor & "'", dbOpenDynaset)
+
+If Not rs.EOF Then
+   rs.Edit
+   rs!SortNum = Me.PMCatSortNum
+   rs.Update
+Else
+   rs.AddNew
+   rs!SortNum = Me.PMCatSortNum
+   rs!Category = Me.Category
+   rs!Vendor = Me.Vendor
+   rs.Update
+End If
+
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Private Sub PMCompileBtn_Click()
+    MsgBox "In order to create compiled calculations the Price Master form must shutdown." & vbCrLf & "Upon closing the PMCompile form, Price Master will automatically reload."
+    Screen.MousePointer = 11
+        DoCmd.OpenForm "PMCompileFrm"
+        Forms.PMCompileFrm.PSHeader.Value = Me.PS.Value
+        Forms.PMCompileFrm.Vendor.Value = Me.Vendor.Value
+        Forms.PMCompileFrm.PSHeader_AfterUpdate
+        Forms![navformorder].[NavigationSubform].SourceObject = "PM"
+    Screen.MousePointer = 1
+End Sub
+Private Sub Price_AfterUpdate()
+Dim Pricey As Single
+Pricey = Nz(Me.Price, 0)
+
+'Me.Recalc
+CurrentDb.Execute "UPDATE PM SET PM.PriceEB ='" & WNetGetUser & "', PM.PriceEBO=#" & Date & "# WHERE Pm.ps='" & Me.PS & "' and Vendor='" & Me.Vendor & "'"
+'Me.Recalc
+
+If Pricey <> 0 Then
+    Echo True, "Updating all PM calculated items"
+    Screen.MousePointer = 11
+    UpdatePMCompileSubPrices Me.PS, Me.Vendor, Me.Price
+    UpdateCalcsAfterSubPriceChange Me.PS, Me.Vendor
+    Screen.MousePointer = 1
+End If
+
+Me.LastUpdate = Date
+
+End Sub
+Private Sub NewUpdate_AfterUpdate()
+Dim Pricey As Single
+Pricey = Nz(Me.NewUpdate, 0)
+
+Me.Recalc
+CurrentDb.Execute "UPDATE PM SET PM.NEWUpdateEB ='" & WNetGetUser & "', PM.NEWUpdateEBO=#" & Date & "# WHERE Pm.ps='" & Me.PS & "' and Vendor='" & Me.Vendor & "'"
+Me.Effective.SetFocus
+Me.Effective = Date
+
+If Pricey <> 0 Then
+    Echo True, "Updating all PM calculated items"
+    Screen.MousePointer = 11
+    UpdatePMCompileSubPrices Me.PS, Me.Vendor, Me.NewUpdate
+    UpdateCalcsAfterSubPriceChange Me.PS, Me.Vendor
+    Screen.MousePointer = 1
+End If
+End Sub
+Private Sub NewUpdate_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub OldPrice_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub OldPriceEffective_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub PO_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Price_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub ps_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from PMCompile where PSSub='" & PrevPSValue & "' And SubVendor='" & Me.Vendor & "'", dbOpenDynaset)
+
+'Search Items involved in calculations
+If Not rs.EOF Then
+    CurrentDb.Execute "UPDATE PMCOMPILE SET PMCompile.pssub ='" & Me.PS.Value & "' WHERE PmCompile.pssub='" & PrevPSValue & "' and SubVendor='" & Me.Vendor & "'"
+End If
+
+'Search actual calculated items
+If Me.PMCompile = True Then
+    Me.Recalc
+    CurrentDb.Execute "UPDATE PMCOMPILE SET PMCompile.ps ='" & Me.PS.Value & "' WHERE PmCompile.ps='" & PrevPSValue & "' and Vendor='" & Me.Vendor & "'"
+    CurrentDb.Execute "UPDATE PMCOMPILE SET PMCompile.pssub ='" & Me.PS.Value & "' WHERE PmCompile.pssub='" & PrevPSValue & "' and SubVendor='" & Me.Vendor & "'"
+End If
+
+
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Private Sub PS_Dirty(Cancel As Integer)
+PrevPSValue = Nz(Me.PS.Value, "0")
+End Sub
+Private Sub PSSearch_AfterUpdate()
+' Find the record that matches the control.
+Dim rs As Object, strPS As String
+Set rs = Me.Recordset.Clone
+strPS = "'" & Me.PSSearch & "'"
+rs.FindFirst "[PS] = " & strPS
+If Not rs.EOF Then Me.Bookmark = rs.Bookmark
+Me.PSSearch.Value = ""
+End Sub
+Private Sub SellPrice_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub ps_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub sku_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Sort_Click()
+Dim booky As String, frm As Form, rs As DAO.Recordset, Inte As Integer, Q As Integer, que As Integer
+Dim Tbl As AccessObject, dbs As Object
+
+que = MsgBox("Depending on the number of records this could take up to a couple of minutes" & vbCrLf & "If you have recently renumbered items, you should select NO and double click on any sort number first", vbYesNo, "Would you like to continue?")
+
+If que = vbYes Then
+Screen.MousePointer = 11
+Me.OrderBy = "SortNum"
+Me.OrderByOn = True
+Set frm = Forms.navformorder.NavigationSubform.Form
+Set rs = frm.RecordsetClone
+
+
+With rs
+.MoveFirst
+'Inte = rs!SortNum
+Inte = Inputbox("Enter Starting sort number", , rs!SortNum)
+    Do Until .EOF
+        .Edit
+        !SortNum = Inte
+        .Update
+            .MoveNext
+            Inte = Inte + 10
+            If .EOF Then Exit Do
+        Loop
+End With
+DoCmd.Beep
+'Free Memory
+Set frm = Nothing
+Set rs = Nothing
+Screen.MousePointer = 1
+
+Me.OrderBy = "SortNum"
+Me.OrderByOn = True
+
+
+End If
+
+End Sub
+Private Sub SortLbl_DblClick(Cancel As Integer)
+Me.OrderBy = "SortNum"
+Me.OrderByOn = True
+End Sub
+Private Sub Sortnum_DblClick(Cancel As Integer)
+Me.OrderBy = "SortNum"
+Me.OrderByOn = True
+End Sub
+Private Sub Sortnum_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Subdivision_AfterUpdate()
+Me.PEItem.SetFocus
+Me.Subdivision.Visible = False
+Me.SubdivisionLbl.Visible = False
+SetItemRowSource
+End Sub
+Private Sub Supplier_Trade_AfterUpdate()
+'Move any items involved in calculation over to new Vendor
+CurrentDb.Execute "Update PMCompile Set Vendor='" & Me.Supplier_Trade & "' Where ps='" & Me.PS & "' and Vendor='" & PrevVendor & "'"
+
+'If this item is involved in calculations then move it to new vendor as well
+CurrentDb.Execute "Update PMCompile Set SubVendor='" & Me.Supplier_Trade & "' Where psSub='" & Me.PS & "' and SubVendor='" & PrevVendor & "'"
+
+End Sub
+Private Sub Supplier_Trade_Dirty(Cancel As Integer)
+PrevVendor = Nz(Me.Supplier_Trade.Value, "0")
+End Sub
+Private Sub Supplier_Trade_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub ToggleVendor_Click()
+If Me.ToggleVendor = False Then
+    Me.Vendor.RowSource = "SELECT DISTINCT SalviVendors.Company FROM SalviVendors Inner JOIN PM ON SalviVendors.Company = PM.Vendor WHERE Company<>Null;"
+Else
+    Me.Vendor.RowSource = "SELECT DISTINCT SalviVendors.Company FROM SalviVendors WHERE Company<>Null;"
+End If
+End Sub
+Private Sub UpdateNOW_Click()
+Me.Recalc
+Dim Yoda As DAO.Database, rs As DAO.Recordset, Today As Double
+Set Yoda = CurrentDb
+Today = Date
+    Set rs = Yoda.OpenRecordset("Select * From PM where " & Today & ">= Effective And NewUpdate>0", dbOpenDynaset)
+   
+If Not rs.EOF Then
+    CurrentDb.Execute "UPDATE PM SET PM.OldPriceEffective = PM.LastUpdate, PM.OldPrice = PM.Price,Pm.oldPriceEB=Pm.PriceEB, PM.oldPriceEBO=PM.PriceEBO, PM.Price = PM.NewUpdate,Pm.PriceEBO=PM.NewUpdateEBO, PM.PriceEB=PM.NEWUpdateEB, PM.LastUpdate = PM.Effective,Pm.Pup=true WHERE (((PM.Effective)<=Date()));"
+    CurrentDb.Execute "UPDATE PM SET PM.Effective = Null, PM.NewUpdate = Null WHERE (((PM.Effective)<=Date()));"
+'rs.MoveFirst
+'Do Until rs.EOF
+'    rs.Edit
+'    rs!OldPriceEffective = rs!LastUpdate
+'    rs!OldPrice = rs!Price
+'    rs!OldPriceEB = rs!PriceEB
+'    rs!OldPriceEBO = rs!PriceEBO
+'    rs!Price = rs!NewUpdate
+'    rs!PriceEBO = rs!NewUpdateEBO
+'    rs!PriceEB = rs!NewUpdateEB
+'    rs!LastUpdate = rs!Effective
+'    rs!Effective = Null
+'    rs!NewUpdate = Null
+'    rs!PUP = True
+'    rs.Update
+'        UpdatePMCompileSubPrices rs!PS, rs!Vendor, rs!Price
+'        UpdateCalcsAfterSubPriceChange rs!PS, rs!Vendor
+'        rs.MoveNext
+'Loop
+
+Else
+    MsgBox "NoRecord"
+End If
+
+Me.Recalc
+'Me.PS.SetFocus
+
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Private Sub Vendor_AfterUpdate()
+Me.Requery
+Me.Combo88 = ""
+Me.FilterOn = False
+Me.Combo88.RowSource = Me.Combo88.RowSource
+'Me.Category.RowSource = Me.Category.RowSource
+End Sub
+Private Sub VendorCopy_AfterUpdate()
+Dim Vendore As String
+Vendore = Me.VendorCopy.Value
+
+CurrentDb.Execute "INSERT INTO pm (ID,Sortnum, Title, PS, ProductNum, OldPriceEffective, OldPrice, OldPriceEB, OldPriceEBO, Price, PriceEB, PriceEBO, MU, LastUpdate, NewUpdate, NewUpdateEB, NewUpdateEBO, Effective, Comments, Vendor, Category, PUP, PMCompile, SellPrice, [Content Type]) SELECT PM.ID," & 0 & ", PM.Title, [PS], PM.ProductNum, PM.OldPriceEffective, PM.OldPrice, PM.OldPriceEB, PM.OldPriceEBO, PM.Price, PM.PriceEB, PM.PriceEBO, PM.MU, PM.LastUpdate, PM.NewUpdate, PM.NewUpdateEB, PM.NewUpdateEBO, PM.Effective, PM.Comments, '" & Vendore & "', PM.Category, PM.PUP, PM.PMCompile, PM.SellPrice, PM.[Content Type] From PM WHERE (((PM.PS)= '" & Me.PS & "' and pm.sortnum=" & Me.SortNum & "));"
+
+If Me.PMCompile = True Then
+    MsgBox "This item has a calculated price, therefore all items that are part of its compilated value will also be copied." & vbCrLf & "Click on the + button to edit items in the calculation", vbOKOnly, "Price Master Compilation"
+    CurrentDb.Execute "INSERT INTO PMCompile (ID, Title, SortNum, Vendor, PSSub, SubVendor, Quantity, Qnotes, ExpressionValue, Price, Subtotal, ExpressionValue2, Quantity2, QNotes2, Subtotal2, ExpressionValue3, Quantity3, QNotes3, LineTotal, PS) SELECT PMCompile.ID, PMCompile.Title, PMCompile.SortNum,'" & Vendore & "', PMCompile.PSSub, PMCompile.SubVendor, PMCompile.Quantity, PMCompile.Qnotes, PMCompile.ExpressionValue, PMCompile.Price, PMCompile.Subtotal, PMCompile.ExpressionValue2, PMCompile.Quantity2, PMCompile.QNotes2, PMCompile.Subtotal2, PMCompile.ExpressionValue3, PMCompile.Quantity3, PMCompile.QNotes3, PMCompile.LineTotal, PMCompile.PS From PMCompile WHERE (((PMCompile.PS)= '" & Me.PS & "'));"
+End If
+
+Me.Requery
+Me.PS.SetFocus
+Me.VendorCopy.Visible = False
+
+End Sub
+Private Sub VendorCopySec_AfterUpdate()
+Dim Vendore As String
+Vendore = Me.VendorCopySec.Value
+
+Screen.MousePointer = 11
+    CurrentDb.Execute "INSERT INTO pm (ID,Sortnum, Title, PS, ProductNum, OldPriceEffective, OldPrice, OldPriceEB, OldPriceEBO, Price, PriceEB, PriceEBO, MU, LastUpdate, NewUpdate, NewUpdateEB, NewUpdateEBO, Effective, Comments, Vendor, Category, PUP, PMCompile, SellPrice, [Content Type]) SELECT PM.ID,pm.sortnum, PM.Title, [PS], PM.ProductNum, PM.OldPriceEffective, PM.OldPrice, PM.OldPriceEB, PM.OldPriceEBO, PM.Price, PM.PriceEB, PM.PriceEBO, PM.MU, PM.LastUpdate, PM.NewUpdate, PM.NewUpdateEB, PM.NewUpdateEBO, PM.Effective, PM.Comments, '" & Vendore & "', PM.Category, PM.PUP, PM.PMCompile, PM.SellPrice, PM.[Content Type] From PM WHERE (((PM.Vendor)= '" & Me.Vendor & "'));"
+    CurrentDb.Execute "INSERT INTO PMCompile (ID, Title, SortNum, Vendor, PSSub, SubVendor, Quantity, Qnotes, ExpressionValue, Price, Subtotal, ExpressionValue2, Quantity2, QNotes2, Subtotal2, ExpressionValue3, Quantity3, QNotes3, LineTotal, PS) SELECT PMCompile.ID, PMCompile.Title, PMCompile.SortNum,'" & Vendore & "', PMCompile.PSSub, PMCompile.SubVendor, PMCompile.Quantity, PMCompile.Qnotes, PMCompile.ExpressionValue, PMCompile.Price, PMCompile.Subtotal, PMCompile.ExpressionValue2, PMCompile.Quantity2, PMCompile.QNotes2, PMCompile.Subtotal2, PMCompile.ExpressionValue3, PMCompile.Quantity3, PMCompile.QNotes3, PMCompile.LineTotal, PMCompile.PS From PMCompile WHERE (((PMCompile.Vendor)= '" & Me.Vendor & "'));"
+    CurrentDb.Execute "Update PMCompile Set SubVendor='" & Vendore & "' WHERE (((PMCompile.Vendor)= '" & Vendore & "' and Subvendor='" & Me.Vendor & "'));"
+
+    Me.Requery
+    Me.PS.SetFocus
+    Me.VendorCopySec.Visible = False
+    Me.Vendor.RowSource = Me.Vendor.RowSource
+
+Screen.MousePointer = 1
+End Sub
+Private Sub SetItemRowSource()
+If Me.FilterDiv = True Then
+    If Me.FilterSubDiv = True Then
+        Me.PEItem.RowSource = "SELECT DISTINCT dbo_Item.ItemID, dbo_Item.Description, dbo_Division.Description, dbo_SubDivision.Description FROM (dbo_Item INNER JOIN dbo_SubDivision ON dbo_Item.SubDivisionID = dbo_SubDivision.SubDivisionID) INNER JOIN dbo_Division ON dbo_SubDivision.DivisionID = dbo_Division.DivisionID WHERE (((dbo_SubDivision.Description)=[Forms].[navformorder].[NavigationSubform].[Form].[SubDivision]));"
+    Else
+        Me.PEItem.RowSource = "SELECT DISTINCT dbo_Item.ItemID, dbo_Item.Description, dbo_Division.Description, dbo_SubDivision.Description FROM (dbo_Item INNER JOIN dbo_SubDivision ON dbo_Item.SubDivisionID = dbo_SubDivision.SubDivisionID) INNER JOIN dbo_Division ON dbo_SubDivision.DivisionID = dbo_Division.DivisionID WHERE (((dbo_Division.Description)=[Forms].[navformorder].[NavigationSubform].[Form].[Division]));"
+    End If
+Else
+    Me.PEItem.RowSource = "SELECT DISTINCT dbo_Item.ItemID, dbo_Item.Description FROM dbo_Item;"
+End If
+
+Debug.Print Forms.navformorder.NavigationSubform.Form.Division.Column(1)
+'Debug.Print Forms.navformorder.NavigationSubform.Form.Division.Value
+'MsgBox Me.PEItem.RowSource
+
+End Sub

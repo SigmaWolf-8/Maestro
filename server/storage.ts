@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { eq, and, desc, sql, inArray, like, or, gte, lte } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, like, or, gte, lte, isNull } from "drizzle-orm";
 import { db } from "./db";
 import {
   tenants,
@@ -88,6 +88,12 @@ import {
   type InsertStripeSync,
   type TenantApplication,
   type InsertTenantApplication,
+  pmItems,
+  pmCompileItems,
+  type PmItem,
+  type InsertPmItem,
+  type PmCompileItem,
+  type InsertPmCompileItem,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -237,9 +243,9 @@ export interface IStorage {
   deactivateWopiSession(accessToken: string): Promise<boolean>;
 
   // MS Graph Tokens
-  getMsGraphToken(userId: string, tenantId: string): Promise<MsGraphToken | undefined>;
+  getMsGraphToken(userId: string | null, tenantId: string): Promise<MsGraphToken | undefined>;
   upsertMsGraphToken(token: InsertMsGraphToken): Promise<MsGraphToken>;
-  deleteMsGraphToken(userId: string, tenantId: string): Promise<boolean>;
+  deleteMsGraphToken(userId: string | null, tenantId: string): Promise<boolean>;
 
   // Subscription Plans
   getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
@@ -276,6 +282,22 @@ export interface IStorage {
   getStripeSyncRecords(planId?: number): Promise<StripeSync[]>;
   createStripeSyncRecord(record: InsertStripeSync): Promise<StripeSync>;
   updateStripeSyncRecord(id: number, updates: Partial<StripeSync>): Promise<StripeSync | undefined>;
+
+  // Price Master
+  getPmItems(tenantId: string, filters?: { vendor?: string; category?: string; wbsCode?: string; archived?: boolean }): Promise<PmItem[]>;
+  getPmItem(id: string): Promise<PmItem | undefined>;
+  createPmItem(item: InsertPmItem): Promise<PmItem>;
+  updatePmItem(id: string, updates: Partial<PmItem>): Promise<PmItem | undefined>;
+  deletePmItem(id: string): Promise<boolean>;
+  getPmVendors(tenantId: string): Promise<string[]>;
+  getPmCategories(tenantId: string, vendor?: string): Promise<string[]>;
+
+  // PM Compile (Estimating Assemblies)
+  getPmCompileItems(tenantId: string, ps: string, vendor?: string): Promise<PmCompileItem[]>;
+  getPmCompileItem(id: string): Promise<PmCompileItem | undefined>;
+  createPmCompileItem(item: InsertPmCompileItem): Promise<PmCompileItem>;
+  updatePmCompileItem(id: string, updates: Partial<PmCompileItem>): Promise<PmCompileItem | undefined>;
+  deletePmCompileItem(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -796,7 +818,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteDocument(id: string): Promise<boolean> {
-    // Also delete associated meta tags
+    await db.delete(documentAuditLogs).where(eq(documentAuditLogs.documentId, id));
     await db.delete(documentMetaTags).where(eq(documentMetaTags.documentId, id));
     const result = await db.delete(documents).where(eq(documents.id, id)).returning();
     return result.length > 0;
@@ -1278,15 +1300,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // MS Graph Tokens
-  async getMsGraphToken(userId: string, tenantId: string): Promise<MsGraphToken | undefined> {
-    const [token] = await db.select().from(msGraphTokens).where(
-      and(eq(msGraphTokens.userId, userId), eq(msGraphTokens.tenantId, tenantId), eq(msGraphTokens.isActive, true))
-    );
+  async getMsGraphToken(userId: string | null, tenantId: string): Promise<MsGraphToken | undefined> {
+    const conditions = [eq(msGraphTokens.tenantId, tenantId), eq(msGraphTokens.isActive, true)];
+    if (userId) {
+      conditions.push(eq(msGraphTokens.userId, userId));
+    } else {
+      conditions.push(isNull(msGraphTokens.userId));
+    }
+    const [token] = await db.select().from(msGraphTokens).where(and(...conditions));
     return token || undefined;
   }
 
   async upsertMsGraphToken(token: InsertMsGraphToken): Promise<MsGraphToken> {
-    const existing = await this.getMsGraphToken(token.userId!, token.tenantId);
+    const existing = await this.getMsGraphToken(token.userId ?? null, token.tenantId);
     if (existing) {
       const [updated] = await db.update(msGraphTokens)
         .set({
@@ -1308,10 +1334,14 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async deleteMsGraphToken(userId: string, tenantId: string): Promise<boolean> {
-    const result = await db.delete(msGraphTokens).where(
-      and(eq(msGraphTokens.userId, userId), eq(msGraphTokens.tenantId, tenantId))
-    ).returning();
+  async deleteMsGraphToken(userId: string | null, tenantId: string): Promise<boolean> {
+    const conditions = [eq(msGraphTokens.tenantId, tenantId)];
+    if (userId) {
+      conditions.push(eq(msGraphTokens.userId, userId));
+    } else {
+      conditions.push(isNull(msGraphTokens.userId));
+    }
+    const result = await db.delete(msGraphTokens).where(and(...conditions)).returning();
     return result.length > 0;
   }
 
@@ -1486,6 +1516,77 @@ export class DatabaseStorage implements IStorage {
       .where(eq(stripeSync.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async getPmItems(tenantId: string, filters?: { vendor?: string; category?: string; wbsCode?: string; archived?: boolean }): Promise<PmItem[]> {
+    const conditions = [eq(pmItems.tenantId, tenantId)];
+    if (filters?.vendor) conditions.push(eq(pmItems.vendor, filters.vendor));
+    if (filters?.category) conditions.push(eq(pmItems.category, filters.category));
+    if (filters?.wbsCode) conditions.push(eq(pmItems.wbsCode, filters.wbsCode));
+    if (filters?.archived !== undefined) conditions.push(eq(pmItems.archived, filters.archived));
+    return db.select().from(pmItems).where(and(...conditions)).orderBy(pmItems.sortNum);
+  }
+
+  async getPmItem(id: string): Promise<PmItem | undefined> {
+    const [item] = await db.select().from(pmItems).where(eq(pmItems.id, id));
+    return item || undefined;
+  }
+
+  async createPmItem(item: InsertPmItem): Promise<PmItem> {
+    const id = randomUUID();
+    const now = new Date();
+    const [newItem] = await db.insert(pmItems).values({ ...item, id, createdAt: now, updatedAt: now }).returning();
+    return newItem;
+  }
+
+  async updatePmItem(id: string, updates: Partial<PmItem>): Promise<PmItem | undefined> {
+    const [updated] = await db.update(pmItems).set({ ...updates, updatedAt: new Date() }).where(eq(pmItems.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deletePmItem(id: string): Promise<boolean> {
+    const result = await db.delete(pmItems).where(eq(pmItems.id, id));
+    return true;
+  }
+
+  async getPmVendors(tenantId: string): Promise<string[]> {
+    const results = await db.selectDistinct({ vendor: pmItems.vendor }).from(pmItems).where(eq(pmItems.tenantId, tenantId)).orderBy(pmItems.vendor);
+    return results.map(r => r.vendor);
+  }
+
+  async getPmCategories(tenantId: string, vendor?: string): Promise<string[]> {
+    const conditions = [eq(pmItems.tenantId, tenantId)];
+    if (vendor) conditions.push(eq(pmItems.vendor, vendor));
+    const results = await db.selectDistinct({ category: pmItems.category }).from(pmItems).where(and(...conditions)).orderBy(pmItems.category);
+    return results.filter(r => r.category !== null).map(r => r.category!);
+  }
+
+  async getPmCompileItems(tenantId: string, ps: string, vendor?: string): Promise<PmCompileItem[]> {
+    const conditions = [eq(pmCompileItems.tenantId, tenantId), eq(pmCompileItems.ps, ps)];
+    if (vendor) conditions.push(eq(pmCompileItems.vendor, vendor));
+    return db.select().from(pmCompileItems).where(and(...conditions)).orderBy(pmCompileItems.sortNum);
+  }
+
+  async getPmCompileItem(id: string): Promise<PmCompileItem | undefined> {
+    const [item] = await db.select().from(pmCompileItems).where(eq(pmCompileItems.id, id));
+    return item || undefined;
+  }
+
+  async createPmCompileItem(item: InsertPmCompileItem): Promise<PmCompileItem> {
+    const id = randomUUID();
+    const now = new Date();
+    const [newItem] = await db.insert(pmCompileItems).values({ ...item, id, createdAt: now, updatedAt: now }).returning();
+    return newItem;
+  }
+
+  async updatePmCompileItem(id: string, updates: Partial<PmCompileItem>): Promise<PmCompileItem | undefined> {
+    const [updated] = await db.update(pmCompileItems).set({ ...updates, updatedAt: new Date() }).where(eq(pmCompileItems.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deletePmCompileItem(id: string): Promise<boolean> {
+    const result = await db.delete(pmCompileItems).where(eq(pmCompileItems.id, id));
+    return true;
   }
 }
 
@@ -1874,7 +1975,7 @@ export async function seedNavigationForTenant(tenantId: string) {
       path: null,
       component: null,
       uiSlot: "sidebar",
-      maxChildrenDisplay: 5,
+      maxChildrenDisplay: 10,
       isCollapsible: true,
       minRoleRequired: "viewer",
       createdAt: new Date(),
@@ -1909,20 +2010,23 @@ export async function seedNavigationForTenant(tenantId: string) {
 
   // Finance sub-items (5 items max)
   await db.insert(navigationItems).values([
-    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 1, itemType: "action", title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
-    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 2, itemType: "action", title: "Purchase Orders", iconName: "ClipboardList", path: "/finance/purchase-orders", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
-    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 3, itemType: "action", title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRoleRequired: "accountant", createdAt: new Date(), updatedAt: new Date() },
-    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 4, itemType: "action", title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRoleRequired: "accountant", createdAt: new Date(), updatedAt: new Date() },
-    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 5, itemType: "action", title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRoleRequired: "accountant", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 1, itemType: "action", title: "Price Master", iconName: "DollarSign", path: "/finance/price-master", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 2, itemType: "action", title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 3, itemType: "action", title: "Purchase Orders", iconName: "ClipboardList", path: "/finance/purchase-orders", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 4, itemType: "action", title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRoleRequired: "accountant", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 5, itemType: "action", title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRoleRequired: "accountant", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navFinanceId, itemOrder: 6, itemType: "action", title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRoleRequired: "accountant", createdAt: new Date(), updatedAt: new Date() },
   ]);
 
-  // Documents sub-items (6 items)
+  // Documents sub-items (7 items)
   await db.insert(navigationItems).values([
     { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 1, itemType: "action", title: "File Manager", iconName: "Files", path: "/documents/files", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
     { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 2, itemType: "action", title: "Plan Room", iconName: "Map", path: "/documents/plans", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
     { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 3, itemType: "action", title: "Templates", iconName: "FileCode", path: "/documents/templates", minRoleRequired: "project_manager", createdAt: new Date(), updatedAt: new Date() },
     { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 4, itemType: "action", title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
     { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 5, itemType: "action", title: "Archives", iconName: "Archive", path: "/documents/archives", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 6, itemType: "action", title: "Sign Here", iconName: "PenTool", path: "/documents/salvisign", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
+    { id: randomUUID(), tenantId, parentId: navDocumentsId, itemOrder: 7, itemType: "action", title: "Document Lifecycle", iconName: "Workflow", path: "/documents/lifecycle", minRoleRequired: "viewer", createdAt: new Date(), updatedAt: new Date() },
   ]);
 
   // Applications - top-level parent
@@ -1951,13 +2055,14 @@ function getNavigationTemplate(companyType: string): NavSection[] {
   };
 
   const documents: NavSection = {
-    title: "Documents", iconName: "FolderArchive", order: 70, minRole: "viewer",
+    title: "Documents", iconName: "FolderArchive", order: 70, minRole: "viewer", maxChildren: 10,
     children: [
       { title: "File Manager", iconName: "Files", path: "/documents/files", minRole: "viewer" },
       { title: "Smart Inbox", iconName: "Mail", path: "/documents/smart-inbox", minRole: "viewer" },
       { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
       { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
       { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
+      { title: "Sign Here", iconName: "PenTool", path: "/documents/salvisign", minRole: "viewer" },
     ],
   };
 
@@ -2009,6 +2114,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         {
           title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
           children: [
+            { title: "Price Master", iconName: "DollarSign", path: "/finance/price-master", minRole: "project_manager" },
             { title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRole: "project_manager" },
             { title: "Purchase Orders", iconName: "ClipboardList", path: "/finance/purchase-orders", minRole: "project_manager" },
             { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
@@ -2044,6 +2150,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
           { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
           { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
           { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
+          { title: "Sign Here", iconName: "PenTool", path: "/documents/salvisign", minRole: "viewer" },
         ]},
         billing,
       ];
@@ -2074,6 +2181,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         {
           title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
           children: [
+            { title: "Price Master", iconName: "DollarSign", path: "/finance/price-master", minRole: "project_manager" },
             { title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRole: "project_manager" },
             { title: "Purchase Orders", iconName: "ClipboardList", path: "/finance/purchase-orders", minRole: "project_manager" },
             { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
@@ -2099,6 +2207,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
           { title: "Templates", iconName: "FileCode", path: "/documents/templates", minRole: "project_manager" },
           { title: "Reports", iconName: "FileBarChart", path: "/documents/reports", minRole: "viewer" },
           { title: "Archives", iconName: "Archive", path: "/documents/archives", minRole: "viewer" },
+          { title: "Sign Here", iconName: "PenTool", path: "/documents/salvisign", minRole: "viewer" },
         ]},
         billing,
       ];
@@ -2116,6 +2225,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         {
           title: "Finance", iconName: "Landmark", order: 30, minRole: "accountant",
           children: [
+            { title: "Price Master", iconName: "DollarSign", path: "/finance/price-master", minRole: "project_manager" },
             { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
             { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
             { title: "Reports & GL", iconName: "BarChart", path: "/finance/reports", minRole: "accountant" },
@@ -2260,6 +2370,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         {
           title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
           children: [
+            { title: "Price Master", iconName: "DollarSign", path: "/finance/price-master", minRole: "project_manager" },
             { title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRole: "project_manager" },
             { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
             { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },
@@ -2381,6 +2492,7 @@ function getNavigationTemplate(companyType: string): NavSection[] {
         {
           title: "Finance", iconName: "Landmark", order: 40, minRole: "accountant",
           children: [
+            { title: "Price Master", iconName: "DollarSign", path: "/finance/price-master", minRole: "project_manager" },
             { title: "Estimating", iconName: "Calculator", path: "/finance/estimating", minRole: "project_manager" },
             { title: "Invoicing", iconName: "Receipt", path: "/finance/invoicing", minRole: "accountant" },
             { title: "Expenses", iconName: "CreditCard", path: "/finance/expenses", minRole: "accountant" },

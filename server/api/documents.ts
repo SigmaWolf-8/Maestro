@@ -344,6 +344,65 @@ export function createDocumentsRouter(): Router {
     }
   });
 
+  router.post("/api/documents/tern", async (req, res) => {
+    try {
+      const { documentService } = await import("../services/document-service");
+
+      const schema = z.object({
+        tenantId: z.string().min(1),
+        projectId: z.string().optional(),
+        name: z.string().min(1).max(200),
+        description: z.string().max(1000).optional(),
+        category: z.string().max(50).optional(),
+        content: z.string().optional(),
+        fileData: z.string().optional(),
+        mimeType: z.string().optional(),
+        encrypt: z.boolean().optional(),
+        encryptionMode: z.enum(["high_security", "balanced", "performance", "adaptive"]).optional(),
+      });
+
+      const data = schema.parse(req.body);
+
+      const result = await documentService.uploadTern({
+        ...data,
+        useTernFormat: true,
+      });
+
+      res.status(201).json({
+        ...result.document,
+        ternFormat: true,
+        savings: result.savingsPercent,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error creating TERN document:", error);
+      res.status(500).json({ error: "Failed to create TERN document" });
+    }
+  });
+
+  router.get("/api/documents/:id/tern", async (req, res) => {
+    try {
+      const { documentService } = await import("../services/document-service");
+
+      const result = await documentService.downloadTern(req.params.id);
+      if (!result) {
+        return res.status(404).json({ error: "TERN document not found or not in TERN format" });
+      }
+
+      res.json({
+        header: result.header,
+        data: result.data.toString("base64"),
+        mimeType: result.mimeType,
+        size: result.data.length,
+      });
+    } catch (error: any) {
+      console.error("Error downloading TERN document:", error);
+      res.status(500).json({ error: error.message || "Failed to download TERN document" });
+    }
+  });
+
   // Decrypt a document (fetch decrypted content)
   router.get("/api/documents/:id/decrypt", async (req, res) => {
     try {
@@ -399,6 +458,38 @@ export function createDocumentsRouter(): Router {
     } catch (error) {
       console.error("Error deleting document:", error);
       res.status(500).json({ error: "Failed to delete document" });
+    }
+  });
+
+  router.post("/api/documents/bulk-encrypt", async (req, res) => {
+    try {
+      const { documentService } = await import("../services/document-service");
+
+      const schema = z.object({
+        mode: z.enum(["high_security", "balanced", "performance", "adaptive"]).optional(),
+      });
+
+      const data = schema.parse(req.body);
+      const tenantId = await getDefaultTenantId();
+      if (!tenantId) {
+        return res.status(400).json({ error: "No tenant context" });
+      }
+      const result = await documentService.bulkEncrypt(tenantId, data.mode || "balanced");
+
+      res.json({
+        total: result.total,
+        alreadyEncrypted: result.alreadyEncrypted,
+        encrypted: result.succeeded.length,
+        failed: result.failed.length,
+        succeededIds: result.succeeded,
+        failedDetails: result.failed,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error in bulk encryption:", error);
+      res.status(500).json({ error: "Failed to bulk encrypt documents" });
     }
   });
 

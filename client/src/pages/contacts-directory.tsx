@@ -1,6 +1,9 @@
 import { Fragment, useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Users, Mail, Phone, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Printer, GripVertical, Layers, X } from "lucide-react";
+import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Search, Users, Mail, Phone, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown, Printer, GripVertical, Layers, X, Loader2 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Input } from "@/components/ui/input";
@@ -106,6 +109,9 @@ function hslStringToRgb(hslStr: string): [number, number, number] {
 
 export default function ContactsDirectoryPage() {
   const { activeTenant } = useSettings();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+  const [isSavingReport, setIsSavingReport] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortField>("lastName");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -297,7 +303,7 @@ export default function ContactsDirectoryPage() {
 
   const groupedData = buildGroupedRows();
 
-  const handlePrintReport = useCallback(() => {
+  const handlePrintReport = useCallback(async () => {
     if (!contacts.length) return;
 
     const branding = activeTenant?.config?.branding;
@@ -435,8 +441,44 @@ export default function ContactsDirectoryPage() {
       },
     });
 
-    doc.save(`contacts-directory-${new Date().toISOString().split("T")[0]}.pdf`);
-  }, [contacts, columns, category, total, sortBy, sortDirection, activeTenant, groupByFields]);
+    const fileName = `contacts-directory-${new Date().toISOString().split("T")[0]}.pdf`;
+    const pdfBase64 = doc.output("datauristring").replace(/^data:[^;]+;base64,/, "");
+
+    if (!activeTenant?.id) {
+      doc.save(fileName);
+      return;
+    }
+
+    setIsSavingReport(true);
+    try {
+      const createRes = await apiRequest("POST", "/api/documents", {
+        tenantId: activeTenant.id,
+        name: fileName,
+        description: `Contacts Directory Report - ${categoryLabel} - ${dateStr}`,
+        category: "report",
+        content: pdfBase64,
+        encrypt: true,
+      });
+      const newDoc = await createRes.json();
+
+      try {
+        await apiRequest("POST", "/api/classification/classify", {
+          documentId: newDoc.id,
+          intakePath: "report_generation",
+        });
+      } catch (classifyErr: any) {
+        console.warn("Auto-classification skipped:", classifyErr?.message);
+      }
+
+      toast({ title: "Report saved to File Manager", description: fileName });
+      navigate(`/documents/files?docId=${newDoc.id}`);
+    } catch (err: any) {
+      toast({ title: "Failed to save report", description: err.message || "Report downloaded instead", variant: "destructive" });
+      doc.save(fileName);
+    } finally {
+      setIsSavingReport(false);
+    }
+  }, [contacts, columns, category, total, sortBy, sortDirection, activeTenant, groupByFields, navigate, toast]);
 
   return (
     <div className="flex flex-col gap-3 p-4" data-testid="page-contacts-directory">
@@ -458,11 +500,14 @@ export default function ContactsDirectoryPage() {
             variant="outline"
             size="sm"
             onClick={handlePrintReport}
-            disabled={!contacts.length || isLoading}
+            disabled={!contacts.length || isLoading || isSavingReport}
             data-testid="button-print-report"
           >
-            <Printer className="h-4 w-4 mr-1.5" />
-            Print Report
+            {isSavingReport ? (
+              <><Loader2 className="h-4 w-4 mr-1.5 animate-spin" />Saving Report...</>
+            ) : (
+              <><Printer className="h-4 w-4 mr-1.5" />Print Report</>
+            )}
           </Button>
         </div>
       </div>

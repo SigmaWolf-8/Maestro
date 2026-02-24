@@ -221,6 +221,11 @@ export const documents = pgTable("documents", {
   savingsPercent: decimal("savings_percent", { precision: 5, scale: 2 }),
   uploadedBy: varchar("uploaded_by", { length: 36 }).references(() => tenantUsers.id),
   metadata: jsonb("metadata").default({}),
+  ternEnabled: boolean("tern_enabled").default(false),
+  ternEncrypted: boolean("tern_encrypted").default(false),
+  ternHeader: jsonb("tern_header"),
+  ternData: text("tern_data"),
+  ternShardIndex: integer("tern_shard_index"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -866,3 +871,426 @@ export type PricingConfig = typeof pricingConfig.$inferSelect;
 export type InsertPricingConfig = z.infer<typeof insertPricingConfigSchema>;
 export type StripeSync = typeof stripeSync.$inferSelect;
 export type InsertStripeSync = z.infer<typeof insertStripeSyncSchema>;
+
+export const pmItems = pgTable("pm_items", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  title: text("title"),
+  sortNum: integer("sort_num").default(0),
+  ps: text("ps").notNull(),
+  productNum: text("product_num"),
+  sku: text("sku"),
+  oldPrice: decimal("old_price", { precision: 15, scale: 2 }),
+  oldPriceEffective: timestamp("old_price_effective"),
+  price: decimal("price", { precision: 15, scale: 2 }).default("0"),
+  mu: decimal("mu", { precision: 6, scale: 4 }).default("1"),
+  lastUpdate: timestamp("last_update"),
+  newUpdate: decimal("new_update", { precision: 15, scale: 2 }),
+  effective: timestamp("effective"),
+  comments: text("comments"),
+  vendor: text("vendor").notNull(),
+  category: text("category"),
+  pup: boolean("pup").default(false),
+  pmCompile: boolean("pm_compile").default(false),
+  sellPrice: decimal("sell_price", { precision: 15, scale: 2 }),
+  wbsCode: text("wbs_code"),
+  archived: boolean("archived").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const pmCompileItems = pgTable("pm_compile_items", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  title: text("title"),
+  sortNum: integer("sort_num").default(0),
+  ps: text("ps").notNull(),
+  psSub: text("ps_sub").notNull(),
+  vendor: text("vendor"),
+  subVendor: text("sub_vendor"),
+  quantity: decimal("quantity", { precision: 15, scale: 4 }).default("1"),
+  qNotes: text("q_notes"),
+  expressionValue: text("expression_value"),
+  price: decimal("price", { precision: 15, scale: 2 }).default("0"),
+  subtotal: decimal("subtotal", { precision: 15, scale: 2 }),
+  expressionValue2: text("expression_value_2"),
+  quantity2: decimal("quantity_2", { precision: 15, scale: 4 }),
+  qNotes2: text("q_notes_2"),
+  subtotal2: decimal("subtotal_2", { precision: 15, scale: 2 }),
+  expressionValue3: text("expression_value_3"),
+  quantity3: decimal("quantity_3", { precision: 15, scale: 4 }),
+  qNotes3: text("q_notes_3"),
+  lineTotal: decimal("line_total", { precision: 15, scale: 2 }),
+  pup: boolean("pup").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPmItemSchema = createInsertSchema(pmItems).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertPmCompileItemSchema = createInsertSchema(pmCompileItems).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type PmItem = typeof pmItems.$inferSelect;
+export type InsertPmItem = z.infer<typeof insertPmItemSchema>;
+export type PmCompileItem = typeof pmCompileItems.$inferSelect;
+export type InsertPmCompileItem = z.infer<typeof insertPmCompileItemSchema>;
+
+// ============================================================================
+// PQTI-Integrated Document Lifecycle Subsystems
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// 1. Unified Event Bus (EB)
+// ---------------------------------------------------------------------------
+
+export const documentEventTypes = [
+  "document.captured", "document.classified", "document.uploaded",
+  "document.staged", "document.reviewed", "document.approved",
+  "document.version_locked", "document.archived", "document.signed", "document.shared"
+] as const;
+export type DocumentEventType = typeof documentEventTypes[number];
+
+export const documentEvents = pgTable("document_events", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  documentId: varchar("document_id", { length: 36 }).references(() => documents.id),
+  eventType: text("event_type").notNull(),
+  userId: varchar("user_id", { length: 36 }).references(() => tenantUsers.id),
+  wbsNodeId: varchar("wbs_node_id", { length: 36 }).references(() => wbsNodes.id),
+  payload: jsonb("payload").default({}),
+  metadata: jsonb("metadata").default({}),
+  correlationId: varchar("correlation_id", { length: 36 }),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const eventSubscribers = pgTable("event_subscribers", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  eventType: text("event_type").notNull(),
+  subscriberName: text("subscriber_name").notNull(),
+  handlerPath: text("handler_path").notNull(),
+  isActive: boolean("is_active").default(true),
+  priority: integer("priority").default(0),
+  filterConditions: jsonb("filter_conditions").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const eventDeadLetters = pgTable("event_dead_letters", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  eventId: varchar("event_id", { length: 36 }).notNull().references(() => documentEvents.id),
+  subscriberId: varchar("subscriber_id", { length: 36 }).notNull().references(() => eventSubscribers.id),
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").default(0),
+  maxRetries: integer("max_retries").default(3),
+  lastRetryAt: timestamp("last_retry_at"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertDocumentEventSchema = createInsertSchema(documentEvents).omit({ id: true, createdAt: true });
+export const insertEventSubscriberSchema = createInsertSchema(eventSubscribers).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertEventDeadLetterSchema = createInsertSchema(eventDeadLetters).omit({ id: true, createdAt: true });
+
+export type InsertDocumentEvent = z.infer<typeof insertDocumentEventSchema>;
+export type InsertEventSubscriber = z.infer<typeof insertEventSubscriberSchema>;
+export type InsertEventDeadLetter = z.infer<typeof insertEventDeadLetterSchema>;
+
+export type DocumentEvent = typeof documentEvents.$inferSelect;
+export type EventSubscriber = typeof eventSubscribers.$inferSelect;
+export type EventDeadLetter = typeof eventDeadLetters.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// 2. WBS Classification Engine (CE)
+// ---------------------------------------------------------------------------
+
+export const classificationStatuses = ["pending", "processing", "completed", "failed", "needs_review"] as const;
+export type ClassificationStatus = typeof classificationStatuses[number];
+
+export const classificationJobs = pgTable("classification_jobs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  documentId: varchar("document_id", { length: 36 }).notNull().references(() => documents.id),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  status: text("status").notNull().default("pending"),
+  intakePath: text("intake_path").notNull(),
+  ocrText: text("ocr_text"),
+  pageCount: integer("page_count"),
+  processingTimeMs: integer("processing_time_ms"),
+  assignedWbsNodeId: varchar("assigned_wbs_node_id", { length: 36 }).references(() => wbsNodes.id),
+  confidenceScore: decimal("confidence_score", { precision: 5, scale: 4 }),
+  classificationRuleset: jsonb("classification_ruleset").default({}),
+  userProvidedWbsNodeId: varchar("user_provided_wbs_node_id", { length: 36 }),
+  reclassified: boolean("reclassified").default(false),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const classificationEntities = pgTable("classification_entities", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  classificationJobId: varchar("classification_job_id", { length: 36 }).notNull().references(() => classificationJobs.id),
+  entityType: text("entity_type").notNull(),
+  entityValue: text("entity_value").notNull(),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }),
+  pageNumber: integer("page_number"),
+  position: jsonb("position"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const classificationCorrections = pgTable("classification_corrections", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  classificationJobId: varchar("classification_job_id", { length: 36 }).notNull().references(() => classificationJobs.id),
+  originalWbsNodeId: varchar("original_wbs_node_id", { length: 36 }).references(() => wbsNodes.id),
+  correctedWbsNodeId: varchar("corrected_wbs_node_id", { length: 36 }).notNull().references(() => wbsNodes.id),
+  correctedBy: varchar("corrected_by", { length: 36 }).notNull().references(() => tenantUsers.id),
+  reason: text("reason"),
+  weight: decimal("weight", { precision: 3, scale: 2 }).default("1.00"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const documentSearchIndex = pgTable("document_search_index", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  documentId: varchar("document_id", { length: 36 }).notNull().references(() => documents.id),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  wbsNodeId: varchar("wbs_node_id", { length: 36 }).references(() => wbsNodes.id),
+  wbsPath: text("wbs_path"),
+  documentType: text("document_type"),
+  fullText: text("full_text").notNull(),
+  extractedEntities: jsonb("extracted_entities").default({}),
+  fileType: text("file_type"),
+  pageCount: integer("page_count"),
+  uploadSource: text("upload_source"),
+  sha3Hash: text("sha3_hash"),
+  hptpTimestamp: text("hptp_timestamp"),
+  revisionChainId: varchar("revision_chain_id", { length: 36 }),
+  spatialRefs: jsonb("spatial_refs").default({}),
+  reviewStatus: text("review_status"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertClassificationJobSchema = createInsertSchema(classificationJobs).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertClassificationEntitySchema = createInsertSchema(classificationEntities).omit({ id: true, createdAt: true });
+export const insertClassificationCorrectionSchema = createInsertSchema(classificationCorrections).omit({ id: true, createdAt: true });
+export const insertDocumentSearchIndexSchema = createInsertSchema(documentSearchIndex).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type InsertClassificationJob = z.infer<typeof insertClassificationJobSchema>;
+export type InsertClassificationEntity = z.infer<typeof insertClassificationEntitySchema>;
+export type InsertClassificationCorrection = z.infer<typeof insertClassificationCorrectionSchema>;
+export type InsertDocumentSearchIndex = z.infer<typeof insertDocumentSearchIndexSchema>;
+
+export type ClassificationJob = typeof classificationJobs.$inferSelect;
+export type ClassificationEntity = typeof classificationEntities.$inferSelect;
+export type ClassificationCorrection = typeof classificationCorrections.$inferSelect;
+export type DocumentSearchIndex = typeof documentSearchIndex.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// 3. ONLYOFFICE Document Review Pipeline (OO)
+// ---------------------------------------------------------------------------
+
+export const reviewStatuses = ["staged", "in_review", "approved", "approved_with_comments", "revise_resubmit", "rejected", "version_locked"] as const;
+export type ReviewStatus = typeof reviewStatuses[number];
+
+export const reviewSessions = pgTable("review_sessions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  documentId: varchar("document_id", { length: 36 }).notNull().references(() => documents.id),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  wbsNodeId: varchar("wbs_node_id", { length: 36 }).references(() => wbsNodes.id),
+  status: text("status").notNull().default("staged"),
+  revisionNumber: integer("revision_number").default(1),
+  onlyofficeSessionKey: text("onlyoffice_session_key"),
+  reviewWindowHours: integer("review_window_hours"),
+  reviewDeadline: timestamp("review_deadline"),
+  escalatedAt: timestamp("escalated_at"),
+  hptpSessionStart: text("hptp_session_start"),
+  hptpSessionEnd: text("hptp_session_end"),
+  previousSessionId: varchar("previous_session_id", { length: 36 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const reviewerAssignments = pgTable("reviewer_assignments", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  reviewSessionId: varchar("review_session_id", { length: 36 }).notNull().references(() => reviewSessions.id),
+  reviewerId: varchar("reviewer_id", { length: 36 }).notNull().references(() => tenantUsers.id),
+  role: text("role").default("reviewer"),
+  decision: text("decision"),
+  comments: text("comments"),
+  hptpDecisionTimestamp: text("hptp_decision_timestamp"),
+  decidedAt: timestamp("decided_at"),
+  notifiedAt: timestamp("notified_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const wbsReviewerConfig = pgTable("wbs_reviewer_config", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  wbsNodeId: varchar("wbs_node_id", { length: 36 }).notNull().references(() => wbsNodes.id),
+  reviewerUserId: varchar("reviewer_user_id", { length: 36 }).references(() => tenantUsers.id),
+  reviewerRole: text("reviewer_role"),
+  reviewerGroupId: varchar("reviewer_group_id", { length: 36 }).references(() => userGroups.id),
+  isRequired: boolean("is_required").default(true),
+  reviewWindowHours: integer("review_window_hours").default(72),
+  autoEscalateHours: integer("auto_escalate_hours"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const versionLocks = pgTable("version_locks", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  documentId: varchar("document_id", { length: 36 }).notNull().references(() => documents.id),
+  reviewSessionId: varchar("review_session_id", { length: 36 }).notNull().references(() => reviewSessions.id),
+  lockedVersion: integer("locked_version").notNull(),
+  sha3Hash: text("sha3_hash").notNull(),
+  hptpLockTimestamp: text("hptp_lock_timestamp"),
+  tldsaSignature: text("tldsa_signature"),
+  tldsaKeyId: text("tldsa_key_id"),
+  tldsaSecurityLevel: text("tldsa_security_level"),
+  signedAt: timestamp("signed_at"),
+  lockedBy: varchar("locked_by", { length: 36 }).notNull().references(() => tenantUsers.id),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertReviewSessionSchema = createInsertSchema(reviewSessions).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertReviewerAssignmentSchema = createInsertSchema(reviewerAssignments).omit({ id: true, createdAt: true });
+export const insertWbsReviewerConfigSchema = createInsertSchema(wbsReviewerConfig).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertVersionLockSchema = createInsertSchema(versionLocks).omit({ id: true, createdAt: true });
+
+export type InsertReviewSession = z.infer<typeof insertReviewSessionSchema>;
+export type InsertReviewerAssignment = z.infer<typeof insertReviewerAssignmentSchema>;
+export type InsertWbsReviewerConfig = z.infer<typeof insertWbsReviewerConfigSchema>;
+export type InsertVersionLock = z.infer<typeof insertVersionLockSchema>;
+
+export type ReviewSession = typeof reviewSessions.$inferSelect;
+export type ReviewerAssignment = typeof reviewerAssignments.$inferSelect;
+export type WbsReviewerConfig = typeof wbsReviewerConfig.$inferSelect;
+export type VersionLock = typeof versionLocks.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// 4. Archive Assembly Engine (AR)
+// ---------------------------------------------------------------------------
+
+export const archiveStatuses = ["pending", "assembling", "signing", "sealed", "failed"] as const;
+export type ArchiveStatus = typeof archiveStatuses[number];
+
+export const archiveJobs = pgTable("archive_jobs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  projectId: varchar("project_id", { length: 36 }).notNull().references(() => projects.id),
+  status: text("status").notNull().default("pending"),
+  archiveType: text("archive_type").default("closeout"),
+  wbsLevelsTraversed: integer("wbs_levels_traversed").default(13),
+  totalDocuments: integer("total_documents").default(0),
+  totalVersionLocked: integer("total_version_locked").default(0),
+  totalDrafts: integer("total_drafts").default(0),
+  manifestJson: jsonb("manifest_json"),
+  manifestPdfUrl: text("manifest_pdf_url"),
+  hptpSealTimestamp: text("hptp_seal_timestamp"),
+  tldsaManifestSignature: text("tldsa_manifest_signature"),
+  tldsaManifestKeyId: text("tldsa_manifest_key_id"),
+  tldsaSecurityLevel: text("tldsa_security_level").default("TL-DSA-87"),
+  interopBridgeExport: jsonb("interop_bridge_export"),
+  tlkemEncapsulation: jsonb("tlkem_encapsulation"),
+  archiveUrl: text("archive_url"),
+  archiveSizeBytes: integer("archive_size_bytes"),
+  errorMessage: text("error_message"),
+  assembledBy: varchar("assembled_by", { length: 36 }).references(() => tenantUsers.id),
+  sealedAt: timestamp("sealed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const archiveItems = pgTable("archive_items", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  archiveJobId: varchar("archive_job_id", { length: 36 }).notNull().references(() => archiveJobs.id),
+  documentId: varchar("document_id", { length: 36 }).notNull().references(() => documents.id),
+  wbsPath: text("wbs_path").notNull(),
+  documentType: text("document_type"),
+  versionNumber: integer("version_number").default(1),
+  isDraft: boolean("is_draft").default(false),
+  sha3Hash: text("sha3_hash"),
+  tldsaSignature: text("tldsa_signature"),
+  tldsaKeyId: text("tldsa_key_id"),
+  fileSizeBytes: integer("file_size_bytes"),
+  classificationConfidence: decimal("classification_confidence", { precision: 5, scale: 4 }),
+  reviewHistory: jsonb("review_history").default([]),
+  versionLockTimestamp: text("version_lock_timestamp"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertArchiveJobSchema = createInsertSchema(archiveJobs).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertArchiveItemSchema = createInsertSchema(archiveItems).omit({ id: true, createdAt: true });
+
+export type InsertArchiveJob = z.infer<typeof insertArchiveJobSchema>;
+export type InsertArchiveItem = z.infer<typeof insertArchiveItemSchema>;
+
+export type ArchiveJob = typeof archiveJobs.$inferSelect;
+export type ArchiveItem = typeof archiveItems.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// 5. Offline Field Upload Queue (FQ)
+// ---------------------------------------------------------------------------
+
+export const uploadStatuses = ["queued", "uploading", "uploaded", "verifying", "classified", "staged_for_review", "failed"] as const;
+export type UploadStatus = typeof uploadStatuses[number];
+
+export const uploadQueue = pgTable("upload_queue", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  projectId: varchar("project_id", { length: 36 }).references(() => projects.id),
+  userId: varchar("user_id", { length: 36 }).notNull().references(() => tenantUsers.id),
+  documentId: varchar("document_id", { length: 36 }).references(() => documents.id),
+  status: text("status").notNull().default("queued"),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type"),
+  fileSizeBytes: integer("file_size_bytes"),
+  wbsDestinationPath: text("wbs_destination_path"),
+  wbsNodeId: varchar("wbs_node_id", { length: 36 }).references(() => wbsNodes.id),
+  sha3Hash: text("sha3_hash"),
+  hptpCaptureTimestamp: text("hptp_capture_timestamp"),
+  deviceCaptureTime: timestamp("device_capture_time"),
+  hptpAttestedTime: text("hptp_attested_time"),
+  deltaMs: integer("delta_ms"),
+  tldsaSignature: text("tldsa_signature"),
+  tldsaKeyId: text("tldsa_key_id"),
+  signatureVerified: boolean("signature_verified"),
+  chunkCount: integer("chunk_count").default(1),
+  chunksUploaded: integer("chunks_uploaded").default(0),
+  priority: text("priority").default("general"),
+  retryCount: integer("retry_count").default(0),
+  lastRetryAt: timestamp("last_retry_at"),
+  errorMessage: text("error_message"),
+  classifiedAt: timestamp("classified_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const uploadChunks = pgTable("upload_chunks", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id),
+  uploadQueueId: varchar("upload_queue_id", { length: 36 }).notNull().references(() => uploadQueue.id),
+  chunkIndex: integer("chunk_index").notNull(),
+  chunkSizeBytes: integer("chunk_size_bytes"),
+  sha3Hash: text("sha3_hash"),
+  uploaded: boolean("uploaded").default(false),
+  uploadedAt: timestamp("uploaded_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertUploadQueueSchema = createInsertSchema(uploadQueue).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUploadChunkSchema = createInsertSchema(uploadChunks).omit({ id: true, createdAt: true });
+
+export type InsertUploadQueue = z.infer<typeof insertUploadQueueSchema>;
+export type InsertUploadChunk = z.infer<typeof insertUploadChunkSchema>;
+
+export type UploadQueueItem = typeof uploadQueue.$inferSelect;
+export type UploadChunk = typeof uploadChunks.$inferSelect;

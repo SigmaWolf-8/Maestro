@@ -50,6 +50,7 @@ export const ENCRYPTION_FIELD_MAP: EncryptionFieldMap = {
     "originalFilename",
     "plainContent",
     "checksum",
+    "ternData",
   ],
 
   wbsMasterCodes: [

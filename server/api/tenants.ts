@@ -142,6 +142,35 @@ export function createTenantsRouter(): Router {
     }
   });
 
+  const createNavSchema = z.object({
+    tenantId: z.string().uuid(),
+    parentId: z.string().uuid().nullable().optional().default(null),
+    itemOrder: z.number().int().min(0).optional().default(1),
+    itemType: z.enum(["menu", "action", "link", "section"]).optional().default("action"),
+    title: z.string().min(1).max(100),
+    iconName: z.string().max(50).nullable().optional().default(null),
+    path: z.string().max(200).nullable().optional().default(null),
+    component: z.string().max(100).nullable().optional().default(null),
+    uiSlot: z.enum(["sidebar", "topbar", "footer"]).optional().default("sidebar"),
+    maxChildrenDisplay: z.number().int().min(0).max(50).optional().default(5),
+    isCollapsible: z.boolean().optional().default(true),
+    minRoleRequired: z.enum(["viewer", "project_manager", "accountant", "admin", "super_admin"]).optional().default("viewer"),
+  });
+
+  router.post("/api/navigation", async (req, res) => {
+    try {
+      const parseResult = createNavSchema.safeParse(req.body);
+      if (!parseResult.success) {
+        return res.status(400).json({ error: "Invalid request", details: parseResult.error.flatten().fieldErrors });
+      }
+      const item = await storage.createNavigationItem(parseResult.data);
+      res.json(item);
+    } catch (error) {
+      console.error("Error creating navigation item:", error);
+      res.status(500).json({ error: "Failed to create navigation item" });
+    }
+  });
+
   router.get("/api/navigation", async (req, res) => {
     try {
       const tenantId = req.query.tenantId as string;

@@ -29,6 +29,7 @@ import UserGroupsPage from "@/pages/user-groups";
 import GroupPermissionsPage from "@/pages/group-permissions";
 import DocumentsPage from "@/pages/documents";
 import FileManagerPage from "@/pages/file-manager";
+import SalviSignPage from "@/pages/salvi-sign";
 import CustomersPage from "@/pages/customers";
 import VendorsPage from "@/pages/vendors";
 import ContactsDirectoryPage from "@/pages/contacts-directory";
@@ -41,13 +42,16 @@ import AdminPricingPage from "@/pages/admin-pricing";
 import SecurityDashboardPage from "@/pages/security-dashboard";
 import SchedulePage from "@/pages/schedule";
 import ApplicationsPage from "@/pages/applications";
+import EmployeesPage from "@/pages/employees";
+import PriceMasterPage from "@/pages/price-master";
+import DocumentLifecyclePage from "@/pages/DocumentLifecyclePage";
+import { InstallButton, HeaderInstallButton } from "@/components/install-button";
 import NotFound from "@/pages/not-found";
 import {
   TasksPage,
   AlertsPage,
   SpecificationsPage,
   PhotosPage,
-  EmployeesPage,
   SubcontractorsPage,
   EstimatingPage,
   PurchaseOrdersPage,
@@ -68,6 +72,8 @@ import {
   BrandingPage,
   MarketingAnalyticsPage,
 } from "@/pages/placeholder";
+
+const APP_VERSION = "v3.3.1";
 
 const mockUser = {
   role: "admin" as const,
@@ -100,6 +106,7 @@ function Router() {
       <Route path="/people/subcontractors" component={SubcontractorsPage} />
       <Route path="/people/directory" component={ContactsDirectoryPage} />
       
+      <Route path="/finance/price-master" component={PriceMasterPage} />
       <Route path="/finance/estimating" component={EstimatingPage} />
       <Route path="/finance/purchase-orders" component={PurchaseOrdersPage} />
       <Route path="/finance/invoicing" component={InvoicingPage} />
@@ -125,6 +132,8 @@ function Router() {
       <Route path="/documents/reports" component={DocumentReportsPage} />
       <Route path="/documents/archives" component={ArchivesPage} />
       <Route path="/documents/smart-inbox" component={SmartInboxPage} />
+      <Route path="/documents/salvisign" component={SalviSignPage} />
+      <Route path="/documents/lifecycle" component={DocumentLifecyclePage} />
       <Route path="/applications" component={ApplicationsPage} />
       
       <Route path="/ai/reports" component={AIReportsPage} />
@@ -151,6 +160,9 @@ function HeaderBranding() {
     <div className="flex items-center gap-3">
       <span className="text-sm font-medium hidden sm:inline" style={{ color: 'inherit' }}>
         The Maestro
+      </span>
+      <span className="text-[10px] opacity-60 hidden sm:inline" style={{ color: 'inherit' }} data-testid="text-app-version">
+        {APP_VERSION}
       </span>
       {tenants.length > 1 && (
         <select
@@ -241,6 +253,7 @@ function AppLayout() {
                 <HeaderBranding />
               </div>
               <div className="flex items-center gap-3">
+                <HeaderInstallButton />
                 <ZoomControl />
                 <ThemeToggle />
               </div>
@@ -286,6 +299,7 @@ function App() {
             <TabProvider>
               <AppLayout />
             </TabProvider>
+            <InstallButton />
             <Toaster />
           </TooltipProvider>
         </SettingsProvider>

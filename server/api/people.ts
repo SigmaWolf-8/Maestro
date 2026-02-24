@@ -301,8 +301,40 @@ export function createPeopleRouter(): Router {
           await storage.createQuote(q);
         }
       }
-      
-      res.json({ success: true, message: "Sample customers and quotes seeded" });
+
+      const allCustomers = await storage.getCustomers(tenantId);
+      const sampleContacts: Record<number, Array<{ firstName: string; lastName: string; jobTitle: string; businessPhone: string; mobilePhone: string; emailAddress: string; isPrimary: boolean }>> = {
+        1001: [
+          { firstName: "John", lastName: "Smith", jobTitle: "Homeowner", businessPhone: "(403) 555-1234", mobilePhone: "(403) 555-4321", emailAddress: "john.smith@email.com", isPrimary: true },
+          { firstName: "Mary", lastName: "Smith", jobTitle: "Co-Owner", businessPhone: "(403) 555-1235", mobilePhone: "(403) 555-4322", emailAddress: "mary.smith@email.com", isPrimary: false },
+        ],
+        1002: [
+          { firstName: "Sarah", lastName: "Johnson", jobTitle: "Property Manager", businessPhone: "(780) 555-5678", mobilePhone: "(780) 555-8765", emailAddress: "sarah.johnson@email.com", isPrimary: true },
+          { firstName: "Tom", lastName: "Johnson", jobTitle: "Homeowner", businessPhone: "(780) 555-5679", mobilePhone: "(780) 555-8766", emailAddress: "tom.johnson@email.com", isPrimary: false },
+          { firstName: "Emily", lastName: "Davis", jobTitle: "Architect", businessPhone: "(780) 555-3456", mobilePhone: "(780) 555-6543", emailAddress: "emily.davis@email.com", isPrimary: false },
+        ],
+        1003: [
+          { firstName: "Michael", lastName: "Williams", jobTitle: "CEO", businessPhone: "(604) 555-9012", mobilePhone: "(604) 555-2109", emailAddress: "michael.williams@corp.com", isPrimary: true },
+        ],
+      };
+
+      for (const cust of allCustomers) {
+        const contactsForJob = sampleContacts[cust.jobNum];
+        if (contactsForJob) {
+          const existingContacts = await storage.getCustomerContacts(cust.id);
+          if (existingContacts.length === 0) {
+            for (const cc of contactsForJob) {
+              await storage.createCustomerContact({
+                tenantId,
+                customerId: cust.id,
+                ...cc,
+              });
+            }
+          }
+        }
+      }
+
+      res.json({ success: true, message: "Sample customers, quotes, and contacts seeded" });
     } catch (error) {
       console.error("Error seeding customers:", error);
       res.status(500).json({ error: "Failed to seed customers" });
@@ -752,6 +784,125 @@ export function createPeopleRouter(): Router {
     } catch (error) {
       console.error("Error fetching contacts directory:", error);
       res.status(500).json({ error: "Failed to fetch contacts directory" });
+    }
+  });
+
+  // ──── BambooHR Integration ────
+
+  router.get("/api/bamboohr/config", async (req, res) => {
+    try {
+      const apiKey = process.env.BAMBOOHR_API_KEY;
+      const companyDomain = process.env.BAMBOOHR_COMPANY_DOMAIN;
+      res.json({
+        configured: !!(apiKey && companyDomain),
+        companyDomain: companyDomain || null,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check BambooHR config" });
+    }
+  });
+
+  router.get("/api/bamboohr/directory", async (req, res) => {
+    try {
+      const apiKey = process.env.BAMBOOHR_API_KEY;
+      const companyDomain = process.env.BAMBOOHR_COMPANY_DOMAIN;
+
+      if (!apiKey || !companyDomain) {
+        return res.status(400).json({ error: "BambooHR is not configured. Set BAMBOOHR_API_KEY and BAMBOOHR_COMPANY_DOMAIN secrets." });
+      }
+
+      const credentials = Buffer.from(`${apiKey}:x`).toString("base64");
+      const url = `https://api.bamboohr.com/api/gateway.php/${companyDomain}/v1/employees/directory`;
+
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Basic ${credentials}`,
+          "Accept": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("BambooHR API error:", response.status, text);
+        return res.status(response.status).json({
+          error: `BambooHR API returned ${response.status}`,
+          details: text.substring(0, 200),
+        });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("BambooHR directory error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch BambooHR directory" });
+    }
+  });
+
+  router.get("/api/bamboohr/employees/:id", async (req, res) => {
+    try {
+      const apiKey = process.env.BAMBOOHR_API_KEY;
+      const companyDomain = process.env.BAMBOOHR_COMPANY_DOMAIN;
+      const employeeId = req.params.id;
+
+      if (!apiKey || !companyDomain) {
+        return res.status(400).json({ error: "BambooHR is not configured" });
+      }
+
+      const credentials = Buffer.from(`${apiKey}:x`).toString("base64");
+      const fields = "firstName,lastName,preferredName,jobTitle,workPhone,workEmail,department,location,division,photoUrl,supervisor,mobilePhone,hireDate,employeeNumber,status";
+      const url = `https://api.bamboohr.com/api/gateway.php/${companyDomain}/v1/employees/${employeeId}?fields=${fields}`;
+
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Basic ${credentials}`,
+          "Accept": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: `BambooHR API returned ${response.status}` });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("BambooHR employee fetch error:", error);
+      res.status(500).json({ error: error.message || "Failed to fetch employee" });
+    }
+  });
+
+  router.get("/api/bamboohr/employees/:id/photo", async (req, res) => {
+    try {
+      const apiKey = process.env.BAMBOOHR_API_KEY;
+      const companyDomain = process.env.BAMBOOHR_COMPANY_DOMAIN;
+      const employeeId = req.params.id;
+      const size = req.query.size || "small";
+
+      if (!apiKey || !companyDomain) {
+        return res.status(400).json({ error: "BambooHR is not configured" });
+      }
+
+      const credentials = Buffer.from(`${apiKey}:x`).toString("base64");
+      const url = `https://api.bamboohr.com/api/gateway.php/${companyDomain}/v1/employees/${employeeId}/photo/${size}`;
+
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Basic ${credentials}`,
+        },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: `Photo not found` });
+      }
+
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    } catch (error: any) {
+      console.error("BambooHR photo error:", error);
+      res.status(500).json({ error: "Failed to fetch photo" });
     }
   });
 

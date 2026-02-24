@@ -2,6 +2,31 @@ import { Router, Request, Response } from "express";
 import { getPlenumNetClient } from "../integrations/plenum-net-core-client";
 import type { TritA, Representation } from "../plenumnet/ternary-types";
 import { encryptExistingData, getEncryptionStatus } from "../security/encrypt-migration";
+import {
+  tribonacciHash,
+  tradHash28,
+  generateTribId,
+  nextWorker,
+  skipLookup,
+  getShardForWbsCode,
+  getShardDistribution,
+  installTribonacciFunctions,
+  testTribonacciFunctions,
+} from "../plenumnet/tribonacci-indexing";
+import {
+  compressForStorage,
+  decompressFromStorage,
+  estimateCompressionRatio,
+  getCompressionStats,
+  isCompressedPayload,
+} from "../services/ternary-compression";
+import {
+  encodeTernFile,
+  decodeTernFile,
+  isTernFormat,
+  getTernHeaderFromData,
+  getSupportedMimeTypes,
+} from "../services/tern-file-format";
 
 function serializeBigInts(obj: any): any {
   if (obj === null || obj === undefined) return obj;
@@ -294,6 +319,195 @@ export function createPlenumNetRouter(): Router {
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
+  });
+
+  router.post("/api/plenumnet/indexing/hash", (req: Request, res: Response) => {
+    const { input } = req.body;
+    if (!input) {
+      return res.status(400).json({ error: "Input string required" });
+    }
+    jsonSafe(res, tribonacciHash(input));
+  });
+
+  router.post("/api/plenumnet/indexing/shard", (req: Request, res: Response) => {
+    const { input } = req.body;
+    if (!input) {
+      return res.status(400).json({ error: "Input string required" });
+    }
+    res.json({ input, shardIndex: tradHash28(input), shardCount: 28 });
+  });
+
+  router.post("/api/plenumnet/indexing/generate-id", (req: Request, res: Response) => {
+    const prefix = req.body.prefix || "trib";
+    jsonSafe(res, generateTribId(prefix));
+  });
+
+  router.get("/api/plenumnet/indexing/next-worker/:shard", (req: Request, res: Response) => {
+    const shard = parseInt(String(req.params.shard), 10);
+    if (isNaN(shard) || shard < 0 || shard >= 28) {
+      return res.status(400).json({ error: "Shard must be 0-27" });
+    }
+    res.json({ currentShard: shard, nextWorker: nextWorker(shard) });
+  });
+
+  router.get("/api/plenumnet/indexing/skip-lookup/:shard", (req: Request, res: Response) => {
+    const shard = parseInt(String(req.params.shard), 10);
+    if (isNaN(shard) || shard < 0 || shard >= 28) {
+      return res.status(400).json({ error: "Shard must be 0-27" });
+    }
+    jsonSafe(res, skipLookup(shard));
+  });
+
+  router.post("/api/plenumnet/indexing/wbs-shard", (req: Request, res: Response) => {
+    const { codePath, tenantId } = req.body;
+    if (!codePath || !tenantId) {
+      return res.status(400).json({ error: "codePath and tenantId required" });
+    }
+    res.json({
+      codePath,
+      tenantId,
+      shardIndex: getShardForWbsCode(codePath, tenantId),
+      shardCount: 28,
+    });
+  });
+
+  router.post("/api/plenumnet/indexing/distribution", (req: Request, res: Response) => {
+    const { keys } = req.body;
+    if (!Array.isArray(keys) || keys.length === 0) {
+      return res.status(400).json({ error: "Array of keys required" });
+    }
+    if (keys.length > 10000) {
+      return res.status(400).json({ error: "Maximum 10000 keys" });
+    }
+    const dist = getShardDistribution(keys);
+    const result: Record<number, { count: number; keys: string[] }> = {};
+    for (const [shard, shardKeys] of dist) {
+      result[shard] = { count: shardKeys.length, keys: shardKeys.slice(0, 10) };
+    }
+    res.json({ totalKeys: keys.length, shardCount: 28, distribution: result });
+  });
+
+  router.post("/api/plenumnet/indexing/install-functions", async (_req: Request, res: Response) => {
+    try {
+      const result = await installTribonacciFunctions();
+      jsonSafe(res, result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.get("/api/plenumnet/indexing/test-functions", async (_req: Request, res: Response) => {
+    try {
+      const result = await testTribonacciFunctions();
+      jsonSafe(res, result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post("/api/plenumnet/compression/compress", (req: Request, res: Response) => {
+    const { data, encrypt, encryptionMode } = req.body;
+    if (!data) {
+      return res.status(400).json({ error: "Data string required" });
+    }
+    try {
+      const compressed = compressForStorage(data, { encrypt, encryptionMode });
+      const stats = isCompressedPayload(compressed) ? getCompressionStats(compressed) : null;
+      res.json({
+        compressed: compressed.length < 10000 ? compressed : `[${compressed.length} chars]`,
+        compressedLength: compressed.length,
+        originalLength: data.length,
+        wasCompressed: isCompressedPayload(compressed),
+        stats,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post("/api/plenumnet/compression/decompress", (req: Request, res: Response) => {
+    const { data } = req.body;
+    if (!data) {
+      return res.status(400).json({ error: "Compressed data string required" });
+    }
+    try {
+      const decompressed = decompressFromStorage(data);
+      res.json({
+        decompressed: decompressed.length < 10000 ? decompressed : `[${decompressed.length} chars]`,
+        decompressedLength: decompressed.length,
+        wasCompressed: isCompressedPayload(data),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post("/api/plenumnet/compression/estimate", (req: Request, res: Response) => {
+    const { data } = req.body;
+    if (!data) {
+      return res.status(400).json({ error: "Data string required" });
+    }
+    res.json(estimateCompressionRatio(data));
+  });
+
+  router.post("/api/plenumnet/tern/encode", (req: Request, res: Response) => {
+    const { data, filename, mimeType, encrypt, encryptionMode, metadata } = req.body;
+    if (!data || !filename) {
+      return res.status(400).json({ error: "data (base64) and filename required" });
+    }
+    try {
+      const fileBuffer = Buffer.from(data, "base64");
+      const result = encodeTernFile(fileBuffer, filename, mimeType || "application/octet-stream", {
+        encrypt,
+        encryptionMode,
+        metadata,
+      });
+      jsonSafe(res, {
+        header: result.header,
+        savings: result.savings,
+        ternDataLength: result.ternData.length,
+        ternDataPreview: result.ternData.substring(0, 200),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post("/api/plenumnet/tern/decode", (req: Request, res: Response) => {
+    const { ternData } = req.body;
+    if (!ternData) {
+      return res.status(400).json({ error: "ternData (base64) required" });
+    }
+    try {
+      const result = decodeTernFile(ternData);
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+      jsonSafe(res, {
+        success: true,
+        header: result.header,
+        dataLength: result.data.length,
+        dataPreview: result.data.toString("base64").substring(0, 200),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  router.post("/api/plenumnet/tern/inspect", (req: Request, res: Response) => {
+    const { ternData } = req.body;
+    if (!ternData) {
+      return res.status(400).json({ error: "ternData (base64) required" });
+    }
+    const header = getTernHeaderFromData(ternData);
+    if (!header) {
+      return res.status(400).json({ error: "Not a valid TERN file format" });
+    }
+    jsonSafe(res, { isTern: true, header });
+  });
+
+  router.get("/api/plenumnet/tern/supported-types", (_req: Request, res: Response) => {
+    res.json({ mimeTypes: getSupportedMimeTypes() });
   });
 
   return router;

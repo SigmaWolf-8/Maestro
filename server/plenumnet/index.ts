@@ -5,3 +5,4 @@ export * from './phase-encryption';
 export * from './ternary-encoding';
 export * from './tribonacci-constants';
 export * from './cnsa-compliance';
+export * from './tribonacci-indexing';

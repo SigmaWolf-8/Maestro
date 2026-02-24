@@ -1,0 +1,887 @@
+# MAESTRO RFC 3161 TSA INTEGRATION — Complete Implementation Package
+
+## For: AI Agent Building in SigmaWolf-8/Maestro (ERP)
+
+**Date:** February 23, 2026
+**Repository:** SigmaWolf-8/Maestro
+**Depends On:** PlenumNET TSA Service (`/api/tsa/*` endpoints in SigmaWolf-8/Ternary)
+**White Paper Reference:** "RFC 3161 and PlenumNET — Building a Trust Infrastructure Beyond Defense Grade"
+
+---
+
+## SUMMARY
+
+You are building the **RFC 3161 timestamp integration** inside the Maestro ERP. When document lifecycle events fire through Maestro's existing Event Bus, your code hashes the document or event data, calls PlenumNET's `/api/tsa/timestamp/json` endpoint, and stores the returned Time-Stamp Token (TST) alongside the document metadata. PlenumNET handles all cryptographic operations — HPTP timing, RSA signing, TL-DSA dual-signing, Merkle tree logging. Maestro owns the business logic: WHAT gets timestamped, WHEN, and under which policy tier.
+
+From the PlenumNET white paper §3:
+
+> *"The TSA never sees the original data — a privacy-by-design principle critical for law firms, banks, and government agencies handling sensitive information."*
+
+Maestro sends only hashes to PlenumNET. Document content never crosses the HTTP boundary.
+
+From the white paper §9.3:
+
+> *"Trust is not an add-on — it is woven into the fabric of every transaction."*
+
+After this integration, every document classification, review decision, version lock, and archive seal carries a court-admissible RFC 3161 proof of existence.
+
+**You build 2 new files and modify 1 existing file.** All code is provided below.
+
+---
+
+## WHAT YOU OWN vs. WHAT YOU DO NOT OWN
+
+**YOU OWN (build all of this):**
+- HTTP client that calls PlenumNET's `/api/tsa/timestamp/json` and `/api/tsa/verify` endpoints
+- Policy tier selection logic (which events get COMPLY vs FORENSICS vs SENTINEL vs SECURE tokens)
+- Document hashing before TSA submission (SHA-256 of document content or event payload)
+- TST storage alongside document metadata in Maestro's data layer
+- Event Bus subscribers that trigger timestamp requests at key lifecycle moments
+- Verification helper that calls PlenumNET's `/api/tsa/verify` for on-demand proof
+- Logging TSA results (serial number, Merkle leaf, policy tier) back to Event Bus
+
+**YOU DO NOT OWN (do not build any of this):**
+- HPTP timing (PlenumNET does this)
+- RSA-4096 signing of tokens (PlenumNET does this)
+- TL-DSA dual-signing (PlenumNET does this)
+- Merkle tree audit log (PlenumNET does this)
+- ASN.1 encoding/decoding (PlenumNET does this)
+- TSA certificate management (PlenumNET does this)
+
+**You NEVER import `asn1js`, `pkijs`, or any ASN.1 library.** You send JSON, receive JSON + base64 token.
+
+---
+
+## POLICY TIER MAPPING — White Paper §8
+
+Maestro selects the policy tier based on the business context of the event:
+
+| Maestro Event | Policy Tier | OID | Rationale (from white paper) |
+|---------------|-------------|-----|------------------------------|
+| `document.classified` (invoice) | COMPLY | `1.3.6.1.4.1.0.100.1.1` | §8.1: "Financial compliance. Satisfying FINRA Rule 613 and other regulatory mandates." |
+| `document.classified` (safety) | SENTINEL | `1.3.6.1.4.1.0.100.1.3` | §8.3: "Government/military. Ordering guaranteed for timeline reconstruction." |
+| `document.staged` | FORENSICS | `1.3.6.1.4.1.0.100.1.2` | §8.2: "Digital Evidence Vaults. Court-admissible." |
+| `document.reviewed` | FORENSICS | `1.3.6.1.4.1.0.100.1.2` | §8.2: "Cryptographic proof of existence and integrity." |
+| `document.version_locked` | FORENSICS | `1.3.6.1.4.1.0.100.1.2` | §8.2: "Making evidence admissible and tamper-evident." |
+| `review.escalation` | DEFAULT | `1.3.6.1.4.1.0.100.1.0` | Administrative event, general-purpose timestamp. |
+| `archive.sealed` | SENTINEL | `1.3.6.1.4.1.0.100.1.3` | §8.3: "Single, irrefutable chronological sequence." 50-year retention. |
+| `upload.sync_complete` | DEFAULT | `1.3.6.1.4.1.0.100.1.0` | Operational event, standard assurance. |
+| `upload.sync_failure` | DEFAULT | `1.3.6.1.4.1.0.100.1.0` | Error event, standard assurance. |
+
+---
+
+## PREREQUISITES — What Must Already Exist in Maestro
+
+Already built and operational:
+- **Event Bus** (EB-1 through EB-4)
+- **Classification Engine** (CE-1 through CE-6)
+- **Review Pipeline** (OO-1 through OO-6)
+- **Upload Queue** (FQ-1 through FQ-4)
+- **Archive Assembly** (AR-1 through AR-4)
+- **Notification Integration** (MN-1 through MN-4) — already calls PlenumNET `/api/notify/*`
+- **53 API routes** operational
+
+What must be built by the PlenumNET agent (separate repo, separate agent):
+- **PlenumNET TSA Service** — 8 endpoints at `/api/tsa/*` (Kong service #21)
+
+---
+
+## FILE MAP — Exactly What Goes Where
+
+```
+server/
+├── services/
+│   └── plenumnet/
+│       ├── plenumnet-client.ts          ← EXISTING (do not modify)
+│       ├── notification-client.ts       ← EXISTING (do not modify)
+│       └── tsa-client.ts               ← NEW FILE (create) — HTTP client for /api/tsa/*
+├── subscribers/
+│   ├── notification-subscribers.ts      ← EXISTING (do not modify)
+│   └── tsa-subscribers.ts              ← NEW FILE (create) — Event Bus → TSA wiring
+└── index.ts (or app.ts)                 ← MODIFY — Initialize TSA client, wire subscribers
+```
+
+---
+
+## FILE 1 OF 2: `server/services/plenumnet/tsa-client.ts`
+
+Create this file. HTTP client wrapping PlenumNET's `/api/tsa/*` endpoints.
+
+```typescript
+/**
+ * MAESTRO → PLENUMNET TSA CLIENT
+ * Repository: SigmaWolf-8/Maestro
+ * Location:   server/services/plenumnet/tsa-client.ts
+ *
+ * HTTP client for PlenumNET's RFC 3161 TSA service (/api/tsa/*).
+ *
+ * From the white paper §3:
+ *   "The TSA never sees the original data — a privacy-by-design principle."
+ *
+ * Maestro hashes documents/events locally and sends ONLY the hash.
+ * PlenumNET returns a Time-Stamp Token (TST) that proves the data
+ * existed in its exact form at that precise moment.
+ *
+ * The returned token is a base64-encoded CMS SignedData structure
+ * (RFC 5652) wrapping a TSTInfo (RFC 3161 §2.4.2). It can be
+ * independently verified by OpenSSL, Adobe Acrobat, or any RFC 3161
+ * compliant tool WITHOUT contacting PlenumNET (white paper §7).
+ */
+
+import * as crypto from 'crypto';
+
+// ============================================================================
+// POLICY TIERS — White Paper §8
+// ============================================================================
+
+export const TSA_POLICY_OIDS = {
+  DEFAULT:   '1.3.6.1.4.1.0.100.1.0',
+  COMPLY:    '1.3.6.1.4.1.0.100.1.1',
+  FORENSICS: '1.3.6.1.4.1.0.100.1.2',
+  SENTINEL:  '1.3.6.1.4.1.0.100.1.3',
+  SECURE:    '1.3.6.1.4.1.0.100.1.4',
+} as const;
+
+export type PolicyTier = keyof typeof TSA_POLICY_OIDS;
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface TimestampRequest {
+  /** Hex-encoded hash of the data to timestamp */
+  hash: string;
+  /** Hash algorithm used */
+  algorithm: 'sha256' | 'sha384' | 'sha512' | 'sha3-256' | 'sha3-384' | 'sha3-512';
+  /** Policy tier — determines accuracy, ordering, retention guarantees */
+  policy?: string;
+  /** Hex-encoded nonce for replay protection */
+  nonce?: string;
+  /** Include TSA certificate chain in response */
+  includeChain?: boolean;
+}
+
+export interface TimestampResponse {
+  success: boolean;
+  granted: boolean;
+  serialNumber: string;
+  genTime: string;
+  policy: string;
+  policyTier: string;
+  policyName: string;
+  /** Base64-encoded RFC 3161 TimeStampToken (CMS SignedData) */
+  token: string;
+  accuracy: { seconds: number; micros: number };
+  ordering: boolean;
+  hptpTimestamp: string;
+  hptpPrecision: string;
+  hptpSource: string;
+  tldsaSignature: string | null;
+  tldsaKeyId: string | null;
+  merkleLeafHash: string;
+  merkleRoot: string;
+  verificationUrl: string;
+  certificateUrl: string;
+}
+
+export interface VerificationResponse {
+  valid: boolean;
+  serialNumber: string;
+  genTime: string;
+  hashAlgorithm: string;
+  policyOid: string;
+  policyTier: string;
+  policyName: string;
+  accuracy: { seconds: number; micros: number };
+  ordering: boolean;
+  signerSubject: string;
+  tldsaPresent: boolean;
+  verificationMethod: string;
+  reason?: string;
+}
+
+export interface TsaHealthResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  hptpAvailable: boolean;
+  tldsaAvailable: boolean;
+  tsaKeyLoaded: boolean;
+  tsaCertValid: boolean;
+  dualSignEnabled: boolean;
+  merkleTreeDepth: number;
+}
+
+// ============================================================================
+// CLIENT CLASS
+// ============================================================================
+
+export class PlenumNetTsaClient {
+  private baseUrl: string;
+  private authToken: string;
+
+  constructor(baseUrl: string, authToken: string) {
+    this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.authToken = authToken;
+  }
+
+  // --------------------------------------------------------------------------
+  // CONVENIENCE: Hash data and request timestamp in one call
+  //
+  // This is the primary method Maestro subscribers use.
+  // It hashes the input data locally, then calls PlenumNET.
+  //
+  // White paper §3: "Client computes a cryptographic hash of the data."
+  // --------------------------------------------------------------------------
+
+  /**
+   * Hash data locally and request an RFC 3161 timestamp from PlenumNET.
+   *
+   * @param data   Buffer or string to timestamp (document content, event JSON, etc.)
+   * @param policy Policy tier: 'DEFAULT', 'COMPLY', 'FORENSICS', 'SENTINEL', or 'SECURE'
+   * @returns      TimestampResponse including base64 TST token
+   */
+  async timestampData(
+    data: Buffer | string,
+    policy: PolicyTier = 'DEFAULT',
+  ): Promise<TimestampResponse> {
+    // Step 1: Hash locally — PlenumNET never sees the original data
+    const hash = crypto.createHash('sha256')
+      .update(typeof data === 'string' ? Buffer.from(data) : data)
+      .digest('hex');
+
+    // Step 2: Generate nonce for replay protection
+    const nonce = crypto.randomBytes(16).toString('hex');
+
+    // Step 3: Request timestamp from PlenumNET TSA
+    return this.requestTimestamp({
+      hash,
+      algorithm: 'sha256',
+      policy: TSA_POLICY_OIDS[policy],
+      nonce,
+      includeChain: false,
+    });
+  }
+
+  /**
+   * Hash a document buffer with SHA-256 and request a FORENSICS-tier
+   * timestamp. Designed for the Digital Evidence Vault pattern (white paper §8.2).
+   *
+   * Returns the token alongside the document hash for storage.
+   */
+  async timestampDocument(
+    documentBuffer: Buffer,
+    policy: PolicyTier = 'FORENSICS',
+  ): Promise<{ documentHash: string; timestamp: TimestampResponse }> {
+    const documentHash = crypto.createHash('sha256').update(documentBuffer).digest('hex');
+    const nonce = crypto.randomBytes(16).toString('hex');
+
+    const timestamp = await this.requestTimestamp({
+      hash: documentHash,
+      algorithm: 'sha256',
+      policy: TSA_POLICY_OIDS[policy],
+      nonce,
+      includeChain: true,
+    });
+
+    return { documentHash, timestamp };
+  }
+
+  /**
+   * Timestamp an event payload (JSON-serialized) for audit trail.
+   */
+  async timestampEvent(
+    eventPayload: Record<string, unknown>,
+    policy: PolicyTier = 'DEFAULT',
+  ): Promise<TimestampResponse> {
+    const serialized = JSON.stringify(eventPayload, Object.keys(eventPayload).sort());
+    return this.timestampData(serialized, policy);
+  }
+
+  // --------------------------------------------------------------------------
+  // CORE: Request timestamp from PlenumNET
+  // --------------------------------------------------------------------------
+
+  async requestTimestamp(request: TimestampRequest): Promise<TimestampResponse> {
+    return this.post<TimestampResponse>('/api/tsa/timestamp/json', request);
+  }
+
+  // --------------------------------------------------------------------------
+  // VERIFICATION — White Paper §7
+  //
+  // "Verification is an entirely offline process. Once a client possesses
+  // the original data and the TimeStampToken, they can verify authenticity
+  // without contacting PlenumNET or any online service."
+  //
+  // This online method is for convenience. Offline verification uses OpenSSL.
+  // --------------------------------------------------------------------------
+
+  /**
+   * Verify a previously obtained timestamp token via PlenumNET.
+   * For offline verification: openssl ts -verify -data <file> -in <resp> -CAfile plenumnet-tsa.pem
+   */
+  async verifyToken(base64Token: string): Promise<VerificationResponse> {
+    return this.post<VerificationResponse>('/api/tsa/verify', { token: base64Token });
+  }
+
+  /**
+   * Verify that a document still matches its stored timestamp.
+   * Re-hashes the document and checks against the original hash.
+   * Then optionally verifies the token with PlenumNET.
+   */
+  async verifyDocumentIntegrity(
+    documentBuffer: Buffer,
+    storedHash: string,
+    storedToken?: string,
+  ): Promise<{
+    hashMatch: boolean;
+    currentHash: string;
+    storedHash: string;
+    tokenVerification: VerificationResponse | null;
+  }> {
+    const currentHash = crypto.createHash('sha256').update(documentBuffer).digest('hex');
+    const hashMatch = currentHash === storedHash;
+
+    let tokenVerification: VerificationResponse | null = null;
+    if (storedToken && hashMatch) {
+      try {
+        tokenVerification = await this.verifyToken(storedToken);
+      } catch {
+        // Verification service unavailable — hash match is still valid locally
+      }
+    }
+
+    return { hashMatch, currentHash, storedHash, tokenVerification };
+  }
+
+  // --------------------------------------------------------------------------
+  // HEALTH
+  // --------------------------------------------------------------------------
+
+  async checkHealth(): Promise<TsaHealthResponse> {
+    return this.get<TsaHealthResponse>('/api/tsa/health');
+  }
+
+  // --------------------------------------------------------------------------
+  // HTTP INTERNALS
+  // --------------------------------------------------------------------------
+
+  private async post<T>(path: string, body: unknown): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.authToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(`PlenumNET TSA error (${response.status}): ${error.error || error.message || response.statusText}`);
+    }
+    return response.json() as Promise<T>;
+  }
+
+  private async get<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${this.authToken}` },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(`PlenumNET TSA error (${response.status}): ${error.error || error.message || response.statusText}`);
+    }
+    return response.json() as Promise<T>;
+  }
+}
+```
+
+---
+
+## FILE 2 OF 2: `server/subscribers/tsa-subscribers.ts`
+
+Create this file. Event Bus subscribers that trigger RFC 3161 timestamp requests at key document lifecycle moments.
+
+```typescript
+/**
+ * MAESTRO RFC 3161 TSA EVENT SUBSCRIBERS
+ * Repository: SigmaWolf-8/Maestro
+ * Location:   server/subscribers/tsa-subscribers.ts
+ *
+ * Subscribes to Event Bus events and calls PlenumNET /api/tsa/timestamp/json.
+ * Owns WHAT gets timestamped, WHEN, and under which policy tier.
+ * PlenumNET owns the cryptographic operations.
+ *
+ * White paper §9.3: "Trust is not an add-on — it is woven into the
+ * fabric of every transaction."
+ *
+ * After this integration, every document classification, review decision,
+ * version lock, and archive seal carries a court-admissible RFC 3161
+ * proof of existence.
+ *
+ * IMPORTANT: TSA timestamp failure NEVER blocks document processing.
+ * Every subscriber is wrapped in try/catch. The timestamp is evidence
+ * enhancement, not a gating requirement.
+ */
+
+import { PlenumNetTsaClient, PolicyTier, TimestampResponse } from '../services/plenumnet/tsa-client';
+import * as crypto from 'crypto';
+
+// ============================================================================
+// INTERFACES — Adapt to match your actual Maestro service interfaces
+// ============================================================================
+
+interface EventBus {
+  subscribe(eventType: string, handler: (event: DocumentEvent) => Promise<void>): void;
+  emit(event: DocumentEvent): Promise<void>;
+}
+
+interface DocumentEvent {
+  eventId: string;
+  eventType: string;
+  timestamp: { timestamp: string; precision: string; source: string };
+  documentId: string;
+  wbsCode: string;
+  documentType: string;
+  userId: string;
+  sha3Hash: string;
+  source: string;
+  metadata: Record<string, unknown>;
+  tldsaSignature: { signature: string; publicKeyId: string } | null;
+}
+
+interface DocumentStore {
+  getDocumentBuffer(documentId: string): Promise<Buffer | null>;
+  storeTimestampToken(documentId: string, token: string, metadata: Record<string, unknown>): Promise<void>;
+}
+
+// ============================================================================
+// HELPER — Log TSA result back to Event Bus
+// ============================================================================
+
+async function logTsaEvent(
+  eventBus: EventBus,
+  originalEvent: DocumentEvent,
+  tsaResult: TimestampResponse,
+  policyTier: string,
+): Promise<void> {
+  await eventBus.emit({
+    eventId: crypto.randomUUID(),
+    eventType: 'tsa.token_issued',
+    timestamp: {
+      timestamp: tsaResult.hptpTimestamp,
+      precision: tsaResult.hptpPrecision,
+      source: tsaResult.hptpSource,
+    },
+    documentId: originalEvent.documentId,
+    wbsCode: originalEvent.wbsCode,
+    documentType: originalEvent.documentType,
+    userId: 'system',
+    sha3Hash: '',
+    source: 'tsa_subscriber',
+    metadata: {
+      triggerEventId: originalEvent.eventId,
+      triggerEventType: originalEvent.eventType,
+      tsaSerialNumber: tsaResult.serialNumber,
+      tsaGenTime: tsaResult.genTime,
+      tsaPolicyOid: tsaResult.policy,
+      tsaPolicyTier: policyTier,
+      tsaPolicyName: tsaResult.policyName,
+      tsaOrdering: tsaResult.ordering,
+      tsaMerkleLeaf: tsaResult.merkleLeafHash,
+      tsaMerkleRoot: tsaResult.merkleRoot,
+      tsaTldsaSigned: tsaResult.tldsaSignature ? 'yes' : 'no',
+      // Token stored separately via documentStore — only reference here
+      tsaTokenStored: true,
+    },
+    tldsaSignature: null,
+  });
+}
+
+// ============================================================================
+// SUBSCRIBER REGISTRATION — Call once at Maestro startup
+// ============================================================================
+
+export function registerTsaSubscribers(
+  eventBus: EventBus,
+  tsaClient: PlenumNetTsaClient,
+  documentStore: DocumentStore,
+): void {
+
+  // --------------------------------------------------------------------------
+  // 1. document.staged → FORENSICS timestamp on staged document
+  //
+  // White paper §8.2: "Creates Digital Evidence Vaults where every document
+  // is accompanied by a TST."
+  // --------------------------------------------------------------------------
+  eventBus.subscribe('document.staged', async (event) => {
+    try {
+      const docBuffer = await documentStore.getDocumentBuffer(event.documentId);
+      if (!docBuffer) return;
+
+      const result = await tsaClient.timestampDocument(docBuffer, 'FORENSICS');
+      await documentStore.storeTimestampToken(event.documentId, result.timestamp.token, {
+        phase: 'staged',
+        eventId: event.eventId,
+        documentHash: result.documentHash,
+        serialNumber: result.timestamp.serialNumber,
+        genTime: result.timestamp.genTime,
+        policyTier: 'FORENSICS',
+      });
+      await logTsaEvent(eventBus, event, result.timestamp, 'FORENSICS');
+    } catch (error) {
+      console.warn('TSA timestamp failed for document.staged:', (error as Error).message);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // 2. document.reviewed → FORENSICS timestamp on review decision
+  //
+  // White paper §8.2: "Cryptographic proof of existence and integrity,
+  // making evidence admissible and tamper-evident in court proceedings."
+  // --------------------------------------------------------------------------
+  eventBus.subscribe('document.reviewed', async (event) => {
+    try {
+      const eventPayload = {
+        documentId: event.documentId,
+        decision: event.metadata.decision,
+        reviewerId: event.userId,
+        wbsCode: event.wbsCode,
+        comments: event.metadata.comments,
+        originalEventId: event.eventId,
+      };
+
+      const result = await tsaClient.timestampEvent(eventPayload, 'FORENSICS');
+      await documentStore.storeTimestampToken(event.documentId, result.token, {
+        phase: 'reviewed',
+        decision: event.metadata.decision,
+        eventId: event.eventId,
+        serialNumber: result.serialNumber,
+        genTime: result.genTime,
+        policyTier: 'FORENSICS',
+      });
+      await logTsaEvent(eventBus, event, result, 'FORENSICS');
+    } catch (error) {
+      console.warn('TSA timestamp failed for document.reviewed:', (error as Error).message);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // 3. document.version_locked → FORENSICS timestamp on approved document
+  //
+  // This is the most critical timestamp — proves the final approved version
+  // existed at a specific moment. Combined with TL-DSA dual-signing, this
+  // proof survives quantum computing attacks. (White paper §9.1)
+  // --------------------------------------------------------------------------
+  eventBus.subscribe('document.version_locked', async (event) => {
+    try {
+      const docBuffer = await documentStore.getDocumentBuffer(event.documentId);
+      if (!docBuffer) return;
+
+      const result = await tsaClient.timestampDocument(docBuffer, 'FORENSICS');
+      await documentStore.storeTimestampToken(event.documentId, result.timestamp.token, {
+        phase: 'version_locked',
+        eventId: event.eventId,
+        documentHash: result.documentHash,
+        sha3Hash: event.sha3Hash,
+        serialNumber: result.timestamp.serialNumber,
+        genTime: result.timestamp.genTime,
+        policyTier: 'FORENSICS',
+        approvalCount: event.metadata.approvalCount,
+        requiredCount: event.metadata.requiredCount,
+      });
+      await logTsaEvent(eventBus, event, result.timestamp, 'FORENSICS');
+    } catch (error) {
+      console.warn('TSA timestamp failed for document.version_locked:', (error as Error).message);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // 4. document.classified (invoice) → COMPLY timestamp
+  //
+  // White paper §8.1: "Financial compliance. FINRA Rule 613 and other
+  // regulatory mandates. Nanosecond accuracy."
+  // --------------------------------------------------------------------------
+  eventBus.subscribe('document.classified', async (event) => {
+    if (event.documentType !== 'invoice') return;
+
+    try {
+      const docBuffer = await documentStore.getDocumentBuffer(event.documentId);
+      if (!docBuffer) return;
+
+      const result = await tsaClient.timestampDocument(docBuffer, 'COMPLY');
+      await documentStore.storeTimestampToken(event.documentId, result.timestamp.token, {
+        phase: 'classified',
+        classification: 'invoice',
+        eventId: event.eventId,
+        documentHash: result.documentHash,
+        serialNumber: result.timestamp.serialNumber,
+        genTime: result.timestamp.genTime,
+        policyTier: 'COMPLY',
+        vendorName: event.metadata.vendorName,
+      });
+      await logTsaEvent(eventBus, event, result.timestamp, 'COMPLY');
+    } catch (error) {
+      console.warn('TSA timestamp failed for invoice classification:', (error as Error).message);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // 5. document.classified (safety) → SENTINEL timestamp
+  //
+  // White paper §8.3: "Ordering guaranteed for timeline reconstruction.
+  // Attackers cannot manipulate logs without breaking the cryptographic chain."
+  // --------------------------------------------------------------------------
+  eventBus.subscribe('document.classified', async (event) => {
+    const safetyTypes = ['inspection_report', 'safety_inspection', 'incident_report'];
+    if (!safetyTypes.includes(event.documentType)) return;
+
+    try {
+      const docBuffer = await documentStore.getDocumentBuffer(event.documentId);
+      if (!docBuffer) return;
+
+      const result = await tsaClient.timestampDocument(docBuffer, 'SENTINEL');
+      await documentStore.storeTimestampToken(event.documentId, result.timestamp.token, {
+        phase: 'classified',
+        classification: event.documentType,
+        eventId: event.eventId,
+        documentHash: result.documentHash,
+        serialNumber: result.timestamp.serialNumber,
+        genTime: result.timestamp.genTime,
+        policyTier: 'SENTINEL',
+        inspectorName: event.metadata.inspectorName,
+      });
+      await logTsaEvent(eventBus, event, result.timestamp, 'SENTINEL');
+    } catch (error) {
+      console.warn('TSA timestamp failed for safety classification:', (error as Error).message);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // 6. archive.sealed → SENTINEL timestamp on sealed archive
+  //
+  // White paper §8.3: "Builds a Centralized Timeline Viewer that correlates
+  // events from disparate systems into a single, irrefutable chronological
+  // sequence."
+  //
+  // This is the capstone timestamp — proves the entire archive existed in
+  // its final form at the seal moment. 50-year retention.
+  // --------------------------------------------------------------------------
+  eventBus.subscribe('archive.sealed', async (event) => {
+    try {
+      const archivePayload = {
+        projectId: event.metadata.projectId,
+        documentCount: event.metadata.documentCount,
+        wbsNodeCount: event.metadata.wbsNodeCount,
+        archiveSize: event.metadata.archiveSize,
+        manifestHash: event.sha3Hash,
+        sealEventId: event.eventId,
+      };
+
+      const result = await tsaClient.timestampEvent(archivePayload, 'SENTINEL');
+      await documentStore.storeTimestampToken(event.documentId, result.token, {
+        phase: 'archive_sealed',
+        eventId: event.eventId,
+        serialNumber: result.serialNumber,
+        genTime: result.genTime,
+        policyTier: 'SENTINEL',
+        documentCount: event.metadata.documentCount,
+        manifestHash: event.sha3Hash,
+      });
+      await logTsaEvent(eventBus, event, result, 'SENTINEL');
+    } catch (error) {
+      console.warn('TSA timestamp failed for archive.sealed:', (error as Error).message);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // 7. review.escalation → DEFAULT timestamp
+  // --------------------------------------------------------------------------
+  eventBus.subscribe('review.escalation', async (event) => {
+    try {
+      const result = await tsaClient.timestampEvent({
+        documentId: event.documentId,
+        escalationType: 'review_overdue',
+        reviewerId: event.metadata.reviewerId,
+        daysOverdue: event.metadata.daysOverdue,
+        eventId: event.eventId,
+      }, 'DEFAULT');
+      await logTsaEvent(eventBus, event, result, 'DEFAULT');
+    } catch (error) {
+      console.warn('TSA timestamp failed for review.escalation:', (error as Error).message);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // 8. upload.sync_complete → DEFAULT timestamp
+  // --------------------------------------------------------------------------
+  eventBus.subscribe('upload.sync_complete', async (event) => {
+    try {
+      const result = await tsaClient.timestampEvent({
+        uploadCount: event.metadata.uploadCount,
+        fieldWorkerId: event.userId,
+        projectId: event.metadata.projectId,
+        eventId: event.eventId,
+      }, 'DEFAULT');
+      await logTsaEvent(eventBus, event, result, 'DEFAULT');
+    } catch (error) {
+      console.warn('TSA timestamp failed for upload.sync_complete:', (error as Error).message);
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // 9. classification.bulk_complete → COMPLY timestamp
+  // --------------------------------------------------------------------------
+  eventBus.subscribe('classification.bulk_complete', async (event) => {
+    try {
+      const result = await tsaClient.timestampEvent({
+        documentCount: event.metadata.documentCount,
+        importSource: event.metadata.importSource,
+        wbsNodesAffected: event.metadata.wbsNodesAffected,
+        projectId: event.metadata.projectId,
+        eventId: event.eventId,
+      }, 'COMPLY');
+      await logTsaEvent(eventBus, event, result, 'COMPLY');
+    } catch (error) {
+      console.warn('TSA timestamp failed for classification.bulk_complete:', (error as Error).message);
+    }
+  });
+}
+```
+
+---
+
+## MODIFICATION TO EXISTING FILE: `server/index.ts`
+
+Add AFTER notification subscriber registration:
+
+```typescript
+// === ADD THESE IMPORTS ===
+import { PlenumNetTsaClient } from './services/plenumnet/tsa-client';
+import { registerTsaSubscribers } from './subscribers/tsa-subscribers';
+
+// === ADD THIS AFTER NOTIFICATION SUBSCRIBERS ===
+
+// Initialize PlenumNET TSA client
+const tsaClient = new PlenumNetTsaClient(
+  process.env.PLENUMNET_BASE_URL || 'https://plenumnet.replit.app',
+  process.env.PLENUMNET_AUTH_TOKEN || '',
+);
+
+// Verify TSA availability at startup
+try {
+  const tsaHealth = await tsaClient.checkHealth();
+  console.log(`PlenumNET TSA: ${tsaHealth.status}, dual-sign: ${tsaHealth.dualSignEnabled}, merkle depth: ${tsaHealth.merkleTreeDepth}`);
+  if (tsaHealth.status === 'unhealthy') {
+    console.warn('PlenumNET TSA is unhealthy — timestamps will be unavailable');
+  }
+} catch (error) {
+  console.warn('Could not reach PlenumNET TSA:', (error as Error).message);
+  // Do NOT crash Maestro — TSA is evidence enhancement, not a gating requirement
+}
+
+// Wire Event Bus subscribers to TSA timestamping
+registerTsaSubscribers(
+  eventBus,         // Your existing Event Bus instance
+  tsaClient,
+  documentStore,    // Your existing document store service (or create adapter)
+);
+
+console.log('TSA subscribers registered — 9 event types wired to PlenumNET RFC 3161');
+```
+
+**Environment variables** (same as notification integration):
+- `PLENUMNET_BASE_URL` — e.g., `https://plenumnet.replit.app`
+- `PLENUMNET_AUTH_TOKEN` — JWT or API key with `app` role
+
+---
+
+## DOCUMENT VERIFICATION PATTERN
+
+When a user or auditor needs to verify a document's timestamp:
+
+```typescript
+// In a Maestro API route or service method:
+const verification = await tsaClient.verifyDocumentIntegrity(
+  documentBuffer,      // Current document content
+  storedDocumentHash,  // Hash stored at timestamp time
+  storedTsaToken,      // Base64 TST token stored at timestamp time
+);
+
+if (verification.hashMatch && verification.tokenVerification?.valid) {
+  // Document is unmodified since timestamp time
+  // verification.tokenVerification.genTime = exact moment of proof
+  // verification.tokenVerification.policyTier = assurance level
+} else if (!verification.hashMatch) {
+  // Document has been modified since timestamping
+  // verification.currentHash !== verification.storedHash
+} else {
+  // Token verification failed — investigate
+}
+```
+
+**Offline verification** (without PlenumNET):
+```bash
+# 1. Export document and TST from Maestro
+# 2. Download PlenumNET TSA certificate
+curl https://plenumnet.replit.app/api/tsa/certificate/download -o plenumnet-tsa.pem
+# 3. Verify with OpenSSL
+openssl ts -verify -data document.pdf -in document.tsr -CAfile plenumnet-tsa.pem
+```
+
+---
+
+## TESTING CHECKLIST
+
+- [ ] `tsaClient.timestampData()` hashes locally and returns valid TimestampResponse
+- [ ] `tsaClient.timestampDocument()` returns both documentHash and timestamp token
+- [ ] `tsaClient.verifyToken()` validates a previously issued token
+- [ ] `tsaClient.verifyDocumentIntegrity()` detects modified documents (hash mismatch)
+- [ ] `document.staged` → FORENSICS timestamp stored with document
+- [ ] `document.reviewed` → FORENSICS timestamp on review decision event
+- [ ] `document.version_locked` → FORENSICS timestamp on final approved document
+- [ ] `document.classified` (invoice) → COMPLY timestamp
+- [ ] `document.classified` (safety) → SENTINEL timestamp
+- [ ] `archive.sealed` → SENTINEL timestamp with 50-year retention tier
+- [ ] `review.escalation` → DEFAULT timestamp
+- [ ] `upload.sync_complete` → DEFAULT timestamp
+- [ ] `classification.bulk_complete` → COMPLY timestamp
+- [ ] Every timestamp logs `tsa.token_issued` event to Event Bus with serial, Merkle leaf, policy tier
+- [ ] TSA failure does NOT crash Maestro — warnings logged, processing continues
+- [ ] TSA unavailable at startup does NOT crash Maestro — warnings logged
+- [ ] Original document data NEVER sent to PlenumNET — only hashes
+- [ ] Token stored in document store for future verification
+- [ ] Policy tier correctly mapped per event type (see mapping table above)
+
+---
+
+## NON-NEGOTIABLE RULES
+
+1. **Maestro NEVER imports ASN.1 libraries.** JSON calls to PlenumNET only.
+2. **Maestro NEVER sends original document content to PlenumNET.** Hash locally, send only the hash. Privacy-by-design (white paper §3).
+3. **TSA failure NEVER blocks document processing.** Every subscriber wrapped in try/catch.
+4. **Every timestamp logs a `tsa.token_issued` event to the Event Bus.** Links back to triggering event.
+5. **Policy tier is selected per event type.** Use the mapping table above. Financial → COMPLY, legal/review → FORENSICS, safety/archive → SENTINEL.
+6. **Tokens are stored alongside documents** for future offline verification.
+7. **All code stays in the Maestro repo.** The boundary is HTTP.
+
+---
+
+## RELATIONSHIP TO NOTIFICATION SERVICE
+
+The TSA integration runs **alongside** the notification integration (MN-1 through MN-4), not as a replacement:
+
+| Concern | Notification Service (#20) | TSA Service (#21) |
+|---------|---------------------------|-------------------|
+| Purpose | Alert humans via email | Create cryptographic proof |
+| Trigger | Same Event Bus events | Same Event Bus events |
+| What it sends to PlenumNET | Recipient + template + payload | Hash of document/event |
+| What PlenumNET returns | deliveryId + HPTP timestamp | RFC 3161 TimeStampToken |
+| Storage | deliveryId logged to Event Bus | TST token stored with document |
+| Legal value | Proof of notification delivery | Proof of document existence at time |
+| Verification | PlenumNET delivery status query | OpenSSL offline or PlenumNET online |
+
+Both fire on the same events. Both are best-effort (neither blocks processing). Together they provide both **human notification** and **cryptographic proof** for every document lifecycle moment.
+
+---
+
+*Capomastro Holdings Ltd. — Applied Physics Division*
+*Maestro RFC 3161 TSA Integration — "Where Time Becomes Truth."*

@@ -1,0 +1,514 @@
+# PWA Install Button — Reusable Skill for Replit Apps
+
+**Drop-in PWA "Install App" feature for any React + Vite + shadcn/ui project on Replit.**
+
+Copy this entire file into a conversation with Replit Agent and say: *"Implement the PWA Install Button feature from this document."*
+
+---
+
+## What This Adds
+
+- A floating install button (bottom-right) that appears on Android/Chrome/Edge and iOS Safari
+- Native browser install prompt on Android/Chrome/desktop Edge
+- iOS-specific modal with step-by-step "Add to Home Screen" instructions
+- Service worker with offline caching (network-first strategy)
+- Web App Manifest for standalone app experience
+- Auto-hides when app is already installed or running in standalone mode
+- Haptic feedback on tap (mobile)
+
+---
+
+## Prerequisites
+
+- React + Vite + TypeScript project
+- shadcn/ui installed (`Button`, `Dialog` components)
+- `lucide-react` for icons
+- A `client/public/` directory for static assets
+
+---
+
+## Files to Create / Modify
+
+### 1. Icons (Required for PWA)
+
+Generate two PNG icons from your app's favicon or logo:
+- `client/public/icon-192.png` (192x192px)
+- `client/public/icon-512.png` (512x512px)
+
+If you have a larger source icon (e.g., `client/public/favicon.png`), you can resize with ImageMagick:
+
+```bash
+convert favicon.png -resize 192x192 icon-192.png
+convert favicon.png -resize 512x512 icon-512.png
+```
+
+---
+
+### 2. `client/public/manifest.json`
+
+Create this file. Customize `name`, `short_name`, `description`, `background_color`, and `theme_color` for your app.
+
+```json
+{
+  "name": "Your App Name",
+  "short_name": "Your App",
+  "description": "Your app description here",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#d97706",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
+```
+
+---
+
+### 3. `client/public/sw.js`
+
+Create this service worker file. Change `CACHE_NAME` when you update your app to bust the cache.
+
+```js
+const CACHE_NAME = 'my-app-v1';
+const PRECACHE_URLS = [
+  '/',
+  '/favicon.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/manifest.json',
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+    ).then(() => clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  if (event.request.url.includes('/api/')) return;
+  if (event.request.url.includes('/ws/')) return;
+
+  event.respondWith(
+    fetch(event.request).then((response) => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      }
+      return response;
+    }).catch(() => caches.match(event.request).then((cached) => cached || new Response('Offline', { status: 503 })))
+  );
+});
+```
+
+---
+
+### 4. `client/index.html` — Add These Lines
+
+Add to `<head>`:
+
+```html
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#d97706" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Your App Name" />
+<link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+<link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
+```
+
+Add before closing `</body>`:
+
+```html
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(function() {});
+    });
+  }
+</script>
+```
+
+---
+
+### 5. `client/src/components/mobile-install-modal.tsx`
+
+iOS Safari doesn't support the native install prompt, so this modal shows manual instructions. Customize the title and gradient colors to match your app's theme.
+
+```tsx
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Share, Plus } from "lucide-react";
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function MobileInstallModal({ open, onOpenChange }: Props) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="max-w-[90vw] sm:max-w-md border-amber-600/40 text-white p-0 overflow-hidden"
+        style={{ background: "linear-gradient(to bottom, #18181b, #09090b)" }}
+      >
+        <DialogHeader className="p-6 pb-4 border-b border-amber-600/20">
+          <DialogTitle className="text-2xl text-center" style={{ color: "#d4a017" }}>
+            Install Your App
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="p-6 pt-4 space-y-5">
+          <div className="space-y-4">
+            <div className="flex items-start gap-4">
+              <div
+                className="shrink-0 w-10 h-10 rounded-md flex items-center justify-center text-white"
+                style={{ background: "linear-gradient(135deg, #d97706, #f59e0b)" }}
+              >
+                <span className="text-lg font-bold">1</span>
+              </div>
+              <div className="pt-1">
+                <p className="text-zinc-200 text-sm font-medium">
+                  Tap the <Share className="inline w-4 h-4 text-blue-400 mx-0.5 -mt-0.5" /> Share button in Safari
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div
+                className="shrink-0 w-10 h-10 rounded-md flex items-center justify-center text-white"
+                style={{ background: "linear-gradient(135deg, #d97706, #f59e0b)" }}
+              >
+                <span className="text-lg font-bold">2</span>
+              </div>
+              <div className="pt-1">
+                <p className="text-zinc-200 text-sm font-medium">
+                  Scroll down and tap <Plus className="inline w-4 h-4 text-zinc-300 mx-0.5 -mt-0.5" /> <span className="text-white font-semibold">Add to Home Screen</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div
+                className="shrink-0 w-10 h-10 rounded-md flex items-center justify-center text-white"
+                style={{ background: "linear-gradient(135deg, #d97706, #f59e0b)" }}
+              >
+                <span className="text-lg font-bold">3</span>
+              </div>
+              <div className="pt-1">
+                <p className="text-zinc-200 text-sm font-medium">
+                  Tap <span className="text-white font-semibold">Add</span> to install
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <Button
+            variant="default"
+            onClick={() => onOpenChange(false)}
+            className="w-full"
+            style={{
+              background: "linear-gradient(to right, #d97706, #f59e0b)",
+              color: "#000",
+            }}
+            data-testid="button-install-got-it"
+          >
+            Got It
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+---
+
+### 6. `client/src/hooks/use-pwa-install.ts`
+
+A reusable React hook for PWA install state management. Use this if you want to add install buttons in multiple places (e.g., a settings page, about page, or sidebar).
+
+```ts
+import { useState, useEffect, useCallback, useMemo } from "react";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+function isIos(): boolean {
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isInStandaloneMode(): boolean {
+  return window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone === true;
+}
+
+export function usePwaInstall() {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
+
+  const iosDevice = useMemo(() => isIos(), []);
+
+  useEffect(() => {
+    if (isInStandaloneMode()) {
+      setIsInstalled(true);
+      return;
+    }
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    const installedHandler = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", installedHandler);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", installedHandler);
+    };
+  }, []);
+
+  const install = useCallback(async () => {
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        setIsInstalled(true);
+        setDeferredPrompt(null);
+        return true;
+      }
+      return false;
+    }
+    if (iosDevice) {
+      setShowIosGuide(true);
+      return false;
+    }
+    return false;
+  }, [deferredPrompt, iosDevice]);
+
+  const dismissIosGuide = useCallback(() => {
+    setShowIosGuide(false);
+  }, []);
+
+  const canInstall = (!isInstalled && !!deferredPrompt) || (!isInstalled && iosDevice && !isInStandaloneMode());
+
+  return {
+    canInstall,
+    isInstalled,
+    install,
+    showIosGuide,
+    dismissIosGuide,
+    iosDevice,
+  };
+}
+```
+
+---
+
+### 7. `client/src/components/install-button.tsx`
+
+The floating install button component. Customize the gradient colors and `aria-label` for your app.
+
+```tsx
+import { useEffect, useState, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { MobileInstallModal } from "@/components/mobile-install-modal";
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+export function InstallButton() {
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showAndroid, setShowAndroid] = useState(false);
+  const [showIOS, setShowIOS] = useState(false);
+  const [iosModalOpen, setIosModalOpen] = useState(false);
+
+  const isStandalone = typeof window !== "undefined" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+     (navigator as any).standalone === true);
+
+  const isIOS = typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    !(window as any).MSStream;
+
+  useEffect(() => {
+    if (isStandalone) return;
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setShowAndroid(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handler);
+
+    if (isIOS && window.innerWidth <= 1024) {
+      setShowIOS(true);
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
+  }, [isStandalone, isIOS]);
+
+  const handleInstall = useCallback(async () => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(12);
+    }
+
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        setShowAndroid(false);
+      }
+      setDeferredPrompt(null);
+      return;
+    }
+
+    if (isIOS) {
+      setIosModalOpen(true);
+    }
+  }, [deferredPrompt, isIOS]);
+
+  if (isStandalone) return null;
+  if (!showAndroid && !showIOS) return null;
+
+  return (
+    <>
+      <Button
+        size="icon"
+        variant="default"
+        onClick={handleInstall}
+        className="fixed bottom-6 right-6 z-50 rounded-full w-14 h-14 shadow-2xl"
+        style={{
+          background: "linear-gradient(135deg, #d97706, #f59e0b)",
+          boxShadow: "0 8px 32px rgba(217, 119, 6, 0.4)",
+        }}
+        aria-label="Install App"
+        data-testid="button-install-pwa"
+      >
+        <Download className="h-6 w-6 text-black" />
+      </Button>
+
+      <MobileInstallModal open={iosModalOpen} onOpenChange={setIosModalOpen} />
+    </>
+  );
+}
+```
+
+---
+
+### 8. Wire It Up in `App.tsx`
+
+Import the `InstallButton` and render it at the root level of your app (outside any routes/layout so it's always visible):
+
+```tsx
+import { InstallButton } from "@/components/install-button";
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        {/* ...your layout and routes... */}
+        <InstallButton />
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
+```
+
+---
+
+## Customization Guide
+
+| What to Change | Where | Default Value |
+|---|---|---|
+| App name | `manifest.json` (`name`, `short_name`) | "Your App Name" |
+| Theme color | `manifest.json`, `index.html` meta tag | `#d97706` (amber) |
+| Background color | `manifest.json` | `#09090b` (zinc-950) |
+| Button gradient | `install-button.tsx` `style` prop | `#d97706 -> #f59e0b` |
+| Button position | `install-button.tsx` className | `bottom-6 right-6` |
+| Modal title | `mobile-install-modal.tsx` DialogTitle | "Install Your App" |
+| Modal theme | `mobile-install-modal.tsx` style/className | Dark zinc + amber accents |
+| Cache version | `sw.js` `CACHE_NAME` | `'my-app-v1'` |
+| Cached routes | `sw.js` `PRECACHE_URLS` | `['/', '/favicon.png', ...]` |
+
+---
+
+## Important Notes
+
+1. **Replit Preview vs Published URL**: The `beforeinstallprompt` event does NOT fire in Replit's embedded preview panel. You must open the published URL directly in Chrome/Edge to see the native install prompt. The iOS modal works everywhere.
+
+2. **HTTPS Required**: PWA install requires HTTPS. Replit's published URLs provide this automatically.
+
+3. **Cache Busting**: When you update your app, bump the `CACHE_NAME` version string (e.g., `v1` to `v2`) in `sw.js` so users get fresh content.
+
+4. **Using the Hook vs the Component**:
+   - Use `<InstallButton />` for the floating FAB (quick drop-in)
+   - Use `usePwaInstall()` hook when you want install buttons in settings pages, about pages, or headers
+
+5. **Standalone Detection**: Both the component and hook auto-hide when the app is already running as an installed PWA (standalone mode).
+
+---
+
+## Quick Checklist
+
+- [ ] Created `icon-192.png` and `icon-512.png` in `client/public/`
+- [ ] Created `manifest.json` in `client/public/`
+- [ ] Created `sw.js` in `client/public/`
+- [ ] Added manifest link + meta tags to `client/index.html` `<head>`
+- [ ] Added service worker registration script to `client/index.html` `<body>`
+- [ ] Created `mobile-install-modal.tsx` component
+- [ ] Created `use-pwa-install.ts` hook
+- [ ] Created `install-button.tsx` component
+- [ ] Added `<InstallButton />` to `App.tsx`
+- [ ] Published app and tested install from direct URL in Chrome/Edge

@@ -50,7 +50,9 @@ import {
   Shield,
   AppWindow,
   ExternalLink,
+  PenTool,
   Plus,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 import { useSettings } from "@/components/settings-provider";
@@ -129,6 +131,8 @@ const iconMap: Record<string, LucideIcon> = {
   Wallet,
   Shield,
   AppWindow,
+  PenTool,
+  Workflow,
 };
 
 interface NavigationTree extends NavigationItem {
@@ -284,8 +288,8 @@ export function AppSidebar({
             <button
               onClick={() => {
                 const companyUrl = activeTenant?.config?.branding?.companyUrl;
-                if (companyUrl && onOpenApp) {
-                  onOpenApp(companyUrl);
+                if (companyUrl) {
+                  window.open(companyUrl, "_blank", "noopener,noreferrer");
                 }
               }}
               className={`flex w-full h-[83px] items-center justify-center ${activeTenant?.config?.branding?.companyUrl ? 'cursor-pointer hover-elevate' : 'cursor-default'}`}
@@ -302,8 +306,8 @@ export function AppSidebar({
             <button
               onClick={() => {
                 const companyUrl = activeTenant?.config?.branding?.companyUrl;
-                if (companyUrl && onOpenApp) {
-                  onOpenApp(companyUrl);
+                if (companyUrl) {
+                  window.open(companyUrl, "_blank", "noopener,noreferrer");
                 }
               }}
               className={`flex w-full h-[92px] items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-lg ${activeTenant?.config?.branding?.companyUrl ? 'cursor-pointer hover-elevate' : 'cursor-default'}`}

@@ -3,6 +3,9 @@ import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
 import { seedDatabase } from "./storage";
+import { PlenumNetTsaClient } from "./services/plenumnet/tsa-client";
+import { registerTsaSubscribers } from "./subscribers/tsa-subscribers";
+import { eventBus } from "./services/event-bus-service";
 
 const app = express();
 const httpServer = createServer(app);
@@ -64,6 +67,24 @@ app.use((req, res, next) => {
 (async () => {
   await seedDatabase();
   await registerRoutes(httpServer, app);
+
+  const tsaClient = new PlenumNetTsaClient(
+    process.env.PLENUMNET_BASE_URL || 'https://plenumnet.replit.app',
+    process.env.PLENUMNET_AUTH_TOKEN || '',
+  );
+
+  try {
+    const tsaHealth = await tsaClient.checkHealth();
+    log(`PlenumNET TSA: ${tsaHealth.status}, dual-sign: ${tsaHealth.dualSignEnabled}, merkle depth: ${tsaHealth.merkleTreeDepth}`, 'tsa');
+    if (tsaHealth.status === 'unhealthy') {
+      log('PlenumNET TSA is unhealthy — timestamps will be unavailable', 'tsa');
+    }
+  } catch (error) {
+    log(`Could not reach PlenumNET TSA: ${(error as Error).message}`, 'tsa');
+  }
+
+  registerTsaSubscribers(eventBus, tsaClient);
+  log('TSA subscribers registered — 10 event handlers wired to PlenumNET RFC 3161', 'tsa');
 
   app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

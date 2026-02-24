@@ -146,16 +146,29 @@ export function getAuthUrl(state: string, credentials: MicrosoftCredentials): st
 }
 
 export async function exchangeCodeForToken(code: string, credentials: MicrosoftCredentials): Promise<TokenInfo> {
+  const scopes = [
+    "openid",
+    "profile",
+    "offline_access",
+    "Files.ReadWrite",
+    "Files.ReadWrite.All",
+    "Mail.Send"
+  ].join(" ");
+
   const params = new URLSearchParams({
     client_id: credentials.clientId,
     client_secret: credentials.clientSecret,
     code: code,
     redirect_uri: REDIRECT_URI,
-    grant_type: "authorization_code"
+    grant_type: "authorization_code",
+    scope: scopes,
   });
   
+  const tokenUrl = `https://login.microsoftonline.com/${credentials.tenantId}/oauth2/v2.0/token`;
+  console.log("[MS Graph] Token exchange → tenant:", credentials.tenantId, "clientId:", credentials.clientId, "redirect:", REDIRECT_URI);
+  
   const response = await fetch(
-    `https://login.microsoftonline.com/${credentials.tenantId}/oauth2/v2.0/token`,
+    tokenUrl,
     {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -165,6 +178,7 @@ export async function exchangeCodeForToken(code: string, credentials: MicrosoftC
   
   if (!response.ok) {
     const error = await response.text();
+    console.error("[MS Graph] Token exchange FAILED:", error);
     throw new Error(`Token exchange failed: ${error}`);
   }
   
@@ -213,7 +227,7 @@ export async function storeToken(userId: string, token: TokenInfo, tenantId?: st
   try {
     await storage.upsertMsGraphToken({
       tenantId: resolvedTenantId,
-      userId,
+      userId: null,
       tokenType: "user_delegated",
       accessToken: token.accessToken,
       refreshToken: token.refreshToken || null,
@@ -229,7 +243,7 @@ export async function storeToken(userId: string, token: TokenInfo, tenantId?: st
 export async function getToken(userId: string, tenantId?: string): Promise<TokenInfo | undefined> {
   const resolvedTenantId = tenantId || "default";
   try {
-    const dbToken = await storage.getMsGraphToken(userId, resolvedTenantId);
+    const dbToken = await storage.getMsGraphToken(null, resolvedTenantId);
     if (!dbToken) return undefined;
     return {
       accessToken: dbToken.accessToken,
@@ -253,11 +267,11 @@ export async function getValidToken(userId: string, credentials?: MicrosoftCrede
         await storeToken(userId, newToken, tenantId);
         return newToken.accessToken;
       } catch {
-        await storage.deleteMsGraphToken(userId, tenantId || "default");
+        await storage.deleteMsGraphToken(null, tenantId || "default");
         return null;
       }
     }
-    await storage.deleteMsGraphToken(userId, tenantId || "default");
+    await storage.deleteMsGraphToken(null, tenantId || "default");
     return null;
   }
 

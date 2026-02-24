@@ -1,0 +1,411 @@
+ID	Title	SortNum	PS	Vendor	PSSub	SubVendor	Quantity	Qnotes	ExpressionValue	Price	Subtotal	ExpressionValue2	Quantity2	QNotes2	Subtotal2	ExpressionValue3	Quantity3	QNotes3	LineTotal	Pup	PMCompile	Attachments
+274		10	4ft sidewalk (Lineal Ft)	Stel Marr Concrete																No	No	0
+152		10	Stair landings-total prep and place-EF	Custom Concrete Solutions Inc																No	No	0
+312		10	Labour to install standard tub decking	Bartle and Gibson																No	No	0
+147		10	Salvi seal concrete (sqft)	Custom Concrete Solutions Inc																No	No	0
+207		10	Standard Duradeck deck	David Mills																No	No	0
+299		10	Clad 4in trim (Complete cost)	Grey Bear Renovating																No	No	0
+314		10	Additional steps carpeted	OMT Flooring																No	No	0
+177		10	R10 Rimboard Cladding per ln ft	Igloo Building Supplies																No	No	0
+24		21	12 inch pile	Waytec Enterprises																No	No	0
+269		10	Perimeter concrete walls(9Ft from 8Ft)	Stel Marr Concrete																No	No	0
+97		10	1x4 spruce	Igloo Building Supplies												*				No	No	0
+98			Clad 4in trim (Complete cost)	Grey Bear Renovating																No	No	0
+272		10	3ft sidewalk (Lineal Ft)	Stel Marr Concrete																No	No	0
+178		10	Riser for landing up to 5ft-EF	Custom Concrete Solutions Inc																No	No	0
+402		10	Strand Bamboo Hardwood Floor	Salvi Homes	Prefinished flooring	1522219 Alberta Inc				$2.20	$2.20				$2.20				$2.20	No	No	0
+396		10	Black Walnut Hardwood Floor	Salvi Homes	Prefinished flooring	1522219 Alberta Inc				$2.20	$2.20				$2.20				$2.20	No	No	0
+390		10	Stained Maple Hardwood Floor	Salvi Homes	Prefinished flooring	1522219 Alberta Inc				$2.20	$2.20				$2.20				$2.20	No	No	0
+394		10	Hickory Hardwood Floor	Salvi Homes	Prefinished flooring	1522219 Alberta Inc				$2.20	$2.20				$2.20				$2.20	No	No	0
+398		10	Stained Jatoba Hardwood Floor	Salvi Homes	Prefinished flooring	1522219 Alberta Inc				$2.20	$2.20				$2.20				$2.20	No	No	0
+392		10	Natural Maple Hardwood Floor	Salvi Homes	Prefinished flooring	1522219 Alberta Inc				$2.20	$2.20				$2.20				$2.20	No	No	0
+400		10	Bamboo Hardwood Floor	Salvi Homes	Prefinished flooring	1522219 Alberta Inc				$2.20	$2.20				$2.20				$2.20	No	No	0
+424		10	Test calc	All Blades Canada Inc	"Sharpen set of 3 8"" HSS Jointer knives"	All Blades Canada Inc				$13.97	$13.97				$13.97				$13.97	No	No	0
+74		10	Eldorado stone address post	Ancient Stone Works	Eldorado stone	Ancient Stone Works	18.66		*	$23.00	$429.18				$429.18				$429.18	No	No	0
+76		10	Eldorado stone address post	Corsi Brothers Tile	Eldorado stone	Ancient Stone Works	18.66		*	$23.00	$429.18				$429.18				$429.18	No	No	0
+65		10	Brick Craftsmen Column	Ancient Stone Works	Brick exterior facing	Ancient Stone Works	24		*	$18.00	$432.00	+	88		$520.00				$520.00	No	No	0
+75		10	Brick address post	Corsi Brothers Tile	Brick exterior facing	Ancient Stone Works	18.66		*	$18.00	$335.88				$335.88				$335.88	No	No	0
+66		10	Stone Craftsmen Column	Ancient Stone Works	Eldorado stone	Ancient Stone Works	24		*	$23.00	$552.00				$552.00				$552.00	No	No	0
+64		10	Brick address post	Ancient Stone Works	Brick exterior facing	Ancient Stone Works	18.66		*	$18.00	$335.88				$335.88				$335.88	No	No	0
+73		10	Brick Craftsmen Column	Ancient Stone Works	Angle iron	Ancient Stone Works	8		*	$11.00	$88.00				$88.00				$88.00	No	No	0
+413		10	Tile trim (4040 neo shower)	Salvi Homes	3x6 Streamline series crisp white (6050136)	Centura	62	Exact Pieces	*	$0.45	$27.90	*	1.15	Waste	$32.09				$32.09	No	No	0
+417		10	Tile trim (3636 neo shower)	Salvi Homes	3x6 Streamline series crisp white (6050136)	Centura	58	Exact Pieces	*	$0.45	$26.10	*	1.15	Waste	$30.02				$30.02	No	No	0
+415		10	Tile trim (4836 shower)	Salvi Homes	3x6 Streamline series crisp white (6050136)	Centura	72	Exact Pieces	*	$0.45	$32.40	*	1.15	Waste	$37.26				$37.26	No	No	0
+411		10	Tile trim (3636 shower)	Salvi Homes	3x6 Streamline series crisp white (6050136)	Centura	67	Exact Pieces	*	$0.45	$30.15	*	1.15	Waste	$34.67				$34.67	No	No	0
+409		10	Tile trim (6036 tub/shower)	Salvi Homes	3x6 Streamline series crisp white (6050136)	Centura	76	Exact Pieces	*	$0.45	$34.20	*	1.15	Waste	$39.33				$39.33	No	No	0
+307		10	Salvi V30 (Classic Oak)	Northgate Plumbing	Side splash-WE	Classic Woodcrafting				$30.58	$30.58				$30.58				$30.58	No	No	0
+306		10	Salvi V30 (Classic Oak)	Northgate Plumbing	Standard tops with splash- WE	Classic Woodcrafting				$50.31	$50.31	*	4		$201.24				$201.24	No	No	0
+300		10	Ironwood V30 (Classic Oak)	Northgate Plumbing	Standard tops with splash- SE	Classic Woodcrafting				$34.01	$34.01	*	4		$136.04				$136.04	No	No	0
+301		10	Ironwood V30 (Classic Oak)	Northgate Plumbing	Side splash - SE	Classic Woodcrafting				$14.86	$14.86				$14.86				$14.86	No	No	0
+367		10	OC Codeboard R10 (2in x 4ft x 8ft)	Consolidated Gypsum	Input Bundle>Codeboard Rigid XPS Foam 2x4x8 (type 4)	Consolidated Gypsum	0.031		*	$258.00	$8.00				$8.00				$8.00	No	No	0
+366		10	OC Codeboard R7.5 (1.5in x 4ft x 8ft)	Consolidated Gypsum	Input Bundle>Codeboard Rigid XPS Foam 1.5x4x8 (type 4)	Consolidated Gypsum	0.1		*	$198.00	$19.80	*	1.5		$29.70				$29.70	No	No	0
+365		10	OC Codeboard R5 (1in x 4ft x 8ft)	Consolidated Gypsum	Input Bundle>Codeboard Rigid XPS Foam 1.5x4x8 (type 4)	Consolidated Gypsum	0.1		*	$198.00	$19.80				$19.80				$19.80	No	No	0
+364		10	OC Foamular C300 R10 (2in x 2ft x 8ft)	Consolidated Gypsum	Input Bundle>OC Foamular C300 Rigid XPS Foam (type 4)	Consolidated Gypsum	0.0361		*	$332.00	$11.99				$11.99				$11.99	No	No	0
+363		10	OC Foamular C300 R7.5 (1.5in x 2ft x 8ft)	Consolidated Gypsum	Input Bundle>OC Foamular C300 Rigid XPS Foam (type 4)	Consolidated Gypsum	0.0522	16 per bundle	*	$332.00	$17.33				$17.33				$17.33	No	No	0
+362		10	OC Foamular C200 R-5 (1in x 2ft x 8ft)	Consolidated Gypsum	Input Bundle>OC Foamular C200 Rigid XPS Foam (type 4)	Consolidated Gypsum	0.078		*	$306.00	$23.87				$23.87				$23.87	No	No	0
+361		10	R40 Fibreglass ceiling insulation -24x48x10 3/8 (48 sqft)	Consolidated Gypsum	Input MSF>R40 OC Pink Fibreglass Insulation	Consolidated Gypsum	0.048		*	$808.00	$38.78				$38.78				$38.78	No	No	0
+360		10	R28 Fibreglass ceiling insulation -24x48x8.5 (80 sqft)	Consolidated Gypsum	Input MSF>R28 OC Pink Fibreglass Insulation	Consolidated Gypsum	0.08		*	$570.00	$45.60				$45.60				$45.60	No	No	0
+359		10	R28 Fibreglass ceiling insulation -23x48x8.5 (76.7 sqft)	Consolidated Gypsum	Input MSF>R28 OC Pink Fibreglass Insulation	Consolidated Gypsum	0.0767		*	$570.00	$43.72				$43.72				$43.72	No	No	0
+357		10	R20 Fibreglass insulation space saver-23x47x6 (120 sqft)	Consolidated Gypsum	Input MSF>R20 OC Pink Fibreglass Insulation	Consolidated Gypsum	0.12		*	$418.00	$50.16				$50.16				$50.16	No	No	0
+17		10	Sheetrock Water Resistant 1/2in (4x8)	Consolidated Gypsum	Input MSF> Moisture Resistant	Consolidated Gypsum				$542.00	$542.00	/	1000		$0.54	*	32		$17.34	No	No	0
+356		10	R20 Fibreglass insulation space saver-19x48x6 (99.4 sqft)	Consolidated Gypsum	Input MSF>R20 OC Pink Fibreglass Insulation	Consolidated Gypsum	0.0994		*	$418.00	$41.55				$41.55				$41.55	No	No	0
+355		10	R20 Fibreglass insulation space saver-15x47x6 (78.4 sqft)	Consolidated Gypsum	Input MSF>R20 OC Pink Fibreglass Insulation	Consolidated Gypsum	0.0784		*	$418.00	$32.77				$32.77				$32.77	No	No	0
+354		10	R12 Fibreglass insulation contractor-15x47x3.5 (97.9 sqft)	Consolidated Gypsum	Input MSF>R12 OC Pink Fibreglass Insulation	Consolidated Gypsum	0.0979		*	$248.00	$24.28				$24.28				$24.28	No	No	0
+1		10	Sheetrock standard 1/2in (4x8)	Consolidated Gypsum	Input MSF>Drywall 1/2in light	Consolidated Gypsum				$272.00	$272.00	/	1000		$0.27	*	32		$8.70	No	No	0
+358		10	R28 Fibreglass ceiling insulation -16x48x8.5 (53.3 sqft)	Consolidated Gypsum	Input MSF>R28 OC Pink Fibreglass Insulation	Consolidated Gypsum	0.0533		*	$570.00	$30.38				$30.38				$30.38	No	No	0
+9		10	Sheetrock flexible board 1/4in (4x12)	Consolidated Gypsum	Input MSF>Drywall 1/4 flex	Consolidated Gypsum				$395.00	$395.00	/	1000		$0.40	*	48		$18.96	No	No	0
+2		10	Sheetrock standard 1/2in (4x9)	Consolidated Gypsum	Input MSF>Drywall 1/2in light	Consolidated Gypsum				$272.00	$272.00	/	1000		$0.27	*	36		$9.79	No	No	0
+3		10	Sheetrock standard 1/2in (4x10)	Consolidated Gypsum	Input MSF>Drywall 1/2in light	Consolidated Gypsum				$272.00	$272.00	/	1000		$0.27	*	40		$10.88	No	No	0
+4		10	Sheetrock standard 1/2in (4x12)	Consolidated Gypsum	Input MSF>Drywall 1/2in light	Consolidated Gypsum				$272.00	$272.00	/	1000		$0.27	*	48		$13.06	No	No	0
+5		10	Sheetrock standard 1/2in (4x14)	Consolidated Gypsum	Input MSF>Drywall 1/2in light	Consolidated Gypsum				$272.00	$272.00	/	1000	MSF	$0.27	*	56	square feet	$15.23	No	No	0
+6		10	Sheetrock standard 1/2in (4ft 6in x 12ft)	Consolidated Gypsum	Input MSF>Drywall 1/2 54 x 12	Consolidated Gypsum				$364.00	$364.00	/	1000	MSF	$0.36	*	54	Square Feet	$19.66	No	No	0
+19		10	Glasroc Water Resistant 5/8in (4x8)	Consolidated Gypsum	Input MSF> 5/8in Glasroc Resistant	Consolidated Gypsum				$775.00	$775.00	/	1000		$0.78	*	32		$24.80	No	No	0
+8		10	Sheetrock flexible board 1/4in (4x8)	Consolidated Gypsum	Input MSF>Drywall 1/4 flex	Consolidated Gypsum				$395.00	$395.00	/	1000	MSF	$0.40	*	32	Sqft	$12.64	No	No	0
+10		10	Sheetrock Fireguard Type X 5/8in (4x8)	Consolidated Gypsum	Input MSF>Drywall 5/8 type x	Consolidated Gypsum				$364.00	$364.00	/	1000		$0.36	*	32		$11.65	No	No	0
+16		10	Sheetrock ceiling board 1/2in (4x12)	Consolidated Gypsum	Input MSF>Drywall 1/2 cd	Consolidated Gypsum				$359.00	$359.00	/	1000	MSF	$0.36	*	48	Sq Ft	$17.23	No	No	0
+12		10	Sheetrock Fireguard Type X 5/8in (4x9)	Consolidated Gypsum	Input MSF>Drywall 5/8 type x	Consolidated Gypsum				$364.00	$364.00	/	1000		$0.36	*	36		$13.10	No	No	0
+13		10	Sheetrock Fireguard Type X 5/8in (4x12)	Consolidated Gypsum	Input MSF>Drywall 5/8 type x	Consolidated Gypsum				$364.00	$364.00	/	1000		$0.36	*	48		$17.47	No	No	0
+14		10	CGC Durock cement board (3x5)	Consolidated Gypsum	Input MSF>Cement Board	Consolidated Gypsum				$1,255.00	$1,255.00	/	1000		$1.26	*	15		$18.83	No	No	0
+15		10	CGC Durock cement board (4x8)	Consolidated Gypsum	Input MSF>Cement Board	Consolidated Gypsum				$1,255.00	$1,255.00	/	1000		$1.26	*	32		$40.16	No	No	0
+11		10	Sheetrock Fireguard Type X 5/8in (4x10)	Consolidated Gypsum	Input MSF>Drywall 5/8 type x	Consolidated Gypsum				$364.00	$364.00	/	1000		$0.36	*	40		$14.56	No	No	0
+18		10	Glasroc Water Resistant 1/2in (4x8)	Consolidated Gypsum	Input MSF> 1/2in Glasroc Resistant	Consolidated Gypsum	1		*	$715.00	$715.00	/	1000		$0.72	*	32		$22.88	No	No	0
+7		10	Sheetrock ceiling board 1/2in (4x14)	Consolidated Gypsum	Input MSF>Drywall 1/2 cd	Consolidated Gypsum				$359.00	$359.00	/	1000		$0.36	*	56		$20.10	No	No	0
+316		10	Beach pebbles stone floor upcharge	Corsi Brothers Tile	Extra for diagonal installation	Corsi Brothers Tile				$0.70	$0.70				$0.70				$0.70	No	No	0
+317		10	Beach pebbles stone wall upcharge	Corsi Brothers Tile	Wall tile install	Corsi Brothers Tile				$5.65	$5.65				$5.65				$5.65	No	No	0
+324		10	Tile Trim Install-4040 neo shower	Corsi Brothers Tile	Install tile and around fibreglass	Corsi Brothers Tile				$4.50	$4.50	*	20		$90.00				$90.00	No	No	0
+323		10	Tile Trim Install-3636 neo shower	Corsi Brothers Tile	Install tile and around fibreglass	Corsi Brothers Tile				$4.50	$4.50	*	19		$85.50				$85.50	No	No	0
+321		10	Tile Trim Install-6036 tub/shower	Corsi Brothers Tile	Install tile and around fibreglass	Corsi Brothers Tile				$4.50	$4.50	*	24		$108.00				$108.00	No	No	0
+318		10	Beach pebbles stone wall upcharge	Corsi Brothers Tile	Extra for diagonal installation	Corsi Brothers Tile				$0.70	$0.70				$0.70				$0.70	No	No	0
+315		10	Beach pebbles stone floor upcharge	Corsi Brothers Tile	Floor tile install	Corsi Brothers Tile				$4.65	$4.65				$4.65				$4.65	No	No	0
+322		10	Tile Trim Install-3636 shower	Corsi Brothers Tile	Install tile and around fibreglass	Corsi Brothers Tile				$4.50	$4.50	*	22		$99.00				$99.00	No	No	0
+82		10	8Ft high tile surround for 6036 shower install	Corsi Brothers Tile	Schluter Kerdi membrane (supply and install/sqft)	Corsi Brothers Tile	35.75	"2 walls @ 3' x 3-3"".  1 wall @ 5' x 3'-3""."	*	$3.00	$107.25				$107.25				$107.25	No	No	0
+94		10	Tile Trim Install-6036 double shower	Corsi Brothers Tile	Install tile and around fibreglass	Corsi Brothers Tile				$4.50	$4.50	*	23		$103.50				$103.50	No	No	0
+93		10	Tile Trim Install-4836 shower	Corsi Brothers Tile	Install tile and around fibreglass	Corsi Brothers Tile				$4.50	$4.50	*	22		$99.00				$99.00	No	No	0
+86		20	7Ft high tile surround for tub install	Corsi Brothers Tile	Schluter Kerdi membrane (supply and install/sqft)	Corsi Brothers Tile	35.75	"2 walls @ 3' x 3-3"". 1 wall @ 5' x 3'-3""."	*	$3.00	$107.25				$107.25				$107.25	No	No	0
+85		10	7Ft high tile surround for tub install	Corsi Brothers Tile	Wall tile install	Corsi Brothers Tile	60.5	"2 walls @ 3' x 5-6"".  1 wall @ 5' x 5'-6""."	*	$5.65	$341.83				$341.83				$341.83	No	No	0
+84		20	8Ft high tile surround for neo shower install	Corsi Brothers Tile	Schluter Kerdi membrane (supply and install/sqft)	Corsi Brothers Tile	19.5	"2 walls @ 3' x 3'-3""."	*	$3.00	$58.50				$58.50				$58.50	No	No	0
+80		20	8Ft high tile surround for 4836 shower install	Corsi Brothers Tile	Schluter Kerdi membrane (supply and install/sqft)	Corsi Brothers Tile	32.5	"2 walls @ 3' x 3'-3"".  1 wall @ 4x3'-3"""	*	$3.00	$97.50				$97.50				$97.50	No	No	0
+101		10	Fireplace Surround-tile	Salvi Homes	Install Tile Fireplace	Corsi Brothers Tile				$160.00	$160.00				$160.00				$160.00	No	No	0
+77		10	8Ft high tile surround for 3636 shower install	Corsi Brothers Tile	Wall tile install	Corsi Brothers Tile	48	"2 walls @ 3'-3"" x 7-6"""	*	$5.65	$271.20				$271.20				$271.20	No	No	0
+345		10	Floor tile border	Salvi Homes	Install floor tile borders	Corsi Brothers Tile				$2.00	$2.00				$2.00				$2.00	No	No	0
+81		10	8Ft high tile surround for 6036 shower install		Wall tile install	Corsi Brothers Tile	86.25	"2 walls @ 3'-3"" x 7'-6"".  1 wall @ 5' x 7'-6""."	*	$5.65	$487.31				$487.31				$487.31	No	No	0
+325		10	Fireplace Surround-Slate tile	Salvi Homes	Install Slate fireplace	Corsi Brothers Tile				$150.00	$150.00				$150.00				$150.00	No	No	0
+103		10	Fireplace Surround-Slate tile	Salvi Homes	Slate floor tile upcharge	Corsi Brothers Tile				$2.40	$2.40	*	19		$45.60				$45.60	No	No	0
+79		10	8Ft high tile surround for 4836 shower install	Corsi Brothers Tile	Wall tile install	Corsi Brothers Tile	78.75	"2 walls @ 3'-3"" x 7-6"".  1 wall @ 4x7'-6""."	*	$5.65	$444.94				$444.94				$444.94	No	No	0
+78		20	8Ft high tile surround for 3636 shower install	Corsi Brothers Tile	Schluter Kerdi membrane (supply and install/sqft)	Corsi Brothers Tile	19.5	"2 walls @ 3' x 3'-3"""	*	$3.00	$58.50				$58.50				$58.50	No	No	0
+83		10	8Ft high tile surround for neo shower install	Corsi Brothers Tile	Wall tile install	Corsi Brothers Tile	48.75	"2 walls @ 3'-3"" x 7'-6"""	*	$5.65	$275.44				$275.44				$275.44	No	No	0
+410		10	Tile trim (3636 shower)	Salvi Homes	Tile Trim Install-6036 tub/shower	Corsi Brothers Tile	1		*	$108.00	$108.00				$108.00				$108.00	No	No	0
+347		10	Kitchen splash (std tile/pattern)	Salvi Homes	Kitchen Splash install (6x6 and up)	Corsi Brothers Tile				$4.00	$4.00				$4.00				$4.00	No	No	0
+344		10	Floor tile border	Salvi Homes	Border tile budget	Corsi Brothers Tile				$14.00	$14.00				$14.00				$14.00	No	No	0
+343		10	Floor tile(standard/diagonal)	Salvi Homes	Floor tile install	Corsi Brothers Tile				$4.65	$4.65				$4.65				$4.65	No	No	0
+342		10	Floor tile(standard/diagonal)	Salvi Homes	Extra for diagonal installation	Corsi Brothers Tile				$0.70	$0.70				$0.70				$0.70	No	No	0
+406		10	Kitchen splash (glass tile or mosaic)	Salvi Homes	Kitchen Splash install (glass)	Corsi Brothers Tile				$8.00	$8.00				$8.00				$8.00	No	No	0
+408		10	Tile trim (6036 tub/shower)	Salvi Homes	Tile Trim Install-6036 tub/shower	Corsi Brothers Tile	1		*	$108.00	$108.00				$108.00				$108.00	No	No	0
+351		10	Kitchen splash(4x4-5x5 tile/standard pattern)	Salvi Homes	Kitchen Splash install (<=4x4)	Corsi Brothers Tile				$6.00	$6.00				$6.00				$6.00	No	No	0
+339		10	Floor tile(slate)	Salvi Homes	Slate floor tile upcharge	Corsi Brothers Tile				$2.40	$2.40				$2.40				$2.40	No	No	0
+412		10	Tile trim (4040 neo shower)	Salvi Homes	Tile Trim Install-6036 tub/shower	Corsi Brothers Tile	1		*	$108.00	$108.00				$108.00				$108.00	No	No	0
+414		10	Tile trim (4836 shower)	Salvi Homes	Tile Trim Install-6036 tub/shower	Corsi Brothers Tile	1		*	$108.00	$108.00				$108.00				$108.00	No	No	0
+423		10	Wainscot tile wall (glass or mosaic tile)	Salvi Homes	Wall tile install	Corsi Brothers Tile				$5.65	$5.65				$5.65				$5.65	No	No	0
+340		10	Floor tile(slate)	Salvi Homes	Floor tile install	Corsi Brothers Tile				$4.65	$4.65				$4.65				$4.65	No	No	0
+327		10	Fireplace Surround-marble	Salvi Homes	Install Marble Fireplace	Corsi Brothers Tile				$150.00	$150.00				$150.00				$150.00	No	No	0
+337		10	Floor tile (18in and larger)	Salvi Homes	Floor tile install (18in and larger)	Corsi Brothers Tile				$5.50	$5.50				$5.50				$5.50	No	No	0
+329		10	Fireplace Peninsula Surround-tile	Salvi Homes	Install Tile Fireplace	Corsi Brothers Tile				$160.00	$160.00	*	1.5		$240.00				$240.00	No	No	0
+421		10	Wainscot tile wall (std tile)	Salvi Homes	Wall tile install	Corsi Brothers Tile				$5.65	$5.65				$5.65				$5.65	No	No	0
+331		10	Fireplace Peninsula Surround-Slate tile	Salvi Homes	Install Slate fireplace	Corsi Brothers Tile				$150.00	$150.00	*	1.5		$225.00				$225.00	No	No	0
+333		10	Fireplace Peninsula Surround-Marble tile	Salvi Homes	Install Marble Fireplace	Corsi Brothers Tile				$150.00	$150.00	*	1.5		$225.00				$225.00	No	No	0
+419		10	Listello border tile	Salvi Homes	Install wall tile borders	Corsi Brothers Tile				$8.00	$8.00				$8.00				$8.00	No	No	0
+335		10	Floor tile (standard)	Salvi Homes	Floor tile install	Corsi Brothers Tile				$4.65	$4.65				$4.65				$4.65	No	No	0
+416		10	Tile trim (3636 neo shower)	Salvi Homes	Tile Trim Install-6036 tub/shower	Corsi Brothers Tile	1		*	$108.00	$108.00				$108.00				$108.00	No	No	0
+47		10	Driveway-EF	Custom Concrete Solutions Inc	Driveway-BF	Custom Concrete Solutions Inc				$3.50	$3.50				$3.50				$3.50	No	No	0
+271		10	3ft sidewalk (Lineal Ft)	Stel Marr Concrete	Sidewalk-BF	Custom Concrete Solutions Inc				$5.50	$5.50	*	3		$16.50				$16.50	No	No	0
+37		10	Basement floor (c/w poly and gravel)	Custom Concrete Solutions Inc	Basement floor (c/w poly and gravel)	Custom Concrete Solutions Inc				$0.00	$0.00				$0.00				$0.00	No	No	0
+38		10	Garage floor-HT (c/w sand)	Custom Concrete Solutions Inc	Garage floor-HT	Custom Concrete Solutions Inc				$3.75	$3.75				$3.75				$3.75	No	No	0
+179		10	Extra cost over 5ft-EF	Custom Concrete Solutions Inc	Extra for exposed	Custom Concrete Solutions Inc				$1.10	$1.10				$1.10				$1.10	No	No	0
+180		10	Extra cost over 5ft-EF	Custom Concrete Solutions Inc	Exposed acid wash and high gloss seal	Custom Concrete Solutions Inc				$0.65	$0.65				$0.65				$0.65	No	No	0
+43		10	Salvi seal concrete (sqft)	Custom Concrete Solutions Inc	Salvi labour to seal concrete (sq.ft)	Custom Concrete Solutions Inc				$0.08	$0.08				$0.08				$0.08	No	No	0
+44		10	Stair landings-total prep and place-EF	Custom Concrete Solutions Inc	Stair landings-total prep and place-BF	Custom Concrete Solutions Inc				$5.25	$5.25				$5.25	+	0		$5.25	No	No	0
+45		10	Riser for landing up to 5ft-EF	Custom Concrete Solutions Inc	Riser for landing up to 5ft-BF	Custom Concrete Solutions Inc				$150.00	$150.00				$150.00				$150.00	No	No	0
+46		10	Extra cost over 5ft-EF	Custom Concrete Solutions Inc	Extra cost over 5ft-BF	Custom Concrete Solutions Inc				$30.00	$30.00				$30.00				$30.00	No	No	0
+36		10	Basement floor (c/w poly and sand)	Custom Concrete Solutions Inc	Basement floor (c/w poly)	Custom Concrete Solutions Inc				$1.25	$1.25				$1.25				$1.25	No	No	0
+50		10	Riser along sidewalk-EF	Custom Concrete Solutions Inc	Riser along sidewalk-BF	Custom Concrete Solutions Inc				$95.00	$95.00				$95.00				$95.00	No	No	0
+154		10	Riser for landing up to 5ft-EF	Custom Concrete Solutions Inc	Exposed acid wash and high gloss seal	Custom Concrete Solutions Inc				$0.65	$0.65				$0.65				$0.65	No	No	0
+191		10	Riser along sidewalk-EF	Custom Concrete Solutions Inc	Exposed acid wash and high gloss seal	Custom Concrete Solutions Inc				$0.65	$0.65				$0.65				$0.65	No	No	0
+190		10	Riser along sidewalk-EF	Custom Concrete Solutions Inc	Extra for exposed	Custom Concrete Solutions Inc				$1.10	$1.10				$1.10				$1.10	No	No	0
+189		10	Rear Patio-EF	Custom Concrete Solutions Inc	Exposed acid wash and high gloss seal	Custom Concrete Solutions Inc				$0.65	$0.65				$0.65				$0.65	No	No	0
+185		10	Rear Patio-EF	Custom Concrete Solutions Inc	Extra for exposed	Custom Concrete Solutions Inc				$1.10	$1.10				$1.10				$1.10	No	No	0
+153		10	Riser for landing up to 5ft-EF	Custom Concrete Solutions Inc	Extra for exposed	Custom Concrete Solutions Inc				$1.10	$1.10				$1.10				$1.10	No	No	0
+151		10	Stair landings-total prep and place-EF	Custom Concrete Solutions Inc	Exposed acid wash and high gloss seal	Custom Concrete Solutions Inc				$0.65	$0.65				$0.65				$0.65	No	No	0
+150		10	Stair landings-total prep and place-EF	Custom Concrete Solutions Inc	Extra for exposed	Custom Concrete Solutions Inc				$1.10	$1.10				$1.10				$1.10	No	No	0
+146		10	Salvi seal concrete (sqft)	Custom Concrete Solutions Inc	CS30 High gloss 30 percent solids sealer	Custom Concrete Solutions Inc				$116.00	$116.00	/	600		$0.19				$0.19	No	No	0
+149		10	Garage floor-HT (c/w sand)	Custom Concrete Solutions Inc	Garage floor sand	Custom Concrete Solutions Inc				$1.50	$1.50				$1.50				$1.50	No	No	0
+181		10	Driveway-EF	Custom Concrete Solutions Inc	Extra for exposed	Custom Concrete Solutions Inc				$1.10	$1.10				$1.10				$1.10	No	No	0
+49		10	Rear Patio-EF	Custom Concrete Solutions Inc	Rear Patio-BF	Custom Concrete Solutions Inc				$3.50	$3.50				$3.50				$3.50	No	No	0
+148		10	Basement floor (c/w poly and sand)	Custom Concrete Solutions Inc	Basement floor sand	Custom Concrete Solutions Inc				$1.35	$1.35				$1.35				$1.35	No	No	0
+48		10	Sidewalk-EF	Custom Concrete Solutions Inc	Sidewalk-BF	Custom Concrete Solutions Inc				$5.50	$5.50				$5.50				$5.50	No	No	0
+183		10	Sidewalk-EF	Custom Concrete Solutions Inc	Extra for exposed	Custom Concrete Solutions Inc				$1.10	$1.10				$1.10				$1.10	No	No	0
+182		10	Driveway-EF	Custom Concrete Solutions Inc	Exposed acid wash and high gloss seal	Custom Concrete Solutions Inc				$0.65	$0.65				$0.65				$0.65	No	No	0
+184		10	Sidewalk-EF	Custom Concrete Solutions Inc	Exposed acid wash and high gloss seal	Custom Concrete Solutions Inc				$0.65	$0.65				$0.65				$0.65	No	No	0
+206		10	Standard Duradeck deck	David Mills	Standard Duradeck deck Labour	David Mills				$1.75	$1.75				$1.75				$1.75	No	No	0
+105		10	Material only for 8Ft Bsmt Walls	David Mills	Misc Bsmt framing labour	David Mills				$30.00	$30.00	/	170		$0.18	*	1.05		$0.19	No	No	0
+222		10	Walkout Duradeck deck	David Mills	Walkout Duradeck deck Labour	David Mills				$2.25	$2.25				$2.25				$2.25	No	No	0
+109		10	Material only for 8Ft 4In Bsmt Walls	David Mills	Misc Bsmt framing labour	David Mills				$30.00	$30.00	/	170		$0.18	*	1.05		$0.19	No	No	0
+201		10	Standard PWF deck	David Mills	Standard PWF deck Labour	David Mills				$2.75	$2.75				$2.75				$2.75	No	No	0
+247		10	Wood Deck Rail	David Mills	Wood railing Labour	David Mills				$8.00	$8.00				$8.00				$8.00	No	No	0
+295		10	Material/Labour for 9Ft Bsmt Walls	David Mills	Interior walls	David Mills				$2.25	$2.25	*	1.05		$2.36				$2.36	No	No	0
+290		10	Material/Labour for 8Ft 4In Bsmt Walls	David Mills	Interior walls	David Mills				$2.25	$2.25	*	1.05		$2.36				$2.36	No	No	0
+289		10	Material/Labour for 8Ft 4In Bsmt Walls	David Mills	Misc Bsmt framing labour	David Mills				$30.00	$30.00	/	170		$0.18				$0.18	No	No	0
+294		10	Material/Labour for 9Ft Bsmt Walls	David Mills	Misc Bsmt framing labour	David Mills				$30.00	$30.00	/	170		$0.18				$0.18	No	No	0
+213		10	Walkout PWF deck	David Mills	Walkout PWF deck Labour	David Mills				$2.75	$2.75				$2.75				$2.75	No	No	0
+285		10	Material/Labour for 8Ft Bsmt Walls	David Mills	Interior walls	David Mills				$2.25	$2.25	*	1.05		$2.36				$2.36	No	No	0
+280		10	Material only for 9Ft Bsmt Walls	David Mills	Misc Bsmt framing labour	David Mills				$30.00	$30.00	/	170		$0.18	*	1.05		$0.19	No	No	0
+284		10	Material/Labour for 8Ft Bsmt Walls	David Mills	Misc Bsmt framing labour	David Mills				$30.00	$30.00	/	170		$0.18				$0.18	No	No	0
+194		10	Credit for standard shingle	Derksen Skylight Roofing	Extra for laminated shingles	Derksen Skylight Roofing				$2.00	$2.00				$2.00				$2.00	No	No	0
+56		10	Credit for standard shingle	Derksen Skylight Roofing	GAF-ELK Timberline HD Lifetime (33.5Ft/bundle)	Enercon Roofing				$23.47	$23.47	-	19.5		$3.97				$3.97	No	No	0
+193		10	Credit for standard shingle	Derksen Skylight Roofing	Misc Starter grade shingles (Aristocrat slate)	Enercon Roofing														No	No	0
+264		10	Perimeter concrete walls(9Ft from 8Ft)	Stel Marr Concrete	9ft 0 in wall with box	Fearon Contracting				$25.00	$25.00	-	21	minus 6Ft-8Ft 0 in wall with box	$4.00				$4.00	No	No	0
+265		10	Perimeter concrete walls(9Ft from 8Ft)	Stel Marr Concrete	6Ft-8Ft 0 in wall with box	Fearon Contracting														No	No	0
+261		10	Perimeter concrete walls(8Ft4in from 8Ft)	Stel Marr Concrete	8ft 4 in wall with box	Fearon Contracting				$21.00	$21.00	-	21	Minus 6ft-8ft 0 in wall with box	$0.00				$0.00	No	No	0
+262		10	Perimeter concrete walls(8Ft4in from 8Ft)	Stel Marr Concrete	6Ft-8Ft 0 in wall with box	Fearon Contracting														No	No	0
+192		10	Cribber built window buck	Fearon Contracting	Window bucks or doors	Fearon Contracting				$60.00	$60.00				$60.00				$60.00	No	No	0
+195		10	6in fascia	Grey Bear Renovating	Alu. Fascia (6In)	Grey Bear Renovating				$1.76	$1.76	*	1.25		$2.20				$2.20	No	No	0
+298		10	Clad 4in trim (Complete cost)	Grey Bear Renovating	Clad 4In trim	Grey Bear Renovating				$3.82	$3.82	+	1.75		$5.57				$5.57	No	No	0
+61		10	Clad 12in trim (Complete cost)	Grey Bear Renovating	Clad 12in trim (Complete cost)	Grey Bear Renovating	1.45		+	$5.15	$6.60	+	2		$8.60				$8.60	No	No	0
+197		10	10in fascia	Grey Bear Renovating	Alu. Fascia (10In)	Grey Bear Renovating				$2.33	$2.33	*	1.25		$2.91				$2.91	No	No	0
+196		10	8in fascia	Grey Bear Renovating	Alu. Fascia (8In)	Grey Bear Renovating				$2.02	$2.02	*	1.25		$2.53				$2.53	No	No	0
+60		10	Clad 10in trim (Complete cost)	Grey Bear Renovating	Clad 10in trim (Complete cost)	Grey Bear Renovating	1		+	$4.74	$5.74	+	1.99		$7.73				$7.73	No	No	0
+59		10	Clad 8in trim (Complete cost)	Grey Bear Renovating	Clad 8in trim (Complete cost)	Grey Bear Renovating	0.69		+	$4.40	$5.09	+	2		$7.09				$7.09	No	No	0
+58		10	Clad 6in trim (Complete cost)	Grey Bear Renovating	Clad 6in trim (Complete cost)	Grey Bear Renovating	0.57		+	$4.04	$4.61	+	1.99		$6.60				$6.60	No	No	0
+62		10	Clad board door trim	Grey Bear Renovating	Clad board door trim	Grey Bear Renovating	0.57		+	$4.04	$4.61	+	1.99		$6.60	*	18		$118.80	No	No	0
+303		10	Ironwood V30 (Classic Oak)	Northgate Plumbing	Mirror installation ea. @	Hartwell Glass				$45.00	$45.00				$45.00				$45.00	No	No	0
+308		10	Salvi V30 (Classic Oak)	Northgate Plumbing	5mm clear mirror	Hartwell Glass				$7.18	$7.18	*	10		$71.80				$71.80	No	No	0
+302		10	Ironwood V30 (Classic Oak)	Northgate Plumbing	5mm clear mirror	Hartwell Glass				$7.18	$7.18	*	10		$71.80				$71.80	No	No	0
+309		10	Salvi V30 (Classic Oak)	Northgate Plumbing	Mirror installation ea. @	Hartwell Glass				$45.00	$45.00				$45.00				$45.00	No	No	0
+353		10	Minimum site charge (1.5 hrs)	Hydrodig	Hydrovac Hourly Site Rate	Hydrodig	1.5		*	$235.00	$352.50				$352.50				$352.50	No	No	0
+352		10	Travel time (1.25 hrs)	Hydrodig	Hydrovac Hourly Travel Rate	Hydrodig	1.25		*	$165.00	$206.25				$206.25				$206.25	No	No	0
+158		10	12Ft-2x10 PWF (12Ft)	Igloo Building Supplies	1000BF-2x10 PWF (12Ft)	Igloo Building Supplies	15900		/	$12.00	$1,325.00	/	1000		$1.33	*	12		$15.90	No	No	0
+57		10	Clad 4in trim (Complete cost)	Grey Bear Renovating	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03	/	16		$0.38				$0.38	No	No	0
+157		10	16Ft-2x8 PWF (16Ft)	Igloo Building Supplies	1000BF-2x8 PWF (16Ft)	Igloo Building Supplies	13040		/	$12.00	$1,086.67	/	1000		$1.09	*	16		$17.39	No	No	0
+156		10	14Ft-2x8 PWF (14Ft)	Igloo Building Supplies	1000BF-2x8 PWF (14Ft)	Igloo Building Supplies	12240		/	$12.00	$1,020.00	/	1000		$1.02	*	14		$14.28	No	No	0
+155		10	12Ft-2x8 PWF (12Ft)	Igloo Building Supplies	1000BF-2x8 PWF (12Ft)	Igloo Building Supplies	12240		/	$12.00	$1,020.00	/	1000		$1.02	*	12		$12.24	No	No	0
+159		10	14Ft-2x10 PWF (14Ft)	Igloo Building Supplies	1000BF-2x10 PWF (14Ft)	Igloo Building Supplies	15900		/	$12.00	$1,325.00	/	1000		$1.33	*	14		$18.55	No	No	0
+51		10	Deck Nailer	David Mills	16Ft-2x10 spruce (8 to 16)	Igloo Building Supplies				$15.87	$15.87	/	16		$0.99				$0.99	No	No	0
+168		10	2x10 spruce joists @ 16in oc-Per SqFt	Igloo Building Supplies	16Ft-2x10 spruce (8 to 16)	Igloo Building Supplies														No	No	0
+167		10	16Ft-Treated 5/4 decking (16Ft)	Igloo Building Supplies	Treated 5/4 decking (16Ft)	Igloo Building Supplies	16		*	$0.68	$10.88				$10.88				$10.88	No	No	0
+166		10	14Ft-Treated 5/4 decking (14Ft)	Igloo Building Supplies	Treated 5/4 decking (14Ft)	Igloo Building Supplies	14		*	$0.68	$9.52				$9.52				$9.52	No	No	0
+165		10	12Ft-Treated 5/4 decking (12Ft	Igloo Building Supplies	treated 5/4 decking (12Ft)	Igloo Building Supplies	12		*	$0.68	$8.16				$8.16				$8.16	No	No	0
+164		10	10Ft-Treated 5/4 decking (10Ft)	Igloo Building Supplies	Treated 5/4 decking (10Ft)	Igloo Building Supplies	10		*	$0.68	$6.80				$6.80				$6.80	No	No	0
+39		10	10mm rebar for slab heating	Custom Concrete Solutions Inc	10 mm rebar	Igloo Building Supplies				$5.95	$5.95				$5.95				$5.95	No	No	0
+40		10	Miscellaneous 10mm Rebar	Custom Concrete Solutions Inc	10 mm rebar	Igloo Building Supplies				$5.95	$5.95				$5.95				$5.95	No	No	0
+55		10	10in fascia	Grey Bear Renovating	16Ft-2x10 spruce (8 to 16)	Igloo Building Supplies				$15.87	$15.87	/	16		$0.99	*	1.3		$1.29	No	No	0
+42		10	Miscellaneous 15mm Rebar	Custom Concrete Solutions Inc	15 mm rebar	Igloo Building Supplies				$11.95	$11.95				$11.95				$11.95	No	No	0
+160		10	16Ft-2x10 PWF (16Ft)	Igloo Building Supplies	1000BF-2x10 PWF (16Ft)	Igloo Building Supplies	15900		/	$12.00	$1,325.00	/	1000		$1.33	*	16		$21.20	No	No	0
+52		10	Standard PWF deck	David Mills	16Ft-2x8 PWF (16Ft)	Igloo Building Supplies				$17.39	$17.39	/	16		$1.09	*	280		$304.33	No	No	0
+53		10	6in fascia	Grey Bear Renovating	16Ft-2x6 spruce (16)	Igloo Building Supplies				$9.04	$9.04	/	16		$0.57	*	1.3		$0.73	No	No	0
+163		10	16Ft-2x8 spruce (8 to 16)	Igloo Building Supplies	1000BF-2x8 spruce (8 to 16)	Igloo Building Supplies	8240		/	$12.00	$686.67	/	1000		$0.69	*	16		$10.99	No	No	0
+162		10	14Ft-2x8 spruce (8 to 16)	Igloo Building Supplies	1000BF-2x8 spruce (8 to 16)	Igloo Building Supplies	8240		/	$12.00	$686.67	/	1000		$0.69	*	14		$9.61	No	No	0
+161		10	12Ft-2x8 spruce (8 to 16)	Igloo Building Supplies	1000BF-2x8 spruce (8 to 16)	Igloo Building Supplies	8240		/	$12.00	$686.67	/	1000		$0.69	*	12		$8.24	No	No	0
+142		10	10Ft-2x8 spruce (8 to 16)	Igloo Building Supplies	1000BF-2x8 spruce (8 to 16)	Igloo Building Supplies	8240		/	$12.00	$686.67	/	1000		$0.69	*	10		$6.87	No	No	0
+54		10	8in fascia	Grey Bear Renovating	16Ft-2x8 spruce (8 to 16)	Igloo Building Supplies				$10.99	$10.99	/	16		$0.69	*	1.3		$0.89	No	No	0
+41		10	10mm rebar per sqft	Custom Concrete Solutions Inc	10 mm rebar	Igloo Building Supplies	0.06		*	$5.95	$0.36				$0.36				$0.36	No	No	0
+114		10	10Ft-2x4 spruce (8,10,12,14)	Igloo Building Supplies	1000BF-2x4 spruce (8,10,12,14)	Igloo Building Supplies	4200		/	$12.00	$350.00	/	1000		$0.35	*	10		$3.50	No	No	0
+123		10	16Ft-2x12 fir (8 to 16)	Igloo Building Supplies	1000BF-2x12 fir (8 to 16)	Igloo Building Supplies	16680		/	$12.00	$1,390.00	/	1000		$1.39	*	16		$22.24	No	No	0
+122		10	14Ft-2x12 fir (8 to 16)	Igloo Building Supplies	1000BF-2x12 fir (8 to 16)	Igloo Building Supplies	16680		/	$12.00	$1,390.00	/	1000		$1.39	*	14		$19.46	No	No	0
+121		10	12Ft-2x12 fir (8 to 16)	Igloo Building Supplies	1000BF-2x12 fir (8 to 16)	Igloo Building Supplies	16680		/	$12.00	$1,390.00	/	1000		$1.39	*	12		$16.68	No	No	0
+120		10	10Ft-2x12 fir (8 to 16)	Igloo Building Supplies	1000BF-2x12 fir (8 to 16)	Igloo Building Supplies	16680		/	$12.00	$1,390.00	/	1000		$1.39	*	10		$13.90	No	No	0
+119		10	24Ft-2x10 fir (22,24)	Igloo Building Supplies	1000BF-2x10 fir (22,24)	Igloo Building Supplies	17900		/	$12.00	$1,491.67	/	1000		$1.49	*	24		$35.80	No	No	0
+118		10	22Ft-2x10 fir (22,24)	Igloo Building Supplies	1000BF-2x10 fir (22,24)	Igloo Building Supplies	17900		/	$12.00	$1,491.67	/	1000		$1.49	*	22		$32.82	No	No	0
+117		10	20Ft-2x10 fir (18,20)	Igloo Building Supplies	1000BF-2x10 fir (18,20)	Igloo Building Supplies	14200		/	$12.00	$1,183.33	/	1000		$1.18	*	20		$23.67	No	No	0
+144		10	16Ft-2x6 PWF (16Ft)	Igloo Building Supplies	1000BF-2x6 PWF (16Ft)	Igloo Building Supplies	9180		/	$12.00	$765.00	/	1000		$0.77	*	16		$12.24	No	No	0
+115		10	12Ft-2x4 spruce (8,10,12,14)	Igloo Building Supplies	1000BF-2x4 spruce (8,10,12,14)	Igloo Building Supplies	4200		/	$12.00	$350.00	/	1000		$0.35	*	12		$4.20	No	No	0
+126		10	16Ft-2x4 spruce (16)	Igloo Building Supplies	1000BF-2x4 spruce (16)	Igloo Building Supplies	4520		/	$12.00	$376.67	/	1000		$0.38	*	16		$6.03	No	No	0
+113		10	2x6 (9Ft) studs	Igloo Building Supplies	1000BF-2x6 (9FT) studs	Igloo Building Supplies	6540		/	$12.00	$545.00	/	1000		$0.55	*	9		$4.91	No	No	0
+112		10	16Ft-2x10 fir (8 to 16)	Igloo Building Supplies	1000BF-2x10 fir (8 to 16)	Igloo Building Supplies	13900		/	$12.00	$1,158.33	/	1000		$1.16	*	16		$18.53	No	No	0
+111		10	14Ft-2x10 fir (8 to 16)	Igloo Building Supplies	1000BF-2x10 fir (8 to 16)	Igloo Building Supplies	13900		/	$12.00	$1,158.33	/	1000		$1.16	*	14		$16.22	No	No	0
+110		10	12Ft-2x10 fir (8 to 16)	Igloo Building Supplies	1000BF-2x10 fir (8 to 16)	Igloo Building Supplies	13900		/	$12.00	$1,158.33	/	1000		$1.16	*	12		$13.90	No	No	0
+108		10	Material only for 8Ft 4In Bsmt Walls	David Mills	3-1/2In coated nls	Igloo Building Supplies				$45.00	$45.00	/	85		$0.53				$0.53	No	No	0
+107		10	Material only for 8Ft 4In Bsmt Walls	David Mills	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03	/	16		$0.38	*	2.2		$0.83	No	No	0
+106		10	Material only for 8Ft 4In Bsmt Walls	David Mills	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03	/	2		$3.02				$3.02	No	No	0
+104		10	Material only for 8Ft Bsmt Walls	David Mills	3-1/2In coated nls	Igloo Building Supplies				$45.00	$45.00	/	85		$0.53				$0.53	No	No	0
+116		10	18Ft-2x10 fir (18,20)	Igloo Building Supplies	1000BF-2x10 fir (18,20)	Igloo Building Supplies	14200		/	$12.00	$1,183.33	/	1000		$1.18	*	18		$21.30	No	No	0
+134		10	16Ft-2x4 PWF (16Ft)	Igloo Building Supplies	1000BF-2x4 PWF(16FT)	Igloo Building Supplies	6120		/	$12.00	$510.00	/	1000		$0.51	*	16		$8.16	No	No	0
+143		10	14Ft-2x6 PWF (14Ft)	Igloo Building Supplies	1000BF-2x6 PWF (14Ft)	Igloo Building Supplies	8940		/	$12.00	$745.00	/	1000		$0.75	*	14		$10.43	No	No	0
+96		10	1x4 spruce	Igloo Building Supplies	1000BF-1x4 spruce	Igloo Building Supplies	4		*	$476.28	$1,905.12	/	12		$158.76	/	1000		$0.16	No	No	0
+141		10	18Ft-2x6 spruce (18)	Igloo Building Supplies	1000BF-2x6 spruce (16)	Igloo Building Supplies	6780		/	$12.00	$565.00	/	1000		$0.57	*	18		$10.17	No	No	0
+169		10	2x10 fir joists @ 16in oc-Per SqFt	Igloo Building Supplies	16Ft-2x10 fir (8 to 16)	Igloo Building Supplies														No	No	0
+140		10	16Ft-2x6 spruce (16)	Igloo Building Supplies	1000BF-2x6 spruce (16)	Igloo Building Supplies	6780		/	$12.00	$565.00	/	1000		$0.57	*	16		$9.04	No	No	0
+139		10	14Ft-2x6 spruce (8,10,12,14)	Igloo Building Supplies	1000BF-2x6 spruce (8,10,12,14)	Igloo Building Supplies	6300		/	$12.00	$525.00	/	1000		$0.53	*	14		$7.35	No	No	0
+138		10	12Ft-2x6 spruce (8,10,12,14)	Igloo Building Supplies	1000BF-2x6 spruce (8,10,12,14)	Igloo Building Supplies	6300		/	$12.00	$525.00	/	1000		$0.53	*	12		$6.30	No	No	0
+137		10	10Ft-2x6 spruce (8,10,12,14)	Igloo Building Supplies	1000BF-2x6 spruce (8,10,12,14)	Igloo Building Supplies	6300		/	$12.00	$525.00	/	1000		$0.53	*	10		$5.25	No	No	0
+124		10	18Ft-2x12 fir (18,20)	Igloo Building Supplies	1000BF-2x12 fir (18,20)	Igloo Building Supplies	22752		/	$12.00	$1,896.00	/	1000		$1.90	*	18		$34.13	No	No	0
+135		10	10Ft-2x6 PWF (12Ft)	Igloo Building Supplies	1000BF-2x6 PWF (12Ft)	Igloo Building Supplies	8940		/	$12.00	$745.00	/	1000		$0.75	*	10		$7.45	No	No	0
+125		10	14Ft-2x4 spruce (8,10,12,14)	Igloo Building Supplies	1000BF-2x4 spruce (8,10,12,14)	Igloo Building Supplies	4200		/	$12.00	$350.00	/	1000		$0.35	*	14		$4.90	No	No	0
+133		10	14Ft-2x4 PWF (14Ft)	Igloo Building Supplies	1000BF-2x4 PWF (14FT)	Igloo Building Supplies	5800		/	$12.00	$483.33	/	1000		$0.48	*	14		$6.77	No	No	0
+132		10	12Ft-2x4 PWF (12Ft)	Igloo Building Supplies	1000BF-2x4 PWF (12ft)	Igloo Building Supplies	5800		/	$12.00	$483.33	/	1000		$0.48	*	12		$5.80	No	No	0
+131		10	10Ft-2x4 PWF (12Ft)	Igloo Building Supplies	1000BF-2x4 PWF (12ft)	Igloo Building Supplies	5800		/	$12.00	$483.33	/	1000		$0.48	*	10		$4.83	No	No	0
+130		10	24Ft-2x12 fir (22,24)	Igloo Building Supplies	1000BF-2x12 fir (22,24)	Igloo Building Supplies	23880		/	$12.00	$1,990.00	/	1000		$1.99	*	24		$47.76	No	No	0
+129		10	22Ft-2x12 fir (22,24)	Igloo Building Supplies	1000BF-2x12 fir (22,24)	Igloo Building Supplies	23880		/	$12.00	$1,990.00	/	1000		$1.99	*	22		$43.78	No	No	0
+128		10	20Ft-2x12 fir (18,20)	Igloo Building Supplies	1000BF-2x12 fir (18,20)	Igloo Building Supplies	22752		/	$12.00	$1,896.00	/	1000		$1.90	*	20		$37.92	No	No	0
+127		10	18Ft-2x4 spruce (18)	Igloo Building Supplies	1000BF-2x4 spruce (16)	Igloo Building Supplies	4520		/	$12.00	$376.67	/	1000		$0.38	*	18		$6.78	No	No	0
+145		10	10Ft-2x8 PWF (12Ft)	Igloo Building Supplies	1000BF-2x8 PWF (12Ft)	Igloo Building Supplies	12240		/	$12.00	$1,020.00	/	1000		$1.02	*	10		$10.20	No	No	0
+136		10	12Ft-2x6 PWF (12Ft)	Igloo Building Supplies	1000BF-2x6 PWF (12Ft)	Igloo Building Supplies	8940		/	$12.00	$745.00	/	1000		$0.75	*	12		$8.94	No	No	0
+241		10	20Ft-2x12 spruce (18,20)	Igloo Building Supplies	1000BF-2x12 spruce (18,20)	Igloo Building Supplies	14040		/	$12.00	$1,170.00	/	1000		$1.17	*	20		$23.40	No	No	0
+267		10	Perimeter concrete walls(9Ft from 8Ft)	Stel Marr Concrete	16Ft-2x8 spruce (8 to 16)	Igloo Building Supplies	10.99		/	$16.00	$0.69	*	2.2		$1.51	-	0.83		$0.68	No	No	0
+260		10	12ft deck pile	David Mills	10 mm rebar	Igloo Building Supplies				$5.95	$5.95				$5.95				$5.95	No	No	0
+255		10	10ft deck pile	David Mills	10 mm rebar	Igloo Building Supplies				$5.95	$5.95				$5.95				$5.95	No	No	0
+249		10	Deck Skirting	David Mills	16Ft-2x4 PWF (16Ft)	Igloo Building Supplies				$8.16	$8.16				$8.16				$8.16	No	No	0
+248		10	Deck Skirting	David Mills	Crezone (1/2In 4x8)	Igloo Building Supplies				$42.45	$42.45				$42.45				$42.45	No	No	0
+245		10	Wood Deck Rail	David Mills	16Ft-2x6 spruce (16)	Igloo Building Supplies				$9.04	$9.04				$9.04				$9.04	No	No	0
+244		10	10Ft-2x10 fir (8 to 16)	Igloo Building Supplies	1000BF-2x10 fir (8 to 16)	Igloo Building Supplies	13900		/	$12.00	$1,158.33	/	1000		$1.16	*	10		$11.58	No	No	0
+233		10	18Ft-2x10 spruce (18,20)	Igloo Building Supplies	1000BF-2x10 spruce (18,20)	Igloo Building Supplies	12100		/	$12.00	$1,008.33	/	1000		$1.01	*	18		$18.15	No	No	0
+242		10	22Ft-2x12 spruce (22,24)	Igloo Building Supplies	1000BF-2x12 spruce (22,24)	Igloo Building Supplies	21480		/	$12.00	$1,790.00	/	1000		$1.79	*	22		$39.38	No	No	0
+170		10	11 7/8in Pro120 TJI (15ft8in)@19.2in-Per SqFt	Igloo Building Supplies	11 7/8in Pro120 TJI (15ft 8in) @19.2in	Igloo Building Supplies	1276		*	$1.85	$2,360.60	/	1600		$1.48				$1.48	No	No	0
+240		10	18Ft-2x12 spruce (18,20)	Igloo Building Supplies	1000BF-2x12 spruce (18,20)	Igloo Building Supplies	14040		/	$12.00	$1,170.00	/	1000		$1.17	*	18		$21.06	No	No	0
+239		10	16Ft-2x12 spruce (10 to 16)	Igloo Building Supplies	1000BF-2x12 spruce (10 to 16)	Igloo Building Supplies	17400		/	$12.00	$1,450.00	/	1000		$1.45	*	16		$23.20	No	No	0
+238		10	14Ft-2x12 spruce (10 to 16)	Igloo Building Supplies	1000BF-2x12 spruce (10 to 16)	Igloo Building Supplies	17400		/	$12.00	$1,450.00	/	1000		$1.45	*	14		$20.30	No	No	0
+237		10	12Ft-2x12 spruce (10 to 16)	Igloo Building Supplies	1000BF-2x12 spruce (10 to 16)	Igloo Building Supplies	17400		/	$12.00	$1,450.00	/	1000		$1.45	*	12		$17.40	No	No	0
+236		10	10Ft-2x12 spruce (10 to 16)	Igloo Building Supplies	1000BF-2x12 spruce (10 to 16)	Igloo Building Supplies	17400		/	$12.00	$1,450.00	/	1000		$1.45	*	10		$14.50	No	No	0
+235		10	24Ft-2x10 spruce (22,24)	Igloo Building Supplies	1000BF-2x10 spruce (22,24)	Igloo Building Supplies	19900		/	$12.00	$1,658.33	/	1000		$1.66	*	24		$39.80	No	No	0
+234		10	20Ft-2x10 spruce (18,20)	Igloo Building Supplies	1000BF-2x10 spruce (18,20)	Igloo Building Supplies	12100		/	$12.00	$1,008.33	/	1000		$1.01	*	20		$20.17	No	No	0
+243		10	24Ft-2x12 spruce (22,24)	Igloo Building Supplies	1000BF-2x12 spruce (22,24)	Igloo Building Supplies	21480		/	$12.00	$1,790.00	/	1000		$1.79	*	24		$42.96	No	No	0
+286		10	Material/Labour for 8Ft 4In Bsmt Walls	David Mills	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03	/	2		$3.02				$3.02	No	No	0
+311		10	Labour to install standard tub decking	Bartle and Gibson	3/4 fir T&G	Igloo Building Supplies				$30.95	$30.95				$30.95				$30.95	No	No	0
+310		10	Labour to install standard tub decking	Bartle and Gibson	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03				$6.03				$6.03	No	No	0
+297		10	Change 8Ft high WOOD studs to 8ft4in or 9ft high	David Mills	2x4 (8Ft) studs	Igloo Building Supplies														No	No	0
+296		10	Change 8Ft high WOOD studs to 8ft4in or 9ft high	David Mills	2x4 (9Ft) studs	Igloo Building Supplies				$3.09	$3.09	-	2.48		$0.61				$0.61	No	No	0
+293		10	Material/Labour for 9Ft Bsmt Walls	David Mills	3-1/2In coated nls	Igloo Building Supplies				$45.00	$45.00	/	85		$0.53				$0.53	No	No	0
+292		10	Material/Labour for 9Ft Bsmt Walls	David Mills	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03	/	16		$0.38	*	2.2		$0.83	No	No	0
+291		10	Material/Labour for 9Ft Bsmt Walls	David Mills	2x4 (9Ft) studs	Igloo Building Supplies				$3.09	$3.09				$3.09				$3.09	No	No	0
+268		10	Perimeter concrete walls(9Ft from 8Ft)	Stel Marr Concrete	16Ft-2x4 spruce (16)	Igloo Building Supplies														No	No	0
+287		10	Material/Labour for 8Ft 4In Bsmt Walls	David Mills	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03	/	16		$0.38	*	2.2		$0.83	No	No	0
+275		10	Material only for 8Ft Bsmt Walls	David Mills	2x4 (8Ft) studs	Igloo Building Supplies				$2.48	$2.48				$2.48				$2.48	No	No	0
+283		10	Material/Labour for 8Ft Bsmt Walls	David Mills	3-1/2In coated nls	Igloo Building Supplies				$45.00	$45.00	/	85		$0.53				$0.53	No	No	0
+282		10	Material/Labour for 8Ft Bsmt Walls	David Mills	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03	/	16		$0.38	*	2.2		$0.83	No	No	0
+281		10	Material/Labour for 8Ft Bsmt Walls	David Mills	2x4 (8Ft) studs	Igloo Building Supplies				$2.48	$2.48				$2.48				$2.48	No	No	0
+279		10	Material only for 9Ft Bsmt Walls	David Mills	3-1/2In coated nls	Igloo Building Supplies				$45.00	$45.00	/	85		$0.53				$0.53	No	No	0
+278		10	Material only for 9Ft Bsmt Walls	David Mills	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03	/	16		$0.38	*	2.2		$0.83	No	No	0
+214		10	12Ft-2x10 spruce (8 to 16)	Igloo Building Supplies	1000BF-2x10 spruce (8 to 16)	Igloo Building Supplies	11900		/	$12.00	$991.67	/	1000		$0.99	*	12		$11.90	No	No	0
+277		10	Material only for 9Ft Bsmt Walls	David Mills	2x4 (9Ft) studs	Igloo Building Supplies				$3.09	$3.09				$3.09				$3.09	No	No	0
+276		10	Material only for 8Ft Bsmt Walls	David Mills	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03	/	16		$0.38	*	2.2		$0.83	No	No	0
+288		10	Material/Labour for 8Ft 4In Bsmt Walls	David Mills	3-1/2In coated nls	Igloo Building Supplies				$45.00	$45.00	/	85		$0.53				$0.53	No	No	0
+186		10	18Ft-2x8 spruce (18 to 20)	Igloo Building Supplies	1000BF-2x8 spruce (18 to 20)	Igloo Building Supplies	6320		/	$12.00	$526.67	/	1000		$0.53	*	18		$9.48	No	No	0
+200		10	Standard PWF deck	David Mills	2 1/2In deck screws	Igloo Building Supplies	38.75		*	$0.50	$19.38	/	240		$0.08	*	1.05		$0.08	No	No	0
+208		10	Walkout PWF deck	David Mills	16Ft-2x8 PWF (16Ft)	Igloo Building Supplies				$17.39	$17.39				$17.39				$17.39	No	No	0
+209		10	Walkout PWF deck	David Mills	Treated 5/4 decking (16Ft)	Igloo Building Supplies				$0.68	$0.68				$0.68				$0.68	No	No	0
+203		10	Standard Duradeck deck	David Mills	5/8 select grade fir (duradeck)	Igloo Building Supplies				$27.95	$27.95				$27.95				$27.95	No	No	0
+202		10	Standard Duradeck deck	David Mills	16Ft-2x8 PWF (16Ft)	Igloo Building Supplies				$17.39	$17.39				$17.39				$17.39	No	No	0
+174		10	9ft teleposts from 8ft	Igloo Building Supplies	9ft teleposts	Igloo Building Supplies				$44.75	$44.75	-	39.95		$4.80				$4.80	No	No	0
+175		10	R10 Rimboard Cladding per ln ft	Igloo Building Supplies	Celfort R10 2Ftx8Ft - 2In	Igloo Building Supplies														No	No	0
+205		10	Standard Duradeck deck	David Mills	2 1/2In deck screws	Igloo Building Supplies				$38.75	$38.75				$38.75				$38.75	No	No	0
+176		10	R10 Rimboard Cladding per ln ft	Igloo Building Supplies	3/8 OSB	Igloo Building Supplies														No	No	0
+204		10	Standard Duradeck deck	David Mills	Single 2x8 joist hanger	Igloo Building Supplies				$0.53	$0.53				$0.53				$0.53	No	No	0
+187		10	20Ft-2x8 spruce (18 to 20)	Igloo Building Supplies	1000BF-2x8 spruce (18 to 20)	Igloo Building Supplies	6320		/	$12.00	$526.67	/	1000		$0.53	*	20		$10.53	No	No	0
+210		10	Walkout PWF deck	David Mills	Single 2x8 joist hanger	Igloo Building Supplies				$0.53	$0.53				$0.53				$0.53	No	No	0
+188		10	10Ft-2x10 spruce (8 to 16)	Igloo Building Supplies	1000BF-2x10 spruce (8 to 16)	Igloo Building Supplies	11900		/	$12.00	$991.67	/	1000		$0.99	*	10		$9.92	No	No	0
+212		10	Walkout PWF deck	David Mills	16Ft-2x6 spruce (16)	Igloo Building Supplies				$9.04	$9.04				$9.04				$9.04	No	No	0
+211		10	Walkout PWF deck	David Mills	2 1/2In deck screws	Igloo Building Supplies				$38.75	$38.75				$38.75				$38.75	No	No	0
+198		10	Standard PWF deck	David Mills	Treated 5/4 decking (16Ft)	Igloo Building Supplies				$0.68	$0.68	*	520		$353.60				$353.60	No	No	0
+199		10	Standard PWF deck	David Mills	Single 2x8 joist hanger	Igloo Building Supplies				$0.53	$0.53	*	15		$7.95				$7.95	No	No	0
+215		10	14Ft-2x10 spruce (8 to 16)	Igloo Building Supplies	1000BF-2x10 spruce (8 to 16)	Igloo Building Supplies	11900		/	$12.00	$991.67	/	1000		$0.99	*	14		$13.88	No	No	0
+221		10	Walkout Duradeck deck	David Mills	16Ft-2x6 spruce (16)	Igloo Building Supplies				$9.04	$9.04				$9.04				$9.04	No	No	0
+231		10	2x6 (8Ft) studs	Igloo Building Supplies	1000BF-2x6 (8Ft) studs	Igloo Building Supplies	5820		/	$12.00	$485.00	/	1000		$0.49	*	8		$3.88	No	No	0
+230		10	2x4 (8Ft) studs	Igloo Building Supplies	1000BF-2x4 (8Ft) studs	Igloo Building Supplies	3720		/	$12.00	$310.00	/	1000		$0.31	*	8		$2.48	No	No	0
+229		10	16Ft-2x2 spruce	Igloo Building Supplies	1000BF-2x2 spruce	Igloo Building Supplies	2628		/	$12.00	$219.00	/	1000		$0.22	*	16		$3.50	No	No	0
+228		10	2x2 spruce	Igloo Building Supplies	1000BF-2x2 spruce	Igloo Building Supplies	2628		/	$12.00	$219.00	/	1000		$0.22				$0.22	No	No	0
+227		10	16Ft-1x4 spruce	Igloo Building Supplies	1000BF-1x4 spruce	Igloo Building Supplies	1905.12		/	$12.00	$158.76	/	1000		$0.16	*	16		$2.54	No	No	0
+226		10	14Ft-1x4 spruce	Igloo Building Supplies	1000BF-1x4 spruce	Igloo Building Supplies	1905.12		/	$12.00	$158.76	/	1000		$0.16	*	14		$2.22	No	No	0
+225		10	12Ft-1x4 spruce	Igloo Building Supplies	1000BF-1x4 spruce	Igloo Building Supplies	1905.12		/	$12.00	$158.76	/	1000		$0.16	*	12		$1.91	No	No	0
+232		10	2x4 (9Ft) studs	Igloo Building Supplies	1000BF-2x4 (8Ft) studs	Igloo Building Supplies	4120		/	$12.00	$343.33	/	1000		$0.34	*	9		$3.09	No	No	0
+223		10	Wood Deck Rail	David Mills	16Ft-2x4 spruce (16)	Igloo Building Supplies				$6.03	$6.03				$6.03				$6.03	No	No	0
+173		10	11 7/8in Pro550 TJI (19ft4in)@19.2in-Per SqFt	Igloo Building Supplies	11 7/8in Pro550 TJI (19ft4in)@19.2in	Igloo Building Supplies	1276		*	$3.25	$4,147.00	/	1600		$2.59				$2.59	No	No	0
+220		10	Walkout Duradeck deck	David Mills	2 1/2In deck screws	Igloo Building Supplies				$38.75	$38.75				$38.75				$38.75	No	No	0
+219		10	Walkout Duradeck deck	David Mills	Single 2x8 joist hanger	Igloo Building Supplies				$0.53	$0.53				$0.53				$0.53	No	No	0
+218		10	Walkout Duradeck deck	David Mills	5/8 select grade fir (duradeck)	Igloo Building Supplies				$27.95	$27.95				$27.95				$27.95	No	No	0
+171		10	11 7/8in Pro250 TJI (16ft5in)@19.2in-Per SqFt	Igloo Building Supplies	11 7/8in Pro250 TJI (16ft5in)@19.2in	Igloo Building Supplies	1276		*	$2.00	$2,552.00	/	1600		$1.60				$1.60	No	No	0
+217		10	Walkout Duradeck deck	David Mills	16Ft-2x8 PWF (16Ft)	Igloo Building Supplies				$17.39	$17.39	/	16		$1.09				$1.09	No	No	0
+216		10	16Ft-2x10 spruce (8 to 16)	Igloo Building Supplies	1000BF-2x10 spruce (8 to 16)	Igloo Building Supplies	11900		/	$12.00	$991.67	/	1000		$0.99	*	16		$15.87	No	No	0
+172		10	11 7/8in Pro350 TJI (17ft4in)@19.2in-Per SqFt	Igloo Building Supplies	11 7/8in Pro350 TJI (17ft4in)@19.2in	Igloo Building Supplies	1276		*	$2.15	$2,743.40	/	1600		$1.71				$1.71	No	No	0
+224		10	10Ft-1x4 spruce	Igloo Building Supplies	1000BF-1x4 spruce	Igloo Building Supplies	1905.12		/	$12.00	$158.76	/	1000		$0.16	*	10		$1.59	No	No	0
+68		10		Kraus McMahon		Kraus McMahon	65.7		/	$30.00	$2.19	/	9		$0.24	*	1.05		$0.26	No	No	0
+67		10	Fortress 7 lb. 3/8In	Kraus McMahon	Fortress 7 lb. 3/8In	Kraus McMahon	2.33		/	$9.00	$0.26	*	1.05		$0.27				$0.27	No	No	0
+251		10	10ft deck pile	David Mills	Cap piles to proper height	Kulka Enterprises Inc				$65.00	$65.00				$65.00				$65.00	No	No	0
+256		10	12ft deck pile	David Mills	Cap piles to proper height	Kulka Enterprises Inc				$65.00	$65.00				$65.00				$65.00	No	No	0
+100		10	Ironwood V30 (Classic Oak)	Northgate Plumbing	Bath vanities & bedroom desks	Millenium Woodwork Ltd				$36.00	$36.00				$36.00				$36.00	No	No	0
+305		10	Salvi V30 (Classic Oak)	Northgate Plumbing	Bath vanities & bedroom desks	Millenium Woodwork Ltd				$36.00	$36.00				$36.00				$36.00	No	No	0
+304		10	Salvi V30 (Classic Oak)	Northgate Plumbing	V30 Classic Oak	Northgate Plumbing				$246.36	$246.36				$246.36				$246.36	No	No	0
+63		10	Convert pedestal sink to V30 cabinet (Ironwood)	Northgate Plumbing	Convert pedestal sink to V30 cabinet (Ironwood)	Northgate Plumbing				$0.00	$0.00				$0.00				$0.00	No	No	0
+99		10	Ironwood V30 (Classic Oak)	Northgate Plumbing	V30 Classic Oak	Northgate Plumbing				$246.36	$246.36				$246.36				$246.36	No	No	0
+389		10	Pickup and deliveries (sqft)	Salvi Homes	Fuel cost (km)	Petro Canada	450	3 city trips and 30 trips from office @ 10km	*	$0.22	$99.00	/	2100	per 2100 sqft house	$0.05				$0.05	No	No	0
+388		10	Fuel cost (km)	Petro Canada	Current fuel Rate (per L)	Petro Canada				$1.20	$1.20	*	0.182		$0.22				$0.22	No	No	0
+23		10	Layout (LF)	Rockhead Construction	Layout (LF)	Rockhead Construction				$0.00	$0.00				$0.00				$0.00	No	No	0
+22		10		Rockhead Construction	Layout (LF)	Rockhead Construction														No	No	0
+368		10	Service man labour (Hr)	Salvi Homes	Service man cost no burden (Hr)	Salvi Homes	1.2354	Burden Rate (CPP,EI,WCB,Liability,Vacation Pay…)	*	$33.00	$40.77				$40.77				$40.77	No	No	0
+369		10	Service man labour (Hr)	Salvi Homes	Service man cost no burden (Hr)	Salvi Homes	0.1	Benefit Rate	*	$33.00	$4.50				$4.50				$4.50	No	No	0
+370		10	Service Pre Occ Work	Salvi Homes	Service man labour (Hr)	Salvi Homes	72	72 Hours	*	$45.27	$3,259.44	/	2100	2100 sqft house	$1.55				$1.55	No	No	0
+350		10	Kitchen splash(4x4-5x5 tile/standard pattern)	Salvi Homes	Wall tile budget	Salvi Homes				$4.30	$4.30				$4.30				$4.30	No	No	0
+377		10	Salvi Carpenter Labour (Hr)	Salvi Homes	Senior carpenter cost no burden (Hr)	Salvi Homes	1.2354	Burden Rate (CPP,EI,WCB,Liability,Vacation Pay…)	*	$30.00	$37.06				$37.06				$37.06	No	No	0
+373		30	Shop Labour (Hr)	Salvi Homes	Shop Labour cost no burden (Hr)	Salvi Homes	1.2348	Burden Rate (CPP,EI,WCB,Liability,Vacation Pay…)	*	$24.00	$29.64	*	0.5		$14.82				$14.82	No	No	0
+348		10	Kitchen splash (std tile/diagonal pattern)	Salvi Homes	Wall tile budget	Salvi Homes				$4.30	$4.30				$4.30				$4.30	No	No	0
+375		50	Shop Labour (Hr)	Salvi Homes	Office Rent and Utilities (Est Yr)	Salvi Homes	0.5	50% space	*	$120,000.00	$60,000.00	/	1960	1 guy yearly hr	$30.61				$30.61	No	No	0
+376		60	Shop Labour (Hr)	Salvi Homes	Shop Overhead Expense (Est Yr)	Salvi Homes				$15,000.00	$15,000.00	/	1960	1 guy yearly hr	$7.65				$7.65	No	No	0
+371		10	Shop Labour (Hr)	Salvi Homes	Shop Foreman cost no burden (Hr)	Salvi Homes	1.2348	Burden Rate (CPP,EI,WCB,Liability,Vacation Pay…)	*	$29.00	$35.81	*	0.5		$17.90				$17.90	No	No	0
+378		20	Salvi Carpenter Labour (Hr)	Salvi Homes	Senior carpenter cost no burden (Hr)	Salvi Homes	0.1	Benefit Rate	*	$30.00	$3.70				$3.70				$3.70	No	No	0
+346		10	Kitchen splash (std tile/pattern)	Salvi Homes	Wall tile budget	Salvi Homes				$4.30	$4.30				$4.30				$4.30	No	No	0
+384		10	Site labour (Hr)	Salvi Homes	Site labour man cost no burden (Hr)	Salvi Homes	0.1	Benefit Rate	*	$23.00	$2.30				$2.30				$2.30	No	No	0
+372		20	Shop Labour (Hr)	Salvi Homes	Shop Foreman cost no burden (Hr)	Salvi Homes	0.1	Benefit Rate	*	$29.00	$2.90	*	0.5		$1.45				$1.45	No	No	0
+385		10	Misc summer labour	Salvi Homes	Site labour (Hr)	Salvi Homes	88	Hours of general cleanup and site labour	*	$30.71	$2,702.48	/	2100	per 2100 sqft house	$1.29				$1.29	No	No	0
+386		10	Misc winter labour	Salvi Homes	Site labour (Hr)	Salvi Homes	100	Hours of general cleanup and site labour	*	$30.71	$3,071.00	/	2100	per 2100 sqft house	$1.46				$1.46	No	No	0
+387		10	Pickup and deliveries (sqft)	Salvi Homes	Site labour (Hr)	Salvi Homes	16	16 Hours	*	$30.71	$491.36	/	2100	per 2100 sqft house	$0.23				$0.23	No	No	0
+404		10	Kitchen splash (small tile/diagonal pattern)	Salvi Homes	Wall tile budget	Salvi Homes				$4.30	$4.30				$4.30				$4.30	No	No	0
+407		10	Kitchen splash (glass tile or mosaic)	Salvi Homes	Glass or mosaic tile budget	Salvi Homes				$18.00	$18.00				$18.00				$18.00	No	No	0
+418		10	Listello border tile	Salvi Homes	Listello border tile budget	Salvi Homes				$14.00	$14.00				$14.00				$14.00	No	No	0
+420		10	Wainscot tile wall (std tile)	Salvi Homes	Wall tile budget	Salvi Homes				$4.30	$4.30				$4.30				$4.30	No	No	0
+422		10	Wainscot tile wall (glass or mosaic tile)	Salvi Homes	Glass or mosaic tile budget	Salvi Homes				$18.00	$18.00				$18.00				$18.00	No	No	0
+383		10	Site labour (Hr)	Salvi Homes	Site labour man cost no burden (Hr)	Salvi Homes	1.2354	Burden Rate (CPP,EI,WCB,Liability,Vacation Pay…)	*	$23.00	$28.41				$28.41				$28.41	No	No	0
+246		10	Wood Deck Rail	David Mills	Shop Labour (Hr)	Salvi Homes				$60.00	$60.00				$60.00				$60.00	No	No	0
+341		10	Floor tile(standard/diagonal)	Salvi Homes	Floor/Counter tile budget	Salvi Homes	1.3		*	$3.70	$4.81				$4.81				$4.81	No	No	0
+425		10	Test calc	All Blades Canada Inc	Shop Labour (Hr)	Salvi Homes	3		*	$73.64	$220.92				$220.92				$220.92	No	No	0
+102		10	Fireplace Surround-Slate tile	Salvi Homes	Slate tile budget	Salvi Homes				$4.50	$4.50	*	19		$85.50				$85.50	No	No	0
+70		10	Oak MC	Salvi Homes	Oak MC	Salvi Homes			*											No	No	0
+71		10	MDF Mirror Wrap (30-48)	Salvi Homes	MDF Mirror Wrap (30-48)	Salvi Homes	4.94		*	$15.00	$74.10				$74.10				$74.10	No	No	0
+95		10	Fireplace Surround-tile	Salvi Homes	Wall tile budget	Salvi Homes				$4.30	$4.30	*	19		$81.70				$81.70	No	No	0
+374		40	Shop Labour (Hr)	Salvi Homes	Shop Labour cost no burden (Hr)	Salvi Homes	0.1	Benefit Rate	*	$24.00	$2.40	*	0.5		$1.20				$1.20	No	No	0
+250		10	Deck Skirting	David Mills	Senior carpenter cost no burden (Hr)	Salvi Homes				$30.00	$30.00				$30.00				$30.00	No	No	0
+313		10	Labour to install standard tub decking	Bartle and Gibson	Senior carpenter cost no burden (Hr)	Salvi Homes				$30.00	$30.00	*	3		$90.00				$90.00	No	No	0
+326		10	Fireplace Surround-marble	Salvi Homes	Marble tile budget	Salvi Homes				$12.00	$12.00	*	19		$228.00				$228.00	No	No	0
+328		10	Fireplace Peninsula Surround-tile	Salvi Homes	Wall tile budget	Salvi Homes				$4.30	$4.30	*	19		$81.70				$81.70	No	No	0
+330		10	Fireplace Peninsula Surround-Slate tile	Salvi Homes	Slate tile budget	Salvi Homes				$4.50	$4.50	*	19		$85.50				$85.50	No	No	0
+332		10	Fireplace Peninsula Surround-Marble tile	Salvi Homes	Marble tile budget	Salvi Homes				$12.00	$12.00	*	19		$228.00				$228.00	No	No	0
+334		10	Floor tile (standard)	Salvi Homes	Floor/Counter tile budget	Salvi Homes	1.25		*	$3.70	$4.63				$4.63				$4.63	No	No	0
+336		10	Floor tile (18in and larger)	Salvi Homes	Floor/Counter tile budget	Salvi Homes	1.3		*	$3.70	$4.81				$4.81				$4.81	No	No	0
+338		10	Floor tile(slate)	Salvi Homes	Slate tile budget	Salvi Homes	1.3		*	$4.50	$5.85				$5.85				$5.85	No	No	0
+405		10	Kitchen splash (small tile/diagonal pattern)	Salvi Homes	Flate rate diagonal kitchen splash	Stars Tile Contracting Ltd				$350.00	$350.00	/	27		$12.96				$12.96	No	No	0
+90		20	7Ft high tile surround for tub install	Stars Tile Contracting Ltd	Schluter Kerdi membrane (supply and install/sqft)	Stars Tile Contracting Ltd	35.75	"2 walls @ 3' x 3-3"". 1 wall @ 5' x 3'-3""."	*	$3.00	$107.25				$107.25				$107.25	No	No	0
+349		10	Kitchen splash (std tile/diagonal pattern)	Salvi Homes	Flate rate diagonal kitchen splash	Stars Tile Contracting Ltd				$350.00	$350.00	/	27		$12.96				$12.96	No	No	0
+89		10	7Ft high tile surround for tub install	Stars Tile Contracting Ltd	Wall tile install	Stars Tile Contracting Ltd	60.5	"2 walls @ 3' x 5-6"".  1 wall @ 5' x 5'-6""."	*	$5.65	$341.83				$341.83				$341.83	No	No	0
+263		10	Perimeter concrete walls(8Ft4in from 8Ft)	Stel Marr Concrete	20 Mpa (air) concrete-Footing Piles	Stel Marr Concrete	0.0186		*	$202.00	$3.76	*	0.34		$1.28				$1.28	No	No	0
+259		10	12ft deck pile	David Mills	2% calcium piles	Stel Marr Concrete				$16.00	$16.00	*	0.3036		$4.86				$4.86	No	No	0
+258		10	12ft deck pile	David Mills	20 Mpa (air) concrete-Footing Piles	Stel Marr Concrete				$202.00	$202.00	*	0.3036		$61.33				$61.33	No	No	0
+254		10	10ft deck pile	David Mills	2% calcium piles	Stel Marr Concrete				$16.00	$16.00	*	0.253		$4.05				$4.05	No	No	0
+270		10	3ft sidewalk (Lineal Ft)	Stel Marr Concrete	27.5 mpa exposed mix (Villeneuve) - Sidewalk	Stel Marr Concrete	0.012		*	$295.00	$3.54				$3.54				$3.54	No	No	0
+253		10	10ft deck pile	David Mills	20 Mpa (air) concrete-Footing Piles	Stel Marr Concrete				$202.00	$202.00	*	0.253		$51.11				$51.11	No	No	0
+273		10	4ft sidewalk (Lineal Ft)	Stel Marr Concrete	27.5 mpa exposed mix (Villeneuve) - Sidewalk	Stel Marr Concrete														No	No	0
+266		10	Perimeter concrete walls(9Ft from 8Ft)	Stel Marr Concrete	20 mpa (air) concrete walls	Stel Marr Concrete	0.0186		*	$202.00	$3.76	*	1		$3.76				$3.76	No	No	0
+399		10	Stained Jatoba Hardwood Floor	Salvi Homes	Appalachian-Jatoba Brazilian Cherry Stained (Prefin 3 1/4In Select and Better)	TRC Distribution	1.08		*	$6.79	$7.33				$7.33				$7.33	No	No	0
+401		10	Bamboo Hardwood Floor	Salvi Homes	Teragren signature VG caramelized bamboo (5/8 x 3 5/8)	TRC Distribution	1.08		*	$4.49	$4.85				$4.85				$4.85	No	No	0
+403		10	Strand Bamboo Hardwood Floor	Salvi Homes	Synergy Strand Bamboo (1/2 x 3 3/4)	TRC Distribution	1.08		*	$4.49	$4.85				$4.85				$4.85	No	No	0
+397		10	Black Walnut Hardwood Floor	Salvi Homes	Appalacian-American Black Walnut Excel (Prefin 2 1/4In)	TRC Distribution	1.08		*	$6.89	$7.44				$7.44				$7.44	No	No	0
+395		10	Hickory Hardwood Floor	Salvi Homes	Appalacian-Hickory (Prefin 2 1/4In Millrun)	TRC Distribution	1.08		*	$4.99	$5.39				$5.39				$5.39	No	No	0
+391		10	Stained Maple Hardwood Floor	Salvi Homes	Appalacian-Maple Stained (Prefin 2 1/4In Estate Grade)	TRC Distribution	1.08		*	$3.79	$4.09				$4.09				$4.09	No	No	0
+393		10	Natural Maple Hardwood Floor	Salvi Homes	Appalacian-Maple Natural (Prefin 2 1/4In Select and Better)	TRC Distribution	1.08		*	$3.79	$4.09				$4.09				$4.09	No	No	0
+27		10	13Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	13		*	$2.25	$29.25				$29.25				$29.25	No	No	0
+257		10	12ft deck pile	David Mills	12Ft Piles	Waytec Enterprises				$27.00	$27.00				$27.00				$27.00	No	No	0
+26		10	12Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	12		*	$2.25	$27.00				$27.00				$27.00	No	No	0
+28		10	14Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	14		*	$2.25	$31.50				$31.50				$31.50	No	No	0
+29		10	15Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	15		*	$2.25	$33.75				$33.75				$33.75	No	No	0
+30		10	16Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	16		*	$2.25	$36.00				$36.00				$36.00	No	No	0
+31		10	17Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	17		*	$2.25	$38.25				$38.25				$38.25	No	No	0
+32		10	18Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	18		*	$2.25	$40.50				$40.50				$40.50	No	No	0
+33		10	19Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	19		*	$2.25	$42.75				$42.75				$42.75	No	No	0
+34		10	20Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	20		*	$2.25	$45.00				$45.00				$45.00	No	No	0
+252		10	10ft deck pile	David Mills	10Ft Piles	Waytec Enterprises				$22.50	$22.50				$22.50				$22.50	No	No	0
+25		10	11Ft Piles	Waytec Enterprises	12 inch pile	Waytec Enterprises	11		*	$2.25	$24.75				$24.75				$24.75	No	No	0

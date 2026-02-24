@@ -16,6 +16,9 @@ import { createStripeRouter } from "./api/stripe";
 import { createSystemRouter } from "./api/system";
 import { createProxyRouter } from "./api/proxy";
 import { createScheduleRouter } from "./api/schedule";
+import { createOnlyOfficeRouter } from "./api/onlyoffice";
+import { createPriceMasterRouter } from "./api/price-master";
+import documentLifecycleRouter from "./api/document-lifecycle";
 import { requestLogger, errorHandler } from "./middleware/request-logger";
 import { globalApiLimiter, authLimiter, plenumnetLimiter, webhookLimiter } from "./middleware/rate-limiter";
 
@@ -49,6 +52,9 @@ export async function registerRoutes(
   app.use(createStripeRouter());
   app.use(createSystemRouter());
   app.use(createScheduleRouter());
+  app.use(createOnlyOfficeRouter());
+  app.use(createPriceMasterRouter());
+  app.use(documentLifecycleRouter);
   app.use(createProxyRouter());
   app.use(errorHandler);
 

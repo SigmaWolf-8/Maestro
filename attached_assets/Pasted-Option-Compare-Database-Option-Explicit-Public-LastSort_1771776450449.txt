@@ -1,0 +1,228 @@
+Option Compare Database
+Option Explicit
+Public LastSortNum As Single
+Public Newrec As Boolean
+Private Sub ExpressionValue_AfterUpdate()
+PMCompileLineItemonForm
+UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+End Sub
+Private Sub ExpressionValue_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub ExpressionValue2_AfterUpdate()
+PMCompileLineItemonForm
+UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+End Sub
+Private Sub ExpressionValue2_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub ExpressionValue3_AfterUpdate()
+PMCompileLineItemonForm
+UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+End Sub
+Private Sub ExpressionValue3_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub FilterPSSub_AfterUpdate()
+Dim BoxValue As String
+BoxValue = Nz(Me.FilterPSSub.Value, "0")
+
+If BoxValue = "0" Then
+    Me.PSSub.RowSource = "SELECT PM.PS,PM.Vendor FROM PM"
+Else
+    Me.PSSub.RowSource = "SELECT PM.PS,PM.Vendor FROM PM WHERE Vendor=[FilterPSSub];"
+End If
+
+End Sub
+Private Sub Form_AfterDelConfirm(Status As Integer)
+Me.Recalc
+UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+End Sub
+Private Sub Form_AfterInsert()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+
+Set rs = Yoda.OpenRecordset("Select * from PM where ps='" & Me.PSHeader & "' and Vendor='" & Me.Vendor & "'", dbOpenDynaset, dbSeeChanges)
+rs.Edit
+rs!PMCompile = True
+rs.Update
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Private Sub Form_BeforeInsert(Cancel As Integer)
+Newrec = True
+Dim rs As DAO.Recordset, currentRS As String
+Set rs = Me.RecordsetClone
+    If Not rs.EOF Then
+        rs.MoveLast
+        LastSortNum = Nz(rs!SortNum, 0)
+    Else
+        LastSortNum = 0
+    End If
+rs.Close
+Set rs = Nothing
+
+End Sub
+Private Sub Form_Close()
+Dim Vendore As String
+Vendore = Nz(Forms.navformorder.NavigationSubform.Form.Vendor, "0")
+
+'Update values to ensure when an item gets deleted, price gets updated in PM
+'If Me.PSHeader <> Null Then
+    UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+    UpdatePMCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+'End If
+
+If Vendore = "0" Then
+    Forms.navformorder.NavigationSubform.Form.Vendor = Me.Vendor
+    Forms.navformorder.NavigationSubform.Form.Requery
+        ' Find the record that matches the control.
+        Dim rs As Object, strPS As String
+        Set rs = Forms.navformorder.NavigationSubform.Form.Recordset.Clone
+        strPS = "'" & Me.PSHeader & "'"
+        rs.FindFirst "[PS] = " & strPS
+        If Not rs.EOF Then Forms.navformorder.NavigationSubform.Form.Bookmark = rs.Bookmark
+End If
+
+End Sub
+Private Sub Form_Open(Cancel As Integer)
+    Me.BorderBox.BackColor = YodaBorderColour
+    Me.FormHeader.BackColor = YodaHeadColour
+    Me.FormFooter.BackColor = YodaFootColour
+End Sub
+Private Sub Price_AfterUpdate()
+PMCompileLineItemonForm
+UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+End Sub
+Private Sub Price_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+
+Public Sub PSHeader_AfterUpdate()
+Me.RecordSource = "Select * From PMCompile Where ps='" & Me.PSHeader & "' and Vendor='" & Me.Vendor & "'"
+Me.OrderBy = "SortNum"
+Me.OrderByOn = True
+End Sub
+Private Sub PSSub_AfterUpdate()
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+
+Me.SubVendor = Me.PSSub.Column(1)
+Me.Recalc
+GetPMPrice Me.PSSub, Nz(Me.PSSub.Column(1), 0)
+PMCompileLineItemonForm
+UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from PM where ps='" & PSSub & "'", dbOpenDynaset, dbSeeChanges)
+
+If Nz(Me.SubVendor, "") = rs!Vendor Then
+Else
+MsgBox "Please enter Vendor Below-" & rs!Vendor
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+
+End Sub
+Private Sub PSSub_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Qnotes_AfterUpdate()
+Me.Recalc
+End Sub
+Private Sub Qnotes_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub QNotes2_AfterUpdate()
+Me.Recalc
+End Sub
+Private Sub QNotes2_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub QNotes3_AfterUpdate()
+Me.Recalc
+End Sub
+Private Sub QNotes3_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Quantity_AfterUpdate()
+PMCompileLineItemonForm
+UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+End Sub
+Private Sub Quantity_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Quantity2_AfterUpdate()
+PMCompileLineItemonForm
+UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+End Sub
+Private Sub Quantity2_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Quantity3_AfterUpdate()
+PMCompileLineItemonForm
+UpdateCalculatedValue Me.PSHeader.Value, Me.Vendor.Value
+End Sub
+Private Sub Quantity3_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub SortLbl_DblClick(Cancel As Integer)
+Me.OrderByOn = True
+End Sub
+Private Sub Sortnum_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub Subtotal_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Private Sub SubVendor_KeyDown(KeyCode As Integer, Shift As Integer)
+KeysMoveMe KeyCode
+End Sub
+Public Sub PMCompileLineItemonForm()
+'Me.Recalc
+            If Me.ExpressionValue = "*" Then Me.Subtotal = Me.Quantity * Me.Price
+            If Me.ExpressionValue = "/" Then Me.Subtotal = Me.Quantity / Me.Price
+            If Me.ExpressionValue = "+" Then Me.Subtotal = Me.Quantity + Me.Price
+            If Me.ExpressionValue = "-" Then Me.Subtotal = Me.Quantity - Me.Price
+            If Nz(Me.ExpressionValue, "0") = "0" Then Me.Subtotal = Me.Price
+            
+            If Me.ExpressionValue2 = "*" Then Me.Subtotal2 = Me.Subtotal * Me.Quantity2
+            If Me.ExpressionValue2 = "/" Then Me.Subtotal2 = Me.Subtotal / Me.Quantity2
+            If Me.ExpressionValue2 = "+" Then Me.Subtotal2 = Me.Subtotal + Me.Quantity2
+            If Me.ExpressionValue2 = "-" Then Me.Subtotal2 = Me.Subtotal - Me.Quantity2
+            If Nz(Me.ExpressionValue2, "0") = "0" Then Me.Subtotal2 = Me.Subtotal
+            
+            If Me.ExpressionValue3 = "*" Then Me.LineTotal = Me.Subtotal2 * Me.Quantity3
+            If Me.ExpressionValue3 = "/" Then Me.LineTotal = Me.Subtotal2 / Me.Quantity3
+            If Me.ExpressionValue3 = "+" Then Me.LineTotal = Me.Subtotal2 + Me.Quantity3
+            If Me.ExpressionValue3 = "-" Then Me.LineTotal = Me.Subtotal2 - Me.Quantity3
+            If Nz(Me.ExpressionValue3, "0") = "0" Then Me.LineTotal = Me.Subtotal2
+'Line item has been recalulated already
+Me.PUP = False
+SetPMPStoRecalculate Me.PSHeader, Me.Vendor
+
+Me.Recalc
+End Sub
+Public Function GetPMPrice(PSSub As String, Vendor As String)
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Dim Newprice As Single
+Set Yoda = CurrentDb
+
+Set rs = Yoda.OpenRecordset("Select * from Pm where ps='" & PSSub & "' and vendor='" & Vendor & "'", dbOpenSnapshot)
+
+If Not rs.EOF Then
+    Newprice = Nz(rs!NewUpdate, Nz(rs!Price, 0))
+    Me.Price = Newprice
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+

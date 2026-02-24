@@ -25,7 +25,12 @@ import {
   HardDrive,
   Activity,
   Server,
-  CheckCircle2
+  CheckCircle2,
+  Archive,
+  Database,
+  Layers,
+  FileSearch,
+  ClipboardCheck
 } from "lucide-react";
 import type { Document } from "@shared/schema";
 
@@ -108,6 +113,39 @@ export default function DocumentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/documents"] });
       toast({ title: "Document deleted" });
+    },
+  });
+
+  const classifyMutation = useMutation({
+    mutationFn: async (doc: Document) => {
+      return apiRequest("POST", "/api/classification/classify", {
+        documentId: doc.id,
+        intakePath: "manual_upload",
+      });
+    },
+    onSuccess: (_data, doc) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/classification/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/classification/jobs?limit=20"] });
+      toast({ title: `Classification started for ${doc.name}` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Classification failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: async (doc: Document) => {
+      return apiRequest("POST", "/api/reviews/sessions", {
+        documentId: doc.id,
+      });
+    },
+    onSuccess: (_data, doc) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reviews/sessions?limit=20"] });
+      toast({ title: `Review session created for ${doc.name}` });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Review session failed", description: error.message, variant: "destructive" });
     },
   });
 
@@ -319,9 +357,9 @@ export default function DocumentsPage() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -330,7 +368,7 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Encrypted</CardTitle>
             <Lock className="h-4 w-4 text-green-600" />
           </CardHeader>
@@ -341,7 +379,19 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">.tern Format</CardTitle>
+            <Archive className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="text-tern-count">
+              {documents.filter(d => d.ternEnabled).length}
+            </div>
+            <p className="text-xs text-muted-foreground">Optimized storage</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Avg Savings</CardTitle>
             <HardDrive className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -351,7 +401,7 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Kong Status</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-green-600" />
           </CardHeader>
@@ -390,14 +440,33 @@ export default function DocumentsPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="p-2 bg-muted rounded">
-                      {doc.isEncrypted ? (
+                      {doc.ternEnabled ? (
+                        <Archive className="w-5 h-5 text-primary" />
+                      ) : doc.isEncrypted ? (
                         <Lock className="w-5 h-5 text-green-600" />
                       ) : (
                         <FileText className="w-5 h-5 text-muted-foreground" />
                       )}
                     </div>
                     <div>
-                      <h3 className="font-medium">{doc.name}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-medium">{doc.name}</h3>
+                        {doc.ternEnabled && (
+                          <Badge variant="outline" className="text-[10px]" data-testid={`badge-tern-${doc.id}`}>
+                            <Archive className="w-2.5 h-2.5 mr-1" />.tern
+                          </Badge>
+                        )}
+                        {doc.ternEncrypted && (
+                          <Badge variant="outline" className="text-[10px] border-green-600/30 text-green-600" data-testid={`badge-tern-encrypted-${doc.id}`}>
+                            <Lock className="w-2.5 h-2.5 mr-1" />Phase
+                          </Badge>
+                        )}
+                        {doc.ternShardIndex !== null && doc.ternShardIndex !== undefined && (
+                          <Badge variant="secondary" className="text-[10px]" data-testid={`badge-shard-${doc.id}`}>
+                            <Database className="w-2.5 h-2.5 mr-1" />Shard {doc.ternShardIndex}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>{doc.category}</span>
                         {doc.originalSizeBytes && (
@@ -414,6 +483,18 @@ export default function DocumentsPage() {
                             </span>
                           </>
                         )}
+                        {doc.ternEnabled && doc.ternHeader && (
+                          <>
+                            <span>•</span>
+                            <span className="text-primary">
+                              {(() => {
+                                const header = doc.ternHeader as Record<string, unknown>;
+                                const ratio = Number(header?.compressionRatio ?? 0);
+                                return ratio > 0 ? `${ratio.toFixed(1)}% compressed` : "Ternary encoded";
+                              })()}
+                            </span>
+                          </>
+                        )}
                         {doc.encryptionMode && (
                           <>
                             <span>•</span>
@@ -425,6 +506,31 @@ export default function DocumentsPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {getStatusBadge(doc.status, doc.isEncrypted || false)}
+                    {doc.ternEnabled && (
+                      <Badge variant="default" className="bg-primary/90" data-testid={`badge-tern-active-${doc.id}`}>
+                        <Layers className="w-3 h-3 mr-1" />Ternary
+                      </Badge>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => classifyMutation.mutate(doc)}
+                      disabled={classifyMutation.isPending}
+                      data-testid={`button-classify-${doc.id}`}
+                    >
+                      <FileSearch className="w-4 h-4 mr-1" />
+                      Classify
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => reviewMutation.mutate(doc)}
+                      disabled={reviewMutation.isPending}
+                      data-testid={`button-review-${doc.id}`}
+                    >
+                      <ClipboardCheck className="w-4 h-4 mr-1" />
+                      Review
+                    </Button>
                     {doc.isEncrypted ? (
                       <Button
                         size="sm"
@@ -507,6 +613,56 @@ export default function DocumentsPage() {
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+            {viewDocument?.ternEnabled && (
+              <div className="p-3 bg-muted/50 rounded-lg space-y-2" data-testid="tern-info-panel">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Archive className="w-4 h-4 text-primary" />
+                  PlenumNET .tern Format
+                </div>
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Storage:</span>
+                    <p className="font-medium text-primary">Ternary Encoded</p>
+                  </div>
+                  {viewDocument.ternShardIndex !== null && viewDocument.ternShardIndex !== undefined && (
+                    <div>
+                      <span className="text-muted-foreground">Shard Index:</span>
+                      <p className="font-medium">{viewDocument.ternShardIndex} / 28</p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-muted-foreground">Phase Encrypted:</span>
+                    <p className="font-medium">{viewDocument.ternEncrypted ? "Yes" : "No"}</p>
+                  </div>
+                </div>
+                {viewDocument.ternHeader && (() => {
+                  const h = viewDocument.ternHeader as Record<string, unknown>;
+                  const origSize = Number(h?.originalSize ?? 0);
+                  const compSize = Number(h?.compressedSize ?? 0);
+                  const ratio = Number(h?.compressionRatio ?? 0);
+                  return (
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Original:</span>
+                        <p className="font-medium">{formatBytes(origSize)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Compressed:</span>
+                        <p className="font-medium">{formatBytes(compSize)}</p>
+                      </div>
+                      {ratio > 0 && (
+                        <div>
+                          <span className="text-muted-foreground">Ratio:</span>
+                          <p className="font-medium text-primary">
+                            {ratio.toFixed(1)}%
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
             {viewDocument?.kongTimestamp && (

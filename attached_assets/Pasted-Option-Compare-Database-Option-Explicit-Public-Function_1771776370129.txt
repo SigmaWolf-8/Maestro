@@ -1,0 +1,298 @@
+Option Compare Database
+Option Explicit
+Public Function LoadLinePricesINTOPMCompile(PSSub As String, Optional Vendor As String)
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Dim Newprice As Single
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from Pm where ps='" & PSSub & "' and vendor='" & Vendor & "'", dbOpenSnapshot)
+'CurrentDb.Execute "UPDATE PM INNER JOIN PMCompile ON PM.PS = PMCompile.PSSub SET PMCompile.Price = Nz([Pm].[NewUpdate],[pm].[price]) Where PMcompile.PSSub='" & PSSub & " ';"
+If Not rs.EOF Then
+    Newprice = Nz(rs!NewUpdate, Nz(rs!Price, 0))
+    rs.Close
+End If
+
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Function LoadALLPricesINTOPMCompile()
+CurrentDb.Execute "UPDATE PM INNER JOIN PMCompile ON PM.PS = PMCompile.PSSub SET PMCompile.Price = Nz([Pm].[NewUpdate],[pm].[price]);"
+End Function
+Public Sub PMCompileLineItem(PSSub As String, PS As String, SubVendor As String, Optional PUP)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, ExValue As String, wks As Workspace
+
+Set Yoda = CurrentDb
+If IsMissing(PUP) = True Then
+    Set rs = Yoda.OpenRecordset("Select * from PMCompile Where PSSub='" & PSSub & "' and PS='" & PS & "' and SubVendor='" & SubVendor & "'", dbOpenDynaset, dbSeeChanges)
+Else
+    Set rs = Yoda.OpenRecordset("Select * from PMCompile Where PSSub='" & PSSub & "' and PS='" & PS & "' and SubVendor='" & SubVendor & "' and Pup=true", dbOpenDynaset, dbSeeChanges)
+End If
+'Set wks = DBEngine.Workspaces(0)
+
+'wks.BeginTrans
+    If Not rs.EOF Then
+        'MsgBox "PMCompiled - " & rs!PS & vbCrLf & "Line Item-" & rs!PSSub & " - " & rs!SubVendor
+        rs.Edit
+            If rs!ExpressionValue = "*" Then rs!Subtotal = rs!Quantity * rs!Price
+            If rs!ExpressionValue = "/" Then rs!Subtotal = rs!Quantity / rs!Price
+            If rs!ExpressionValue = "+" Then rs!Subtotal = rs!Quantity + rs!Price
+            If rs!ExpressionValue = "-" Then rs!Subtotal = rs!Quantity - rs!Price
+            If Nz(rs!ExpressionValue, "0") = "0" Then rs!Subtotal = rs!Price
+            
+            If rs!ExpressionValue2 = "*" Then rs!Subtotal2 = rs!Subtotal * rs!Quantity2
+            If rs!ExpressionValue2 = "/" Then rs!Subtotal2 = rs!Subtotal / rs!Quantity2
+            If rs!ExpressionValue2 = "+" Then rs!Subtotal2 = rs!Subtotal + rs!Quantity2
+            If rs!ExpressionValue2 = "-" Then rs!Subtotal2 = rs!Subtotal - rs!Quantity2
+            If Nz(rs!ExpressionValue2, "0") = "0" Then rs!Subtotal2 = rs!Subtotal
+            
+            If rs!ExpressionValue3 = "*" Then rs!LineTotal = rs!Subtotal2 * rs!Quantity3
+            If rs!ExpressionValue3 = "/" Then rs!LineTotal = rs!Subtotal2 / rs!Quantity3
+            If rs!ExpressionValue3 = "+" Then rs!LineTotal = rs!Subtotal2 + rs!Quantity3
+            If rs!ExpressionValue3 = "-" Then rs!LineTotal = rs!Subtotal2 - rs!Quantity3
+            If Nz(rs!ExpressionValue3, "0") = "0" Then rs!LineTotal = rs!Subtotal2
+        rs!PUP = False 'This is new and untested
+        rs.Update
+    Else
+        'MsgBox "No record from table PMcompile exists" & vbCrLf & "PS=" & PS & vbCrLf & "PSSub=" & PSSub & ", " & SubVendor, vbOKOnly, "Cannot Find Sub PS for calculation"
+    End If
+
+'wks.CommitTrans
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Public Sub PMCompileALLLineItems()
+'Not using this module?  Causes record locks with sharepoint.  Works with local table
+'Calculating line items on form first is working better
+Dim Yoda As DAO.Database, rs As DAO.Recordset, ExValue As String
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from PMCompile", dbOpenDynaset, dbSeeChanges)
+rs.MoveFirst
+
+Do Until rs.EOF
+    If Not rs.EOF Then
+        rs.Edit
+            If rs!ExpressionValue = "*" Then rs!Subtotal = rs!Quantity * rs!Price
+            If rs!ExpressionValue = "/" Then rs!Subtotal = rs!Quantity / rs!Price
+            If rs!ExpressionValue = "+" Then rs!Subtotal = rs!Quantity + rs!Price
+            If rs!ExpressionValue = "-" Then rs!Subtotal = rs!Quantity - rs!Price
+            If Nz(rs!ExpressionValue, "0") = "0" Then rs!Subtotal = rs!Price
+        rs.Update
+        rs.Edit
+            If rs!ExpressionValue2 = "*" Then rs!Subtotal2 = rs!Subtotal * rs!Quantity2
+            If rs!ExpressionValue2 = "/" Then rs!Subtotal2 = rs!Subtotal / rs!Quantity2
+            If rs!ExpressionValue2 = "+" Then rs!Subtotal2 = rs!Subtotal + rs!Quantity2
+            If rs!ExpressionValue2 = "-" Then rs!Subtotal2 = rs!Subtotal - rs!Quantity2
+            If Nz(rs!ExpressionValue2, "0") = "0" Then rs!Subtotal2 = rs!Subtotal
+        rs.Update
+        rs.Edit
+            If rs!ExpressionValue3 = "*" Then rs!LineTotal = rs!Subtotal2 * rs!Quantity3
+            If rs!ExpressionValue3 = "/" Then rs!LineTotal = rs!Subtotal2 / rs!Quantity3
+            If rs!ExpressionValue3 = "+" Then rs!LineTotal = rs!Subtotal2 + rs!Quantity3
+            If rs!ExpressionValue3 = "-" Then rs!LineTotal = rs!Subtotal2 - rs!Quantity3
+            If Nz(rs!ExpressionValue3, "0") = "0" Then rs!LineTotal = rs!Subtotal2
+        rs.Update
+        End If
+rs.MoveNext
+Loop
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Public Function PMCalcValue(PS As String, Vendor As String)
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("SELECT Sum(PMCompile.LineTotal) AS SumOfLineTotal, PMCompile.PS, PMCompile.Vendor From PMCompile GROUP BY PMCompile.PS,PMcompile.Vendor Having (((PMCompile.PS)='" & PS & "' And PMCompile.vendor='" & Vendor & "'));", dbOpenSnapshot)
+If Not rs.EOF Then
+    PMCalcValue = Round(rs!SUMofLineTotal, 2)
+End If
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Function
+Public Sub UpdateCalculatedValue(PS As String, Vendor As String)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, Newprice As Single
+Set Yoda = CurrentDb
+
+Screen.MousePointer = 11
+Set rs = Yoda.OpenRecordset("Select * From PM where ps='" & PS & "' and vendor='" & Vendor & "'", dbOpenDynaset, dbSeeChanges, 3)
+If Not rs.EOF Then
+    rs.Edit
+    Newprice = Nz(PMCalcValue(PS, Vendor), 0)
+    If Newprice > 0 Then rs!Price = Newprice
+    rs.Update
+End If
+
+
+
+'Set Priceupdate Field to True from PM and PMCompile Tables
+'MsgBox "Setting Pup=True in PMcompile table" & vbCrLf & "Where PSSub=" & PS & " And SubVendor=" & Vendor, vbOKOnly, "Function_UpdateCalculatedvalue(" & PS & "," & Vendor & ""
+CurrentDb.Execute "Update PMcompile set Pup=True where PSSub='" & PS & "' And SubVendor='" & Vendor & "'"
+'MsgBox "Setting Pup=True, PUPC=true in PM table" & vbCrLf & "Where PS=" & PS, vbOKOnly, "Function_UpdateCalculatedvalue(" & PS & "," & Vendor & ""
+CurrentDb.Execute "UPDATE PMCompile INNER JOIN PM ON PMCompile.PS = PM.PS SET PM.PUP = True, PM.Pupc=true WHERE (((PMCompile.Pup)=True));"
+'Update Price Field in PMCompile table for all Subitems that are included in other calculations
+CurrentDb.Execute "UPDATE PM INNER JOIN (PMCompile LEFT JOIN PMCompile AS PMCompile_1 ON PMCompile.PS = PMCompile_1.PSSub) ON PM.PS = PMCompile.PS SET PMCompile.Price =" & Nz(Forms.PMCompileFrm.CompiledTotal, 0) & " WHERE (((PMCompile.Pup)=True) AND ((PMCompile.PSSub)='" & Forms.PMCompileFrm.PSHeader & "'));"
+
+
+Screen.MousePointer = 1
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Public Sub UpdatePMCalculatedValue(PS As String, Vendor As String)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, Newprice As Single
+Set Yoda = CurrentDb
+
+Screen.MousePointer = 11
+
+'Now we need to calculate individual line items where a price change occurred
+Set rs = Yoda.OpenRecordset("SELECT DISTINCT PM.PUPC,PM.PS,PMCompile.PSSub,PMCompile.SubVendor FROM PM INNER JOIN PMCompile ON PM.PS = PMCompile.PS WHERE (((PM.PUPC)=True));", dbOpenDynaset, dbSeeChanges, 3)
+If Not rs.EOF Then
+    rs.MoveFirst
+    Do Until rs.EOF
+        'MsgBox "About to run PMCompileLineItem where" & vbCrLf & "PSSub=" & rs!PSSub & " and ps=" & PS & "Subvendor=" & rs!SubVendor, vbOKOnly, "UpdatePMCalculatedValue(" & PS & "," & Vendor
+        PMCompileLineItem rs!PSSub, rs!PS, rs!SubVendor, True
+    rs.MoveNext
+    Loop
+End If
+
+'Now we need to calculate the sum for a new calculated price in PM
+'Just changed PM.Pup to PM.PUPC..>Still works>?>>>???
+Set rs = Yoda.OpenRecordset("SELECT DISTINCT PM.*, PM.PUP FROM PM INNER JOIN PMCompile ON PM.PS = PMCompile.PS WHERE (((PM.PUPC)=True));", dbOpenSnapshot)
+If Not rs.EOF Then
+    rs.MoveFirst
+    Do Until rs.EOF
+        Newprice = Nz(PMCalcValue(rs!PS, rs!Vendor), 0)
+        CurrentDb.Execute "Update PM set OldPrice=Price,OldPriceEffective=LastUpdate,LastUpdate=#" & Date & "#,Price=" & Newprice & " Where PS='" & rs!PS & "' And Vendor='" & rs!Vendor & "'"
+        rs.MoveNext
+    Loop
+End If
+
+CurrentDb.Execute "UPDATE PMCompile INNER JOIN PM ON PMCompile.PS = PM.PS SET PM.PUPC = False, PM.PUP = True WHERE (((PM.PUPC)=True));"
+
+Screen.MousePointer = 1
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+End Sub
+Public Sub UpdatePMCompileSubPricesOLD(PMPS As String, Vendor As String, Price As Single)
+'This is used to update PMCompile prices when an individual item in Price Master changes
+CurrentDb.Execute "UPDATE PMCompile LEFT JOIN PM ON PMCompile.PSSub = PM.PS SET PMCompile.Price = " & Price & ", PMCompile.Pup = True WHERE (((PMCompile.PSSub)='" & PMPS & "') And ((PMCompile.subVendor)='" & Vendor & "'));"
+End Sub
+Public Sub UpdatePMCompileSubPrices(PMPS As String, Vendor As String, Price As Single)
+'This is used to update PMCompile prices when an individual item in Price Master changes
+'New to handle nested calculations, Above won't recalculate nested calculations
+Dim Yoda As DAO.Database, rs As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * from PMcompile WHERE (((PMCompile.PSSub)='" & PMPS & "') And ((PMCompile.subVendor)='" & Vendor & "'));", dbOpenDynaset, dbSeeChanges)
+If Not rs.EOF Then
+    rs.MoveFirst
+    Do Until rs.EOF
+        rs.Edit
+        rs!Price = Price
+        rs!PUP = True
+        rs.Update
+            'This line sets Pup=true for nested calculatons, so we can later recalculate totals
+            CurrentDb.Execute "Update PMCompile Set PMCompile.Pup=true where psSub='" & rs!PS & "'"
+        rs.MoveNext
+    Loop
+End If
+            
+
+rs.Close
+Yoda.Close
+Set rs = Nothing
+Set Yoda = Nothing
+End Sub
+Public Sub SetPMPStoRecalculate(PMPS As String, Vendor As String)
+'A calculated price could have many records.  We need a way to only recalculate the PM price once, not for every PMCompile record
+'CurrentDb.Execute "UPDATE PM LEFT JOIN PMCompile ON PM.PS = PMCompile.PSSub SET PM!PupC =True WHERE (((PMCompile.PSSub)='" & PMPS & "') And ((PMCompile.subVendor)='" & Vendor & "'));"
+CurrentDb.Execute "Update PM Set PM!Pupc=true where PS='" & PMPS & "' And Vendor='" & Vendor & "'"
+End Sub
+Public Sub UpdateCalcsAfterSubPriceChange(PMPS As String, Vendor As String)
+Dim Yoda As DAO.Database, rs As DAO.Recordset, rs1 As DAO.Recordset, rss As DAO.Recordset
+Set Yoda = CurrentDb
+Set rs = Yoda.OpenRecordset("Select * From PMCompile where Pup=true", dbOpenDynaset, dbSeeChanges)
+
+'Need to add subvendor?
+If Not rs.EOF Then
+    rs.MoveFirst
+    Do Until rs.EOF
+        CurrentDb.Execute "Update Pmcompile Set Pupc=true where PSSub='" & rs!PS & "'"
+        If rs!PupC = False Then
+            PMCompileLineItem rs!PSSub, rs!PS, rs!SubVendor, True
+        Else
+            Set rs1 = Yoda.OpenRecordset("Select Price,PS From PM where ps='" & rs!PSSub & "'", dbOpenSnapshot)
+            'MsgBox "About to edit Field-" & rs!PS & vbCrLf & "Set Price to " & rs1!Price & " for item " & rs!PSSub
+            rs.Edit
+            rs!Price = rs1!Price
+            If rs!ExpressionValue = "*" Then rs!Subtotal = rs!Quantity * rs!Price
+            If rs!ExpressionValue = "/" Then rs!Subtotal = rs!Quantity / rs!Price
+            If rs!ExpressionValue = "+" Then rs!Subtotal = rs!Quantity + rs!Price
+            If rs!ExpressionValue = "-" Then rs!Subtotal = rs!Quantity - rs!Price
+            If Nz(rs!ExpressionValue, "0") = "0" Then rs!Subtotal = rs!Price
+            
+            If rs!ExpressionValue2 = "*" Then rs!Subtotal2 = rs!Subtotal * rs!Quantity2
+            If rs!ExpressionValue2 = "/" Then rs!Subtotal2 = rs!Subtotal / rs!Quantity2
+            If rs!ExpressionValue2 = "+" Then rs!Subtotal2 = rs!Subtotal + rs!Quantity2
+            If rs!ExpressionValue2 = "-" Then rs!Subtotal2 = rs!Subtotal - rs!Quantity2
+            If Nz(rs!ExpressionValue2, "0") = "0" Then rs!Subtotal2 = rs!Subtotal
+            
+            If rs!ExpressionValue3 = "*" Then rs!LineTotal = rs!Subtotal2 * rs!Quantity3
+            If rs!ExpressionValue3 = "/" Then rs!LineTotal = rs!Subtotal2 / rs!Quantity3
+            If rs!ExpressionValue3 = "+" Then rs!LineTotal = rs!Subtotal2 + rs!Quantity3
+            If rs!ExpressionValue3 = "-" Then rs!LineTotal = rs!Subtotal2 - rs!Quantity3
+            If Nz(rs!ExpressionValue3, "0") = "0" Then rs!LineTotal = rs!Subtotal2
+            
+            rs!PUP = False
+            rs!PupC = False
+            rs.Update
+            
+            rs1.Close
+            Set rs1 = Nothing
+        End If
+
+        'rs.Edit
+        'rs!PUP = False
+        'rs.Update
+               
+               
+                'This is compiled line item, so Vendor could be inanother section>
+                'Bug may exist here?
+                Set rss = Yoda.OpenRecordset("Select * from PM where ps='" & rs!PS & "'", dbOpenDynaset, dbSeeChanges) '& "' And Vendor='" & Vendor & "'", dbOpenDynaset, dbSeeChanges)
+                    rss.Edit
+                    rss!OldPrice = rss!Price
+                    rss!OldPriceEffective = rss!LastUpdate
+                    rss!LastUpdate = Date
+                    rss!Price = PMCalcValue(rs!PS, rs!Vendor)
+                    rss.Update
+                rss.Close
+                Set rss = Nothing
+    
+    rs.MoveNext
+    Loop
+End If
+
+
+rs.Close
+Yoda.Close
+Set Yoda = Nothing
+Set rs = Nothing
+Set rss = Nothing
+End Sub
+Public Sub CheckforUpdatesOnOpen()
+Echo True, "Updating New Price Master Costs"
+'CurrentDb.Execute "UPDATE PM SET PM.OldPriceEffective = PM.LastUpdate, PM.OldPrice = PM.Price, PM.Price = PM.NewUpdate, PM.LastUpdate = PM.Effective, PM.Pup = True, PM.NewUpdate = Null, PM.Effective = Null WHERE (((PM.Effective)<=Date()));"
+' Disabled 11/28/2019 temporarily due to error.
+End Sub
+

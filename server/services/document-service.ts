@@ -1,9 +1,12 @@
 import { storage } from "../storage";
 import { kongService } from "../kong-service";
 import { getPlenumNetClient } from "../integrations/plenum-net-core-client";
+import { plenumnet as plenumNetHttpClient } from "./plenumnet-client";
 import type { EncryptedPhaseData } from "../plenumnet/phase-encryption";
 import type { Document, InsertDocument, DocumentMetaTag, DocumentAuditLog, DocumentLock } from "@shared/schema";
 import * as wopiService from "./wopi-host-service";
+import { encodeTernFile, decodeTernFile, isTernFormat, type TernHeader } from "./tern-file-format";
+import { tradHash28 } from "../plenumnet/tribonacci-indexing";
 
 export interface DocumentUploadOptions {
   tenantId: string;
@@ -15,6 +18,9 @@ export interface DocumentUploadOptions {
   encrypt?: boolean;
   encryptionMode?: "high_security" | "balanced" | "performance" | "adaptive";
   uploadedBy?: string;
+  useTernFormat?: boolean;
+  mimeType?: string;
+  fileData?: string;
 }
 
 export interface DocumentUploadResult {
@@ -334,6 +340,168 @@ class DocumentService {
       originalSize,
       compressedSize,
       savingsPercent,
+    };
+  }
+
+  async bulkEncrypt(
+    tenantId: string,
+    mode: "high_security" | "balanced" | "performance" | "adaptive" = "balanced",
+    userId?: string
+  ): Promise<BulkOperationResult & { total: number; alreadyEncrypted: number }> {
+    const allDocs = await storage.getDocuments(tenantId);
+    const unencrypted = allDocs.filter(d => !d.isEncrypted && d.plainContent);
+    const alreadyEncrypted = allDocs.length - unencrypted.length;
+
+    if (unencrypted.length === 0) {
+      return { succeeded: [], failed: [], total: allDocs.length, alreadyEncrypted };
+    }
+
+    const succeeded: string[] = [];
+    const failed: Array<{ id: string; error: string }> = [];
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < unencrypted.length; i += BATCH_SIZE) {
+      const batch = unencrypted.slice(i, i + BATCH_SIZE);
+      const items = batch.map(doc => ({
+        id: doc.id,
+        data: doc.plainContent!.replace(/\0/g, ""),
+        mode,
+      }));
+
+      try {
+        const response = await plenumNetHttpClient.batchPhaseSplit(items);
+
+        if (!response?.results || !Array.isArray(response.results)) {
+          for (const doc of batch) {
+            failed.push({ id: doc.id, error: "Invalid batch response from PlenumNET" });
+          }
+          continue;
+        }
+
+        for (const result of response.results) {
+          if (!result.success || !result.encrypted) {
+            failed.push({ id: result.id, error: result.error || "Encryption failed" });
+            continue;
+          }
+
+          try {
+            const encPayload = {
+              engine: "plenumnet",
+              version: "4.0.0",
+              mode,
+              phases: result.encrypted,
+              batchEncrypted: true,
+            };
+            const encryptedContent = JSON.stringify(encPayload);
+            const doc = batch.find(d => d.id === result.id)!;
+            const originalSize = Buffer.byteLength(doc.plainContent!, "utf8");
+            const compressedSize = Buffer.byteLength(encryptedContent, "utf8");
+            const savingsPercent = originalSize > 0 ? ((originalSize - compressedSize) / originalSize) * 100 : 0;
+
+            await storage.updateDocument(result.id, {
+              isEncrypted: true,
+              encryptionMode: mode,
+              encryptedContent,
+              plainContent: null,
+              compressedSizeBytes: compressedSize,
+              checksum: null,
+              savingsPercent: String(savingsPercent.toFixed(2)),
+              status: "encrypted",
+            });
+
+            await this.audit(tenantId, result.id, userId || null, "document_bulk_encrypted", {
+              mode,
+              engine: "plenumnet-batch",
+              originalSize,
+            });
+
+            succeeded.push(result.id);
+          } catch (dbErr: any) {
+            failed.push({ id: result.id, error: `DB update failed: ${dbErr.message}` });
+          }
+        }
+      } catch (batchErr: any) {
+        for (const doc of batch) {
+          failed.push({ id: doc.id, error: `Batch request failed: ${batchErr.message}` });
+        }
+      }
+    }
+
+    return { succeeded, failed, total: allDocs.length, alreadyEncrypted };
+  }
+
+  async uploadTern(options: DocumentUploadOptions): Promise<DocumentUploadResult> {
+    const fileBuffer = options.fileData
+      ? Buffer.from(options.fileData, "base64")
+      : options.content
+        ? Buffer.from(options.content, "utf-8")
+        : Buffer.alloc(0);
+
+    const originalSize = fileBuffer.length;
+    const mimeType = options.mimeType || "application/octet-stream";
+
+    const ternResult = encodeTernFile(fileBuffer, options.name, mimeType, {
+      encrypt: options.encrypt,
+      encryptionMode: options.encryptionMode,
+      metadata: { tenantId: options.tenantId, projectId: options.projectId },
+    });
+
+    const shardIndex = tradHash28(`${options.tenantId}:${options.name}`);
+
+    const document = await storage.createDocument({
+      tenantId: options.tenantId,
+      projectId: options.projectId,
+      name: options.name,
+      description: options.description,
+      category: options.category,
+      status: options.encrypt ? "encrypted" : "draft",
+      originalFilename: options.name,
+      mimeType,
+      originalSizeBytes: originalSize,
+      compressedSizeBytes: ternResult.ternData.length,
+      isEncrypted: !!options.encrypt,
+      encryptionMode: options.encrypt ? (options.encryptionMode || "balanced") : null,
+      checksum: ternResult.header.hash,
+      savingsPercent: String(ternResult.savings.toFixed(2)),
+      ternEnabled: true,
+      ternEncrypted: !!options.encrypt,
+      ternHeader: ternResult.header as any,
+      ternData: ternResult.ternData,
+      ternShardIndex: shardIndex,
+    });
+
+    await this.audit(options.tenantId, document.id, options.uploadedBy || null, "document_created_tern", {
+      name: options.name,
+      format: "tern",
+      encrypted: !!options.encrypt,
+      originalSize,
+      compressedSize: ternResult.ternData.length,
+      savings: ternResult.savings,
+      shardIndex,
+    });
+
+    return {
+      document,
+      encrypted: !!options.encrypt,
+      originalSize,
+      compressedSize: ternResult.ternData.length,
+      savingsPercent: ternResult.savings,
+    };
+  }
+
+  async downloadTern(documentId: string): Promise<{ data: Buffer; header: TernHeader; mimeType: string } | null> {
+    const doc = await storage.getDocument(documentId);
+    if (!doc || !doc.ternEnabled || !doc.ternData) return null;
+
+    const result = decodeTernFile(doc.ternData);
+    if (!result.success) {
+      throw new Error(`TERN decode failed: ${result.error}`);
+    }
+
+    return {
+      data: result.data,
+      header: result.header,
+      mimeType: result.header.mimeType || doc.mimeType || "application/octet-stream",
     };
   }
 

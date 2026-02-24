@@ -1959,7 +1959,7 @@ function TaskDetailPanel({
                 className="h-3 w-3"
                 data-testid="checkbox-detail-ordered"
               />
-              <Label className="text-[0.65rem]">Ordered</Label>
+              <Label className="text-[0.65rem]">Order</Label>
               {task.orderedDate && (
                 <span className="text-[0.55rem] text-muted-foreground ml-auto">{formatDate(task.orderedDate)}</span>
               )}
@@ -1971,7 +1971,7 @@ function TaskDetailPanel({
                 className="h-3 w-3"
                 data-testid="checkbox-detail-completed"
               />
-              <Label className="text-[0.65rem]">Completed</Label>
+              <Label className="text-[0.65rem]">Complete</Label>
               {task.completedDate && (
                 <span className="text-[0.55rem] text-muted-foreground ml-auto">{formatDate(task.completedDate)}</span>
               )}
